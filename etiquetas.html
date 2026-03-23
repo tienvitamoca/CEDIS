@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imprimir Etiquetas — CEDIS</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Estilo para la vista previa en pantalla */
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 5px;
+            margin-top: 1rem;
+            border: 1px dashed #ccc;
+            padding: 10px;
+        }
+
+        .mini-etiqueta {
+            border: 1px solid #eee;
+            text-align: center;
+            font-size: 0.6rem;
+            padding: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="index.html">←</a>
+        <h1>🏷️ Generador de Etiquetas</h1>
+        <span></span>
+    </nav>
+
+    <div class="container has-bottom-nav">
+        <div class="card">
+            <div class="card-title">Configurar Etiquetas</div>
+
+            <div class="field">
+                <label>Buscar Producto</label>
+                <div class="search-wrap">
+                    <span class="icon">🔍</span>
+                    <input type="text" id="busqueda" placeholder="Nombre o código..." oninput="buscarProducto()">
+                </div>
+                <div id="sugerencias"
+                    style="display:none;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;"></div>
+            </div>
+
+            <div id="config-panel" style="display:none">
+                <div class="field">
+                    <label>Presentación / Precio</label>
+                    <select id="presentacion-bb" onchange="actualizarVistaPrevia()"></select>
+                </div>
+                <div class="field">
+                    <label>Cantidad de etiquetas</label>
+                    <input type="number" id="cantidad-etiquetas" value="54" min="1" max="100">
+                </div>
+
+                <button class="btn btn-primary btn-block" onclick="imprimirPDF()">
+                    🖨️ Generar PDF para Impresión
+                </button>
+            </div>
+        </div>
+
+        <div id="preview-container" style="display:none">
+            <div class="card-title">Vista Previa (Muestra)</div>
+            <div class="preview-grid" id="lista-previa"></div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+        <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
+        <a href="etiquetas.html" class="active"><span class="icon">🏷️</span> Etiquetas</a>
+        <a href="cotizador.html"><span class="icon">🧾</span> Cotizador</a>
+    </nav>
+
+    <script src="supabase.js"></script>
+    <script>
+        let productoActual = null;
+        let todasPresentaciones = []; // Cambiar nombre para claridad
+        let timer = null;
+
+        async function init() {
+            // 1. Obtener todas las presentaciones base
+            todasPresentaciones = await getPresentaciones();
+
+            // 2. Filtrar para tener solo UN ejemplar de cada código BB único
+            // Esto evita que se repita " Jamaica $8" si hay múltiples registros base.
+            const presentacionesUnicas = [];
+            const codigosVistos = new Set();
+
+            todasPresentaciones.forEach(p => {
+                if (!codigosVistos.has(p.codigo_bb)) {
+                    codigosVistos.add(p.codigo_bb);
+                    presentacionesUnicas.push(p);
+                }
+            });
+
+            // 3. Llenar el select con las únicas
+            const sel = document.getElementById('presentacion-bb');
+            sel.innerHTML = '<option value="">-- Selecciona --</option>'; // Opción vacía inicial
+            presentacionesUnicas.forEach(p => {
+                // Mostramos el nombre de la presentación (ej: "Jamaica $8")
+                sel.innerHTML += `<option value="${p.codigo_bb}">${p.nombre}</option>`;
+            });
+        }
+
+        async function buscarProducto() {
+            const q = document.getElementById('busqueda').value.trim();
+            clearTimeout(timer);
+            if (q.length < 2) { document.getElementById('sugerencias').style.display = 'none'; return; }
+            timer = setTimeout(async () => {
+                const params = `select=*,tipos_producto(nombre)&limit=5&nombre=ilike.*${q}*`;
+                mostrarSugerencias(await dbGet('productos', params));
+            }, 300);
+        }
+
+        function mostrarSugerencias(lista) {
+            const cont = document.getElementById('sugerencias');
+            cont.innerHTML = lista.map(p => `
+        <div onclick="seleccionar(${p.id})" style="padding:10px; cursor:pointer; border-bottom:1px solid #eee;">
+          ${p.nombre} <small>(${p.codigo})</small>
+        </div>`).join('');
+            cont.style.display = 'block';
+        }
+
+        async function seleccionar(id) {
+            const data = await dbGet('productos', `id=eq.${id}`);
+            productoActual = data[0];
+            document.getElementById('sugerencias').style.display = 'none';
+            document.getElementById('config-panel').style.display = 'block';
+            document.getElementById('preview-container').style.display = 'block';
+            actualizarVistaPrevia();
+        }
+
+        function actualizarVistaPrevia() {
+            if (!productoActual) return;
+            const bb = document.getElementById('presentacion-bb').value;
+            const codigoFull = generarCodigoBarras(productoActual, bb);
+            const cont = document.getElementById('lista-previa');
+            cont.innerHTML = '';
+            // Solo mostramos 6 de vista previa para no saturar
+            for (let i = 0; i < 6; i++) {
+                cont.innerHTML += `
+          <div class="mini-etiqueta">
+            <strong>${productoActual.nombre}</strong><br>
+            ${codigoFull}
+          </div>`;
+            }
+        }
+
+        function imprimirPDF() {
+            if (!productoActual) return;
+            const bbCode = document.getElementById('presentacion-bb').value;
+            if (!bbCode) { alert('Selecciona una presentación'); return; }
+
+            const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
+            const codigoObj = generarCodigoBarras(productoActual, bbCode);
+            const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value);
+
+            const win = window.open('', '_blank');
+            win.document.write(`
+    <html>
+    <head>
+      <title>Imprimir Etiquetas - ${productoActual.nombre}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
+      <style>
+        /* Configuración de página al mínimo */
+        @page { 
+          margin: 0.3cm; 
+          size: letter; 
+        }
+        
+        body { 
+          font-family: 'Segoe UI', sans-serif; 
+          margin: 0; 
+          padding: 0; 
+          display: flex;
+          justify-content: center; /* Centra la cuadrícula en la hoja */
+          background: #f4f4f4;
+        }
+
+        .hoja {
+          display: grid;
+          grid-template-columns: repeat(6, 31mm); /* Ancho fijo para 6 columnas */
+          grid-auto-rows: 27mm; /* Altura fija reducida para 9 filas */
+          gap: 1mm;
+          width: fit-content;
+          background: white;
+          padding: 2mm;
+          box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .etiqueta {
+          border: 0.1mm solid #eee;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
+          overflow: hidden;
+          padding: 1mm;
+          box-sizing: border-box;
+        }
+
+        .nombre { 
+          font-size: 7pt; 
+          font-weight: bold; 
+          text-transform: uppercase; 
+          line-height: 1.1;
+          margin-bottom: 0.5mm;
+          width: 100%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .presentacion { 
+          font-size: 6.5pt; 
+          color: #333;
+          margin-bottom: 0.5mm;
+        }
+
+        .barras-visuales {
+          font-family: 'Libre Barcode 128', cursive;
+          font-size: 28pt; /* Tamaño reducido para evitar desbordamiento */
+          line-height: 0.8;
+          margin: 0;
+          display: block;
+        }
+
+        .numero-legible {
+          font-family: monospace;
+          font-size: 7.5pt;
+          font-weight: bold;
+          margin-top: 0.5mm;
+        }
+
+        @media print { 
+          body { background: white; }
+          .hoja { box-shadow: none; margin: 0; }
+          .no-print { display: none; } 
+        }
+      </style>
+    </head>
+    <body>
+      <div style="position: fixed; top: 0; width: 100%; text-align: center; padding: 15px; background: white; z-index: 100;" class="no-print">
+        <button onclick="window.print()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+          🖨️ IMPRIMIR AHORA
+        </button>
+      </div>
+      <div style="margin-top: 60px;" class="no-print"></div>
+      
+      <div class="hoja">
+        ${Array(cantidad).fill(0).map(() => `
+          <div class="etiqueta">
+            <div class="nombre">${productoActual.nombre}</div>
+            <div class="presentacion">${pres.nombre}</div>
+            <div class="barras-visuales">${codigoObj.textoParaFuente}</div>
+            <div class="numero-legible">${codigoObj.num}</div>
+          </div>
+        `).join('')}
+      </div>
+    </body>
+    </html>
+  `);
+            win.document.close();
+        }
+
+
+        init();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotizador — CEDIS</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .item-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .item-row:last-child { border-bottom: none; }
+    .total-bar {
+      position: sticky;
+      bottom: 70px;
+      background: var(--primary);
+      color: white;
+      padding: 1rem;
+      border-radius: var(--radius);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html">←</a>
+    <h1>🧾 Cotizador</h1>
+    <button onclick="limpiarTodo()" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:0.3rem 0.6rem;border-radius:6px;font-size:0.8rem;cursor:pointer">Limpiar</button>
+  </nav>
+
+  <div class="container has-bottom-nav">
+
+    <div class="card">
+      <div class="card-title">Agregar Producto</div>
+      <div class="search-wrap">
+        <span class="icon">🔍</span>
+        <input type="text" id="busqueda" placeholder="Buscar por nombre o código..."
+          oninput="buscarProducto()" autocomplete="off">
+      </div>
+      <div id="sugerencias" style="display:none;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-top:0.25rem"></div>
+
+      <div id="agregar-form" style="display:none;margin-top:0.75rem">
+        <div style="background:var(--bg);border-radius:8px;padding:0.75rem;margin-bottom:0.75rem">
+          <div style="font-weight:700" id="form-nombre"></div>
+          <div style="font-size:0.78rem;color:var(--text-muted)" id="form-info"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+          <div class="field">
+            <label>Cantidad (bolsas)</label>
+            <input type="number" id="form-cantidad" min="1" value="1">
+          </div>
+          <div class="field">
+            <label>Precio unitario ($)</label>
+            <input type="number" step="0.01" id="form-precio" placeholder="0.00">
+          </div>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+          <button class="btn btn-outline" style="flex:1" onclick="cancelarAgregar()">Cancelar</button>
+          <button class="btn btn-primary" style="flex:1" onclick="agregarAlPedido()">+ Agregar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pedido-container" style="display:none">
+      <div class="card" id="lista-pedido"></div>
+      <div class="total-bar">
+        <div>
+          <div style="font-size:0.78rem;opacity:0.85">Total del pedido</div>
+          <div style="font-size:1.5rem;font-weight:700" id="total-monto">$0.00</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:0.78rem;opacity:0.85" id="total-items">0 bolsas</div>
+          <button onclick="imprimirPedido()" style="background:white;color:var(--primary);border:none;padding:0.4rem 0.8rem;border-radius:6px;font-weight:700;cursor:pointer;margin-top:0.3rem;font-size:0.85rem">
+            🖨️ Imprimir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="empty-pedido" class="empty">
+      <div class="icon">🧾</div>
+      <p>Agrega productos para comenzar el pedido</p>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
+    <a href="target.html"><span class="icon">🎯</span> Target</a>
+    <a href="tradicional.html"><span class="icon">📦</span> Tradicional</a>
+    <a href="cotizador.html" class="active"><span class="icon">🧾</span> Cotizador</a>
+  </nav>
+
+  <script src="supabase.js"></script>
+  <script>
+    let pedido = [];
+    let productoTemp = null;
+    let timer = null;
+
+    async function buscarProducto() {
+      const q = document.getElementById('busqueda').value.trim();
+      clearTimeout(timer);
+      if (q.length < 2) { document.getElementById('sugerencias').style.display = 'none'; return; }
+      timer = setTimeout(async () => {
+        try {
+          const num = parseInt(q);
+          let params = 'select=*,tipos_producto(nombre)&limit=6&order=nombre.asc';
+          params += !isNaN(num) ? `&codigo=eq.${num}` : `&nombre=ilike.*${q}*`;
+          mostrarSugerencias(await dbGet('productos', params));
+        } catch(e) { console.error(e); }
+      }, 300);
+    }
+
+    function mostrarSugerencias(lista) {
+      const cont = document.getElementById('sugerencias');
+      if (!lista.length) { cont.style.display = 'none'; return; }
+      cont.innerHTML = lista.map(p => `
+        <div onclick="seleccionar(${p.id})"
+          style="padding:0.75rem 1rem;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"
+          onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='white'">
+          <div>
+            <div style="font-weight:600">${p.nombre}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">${p.tipos_producto?.nombre || ''}</div>
+          </div>
+          <span class="badge badge-blue">${p.codigo}</span>
+        </div>`).join('');
+      cont.style.display = 'block';
+    }
+
+    async function seleccionar(id) {
+      const data = await dbGet('productos', `select=*,tipos_producto(nombre)&id=eq.${id}`);
+      productoTemp = data[0];
+      document.getElementById('busqueda').value = '';
+      document.getElementById('sugerencias').style.display = 'none';
+      document.getElementById('form-nombre').textContent = productoTemp.nombre;
+      document.getElementById('form-info').textContent =
+        `Código: ${productoTemp.codigo} · ${productoTemp.tipos_producto?.nombre || ''}`;
+      document.getElementById('form-cantidad').value = 1;
+      document.getElementById('form-precio').value = '';
+      document.getElementById('agregar-form').style.display = 'block';
+    }
+
+    function cancelarAgregar() {
+      productoTemp = null;
+      document.getElementById('agregar-form').style.display = 'none';
+    }
+
+    function agregarAlPedido() {
+      if (!productoTemp) return;
+      const cantidad = parseInt(document.getElementById('form-cantidad').value);
+      const precio   = parseFloat(document.getElementById('form-precio').value);
+      if (!cantidad || cantidad < 1) { alert('Cantidad inválida'); return; }
+      if (!precio || precio <= 0)    { alert('Precio inválido'); return; }
+
+      const existe = pedido.find(i => i.producto.id === productoTemp.id && i.precio === precio);
+      if (existe) {
+        existe.cantidad += cantidad;
+      } else {
+        pedido.push({ producto: productoTemp, cantidad, precio });
+      }
+      cancelarAgregar();
+      renderPedido();
+    }
+
+    function eliminarItem(idx) {
+      pedido.splice(idx, 1);
+      renderPedido();
+    }
+
+    function renderPedido() {
+      if (!pedido.length) {
+        document.getElementById('pedido-container').style.display = 'none';
+        document.getElementById('empty-pedido').style.display = 'block';
+        return;
+      }
+      document.getElementById('pedido-container').style.display = 'block';
+      document.getElementById('empty-pedido').style.display = 'none';
+
+      const total      = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
+      const totalBolsas = pedido.reduce((s, i) => s + i.cantidad, 0);
+
+      document.getElementById('total-monto').textContent = formatPeso(total);
+      document.getElementById('total-items').textContent = `${totalBolsas} bolsa${totalBolsas !== 1 ? 's' : ''}`;
+
+      document.getElementById('lista-pedido').innerHTML = `
+        <div class="card-title">${pedido.length} producto${pedido.length !== 1 ? 's' : ''}</div>
+        ${pedido.map((item, idx) => `
+          <div class="item-row">
+            <div>
+              <div style="font-weight:600;font-size:0.9rem">${item.producto.nombre}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">
+                ${item.cantidad} × ${formatPeso(item.precio)}
+              </div>
+            </div>
+            <div style="font-weight:700;color:var(--primary);white-space:nowrap">${formatPeso(item.precio * item.cantidad)}</div>
+            <button onclick="eliminarItem(${idx})"
+              style="background:none;border:none;color:#dc2626;font-size:1.1rem;cursor:pointer">✕</button>
+          </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;padding-top:0.75rem;font-weight:700">
+          <span>TOTAL</span><span>${formatPeso(total)}</span>
+        </div>
+      `;
+    }
+
+    function limpiarTodo() {
+      if (!pedido.length) return;
+      if (!confirm('¿Limpiar todo el pedido?')) return;
+      pedido = [];
+      renderPedido();
+    }
+
+    function imprimirPedido() {
+      const fecha = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+      const total = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
+      const totalBolsas = pedido.reduce((s, i) => s + i.cantidad, 0);
+
+      const win = window.open('', '_blank');
+      win.document.write(`
+        <html><head><title>Pedido CEDIS</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; color: #111; }
+          h2 { margin-bottom: 0.2rem; }
+          .sub { color: #666; font-size: 0.88rem; margin-bottom: 1.5rem; }
+          table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+          th { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 2px solid #111; }
+          td { padding: 0.5rem 0.4rem; border-bottom: 1px solid #eee; }
+          .total-row td { border-top: 2px solid #111; border-bottom: none; font-weight: 700; font-size: 1rem; }
+          @media print { .no-print { display: none; } }
+        </style></head>
+        <body>
+          <h2>📦 CEDIS — Pedido</h2>
+          <div class="sub">${fecha} · ${totalBolsas} bolsas en total</div>
+          <table>
+            <thead><tr><th>Producto</th><th>Cant.</th><th>P. Unit.</th><th>Total</th></tr></thead>
+            <tbody>
+              ${pedido.map(i => `
+                <tr>
+                  <td>${i.producto.nombre}<br><small style="color:#888">${i.producto.codigo}</small></td>
+                  <td>${i.cantidad}</td>
+                  <td>${formatPeso(i.precio)}</td>
+                  <td><strong>${formatPeso(i.precio * i.cantidad)}</strong></td>
+                </tr>`).join('')}
+              <tr class="total-row">
+                <td colspan="3">TOTAL</td>
+                <td>${formatPeso(total)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <br>
+          <button class="no-print" onclick="window.print()"
+            style="padding:0.5rem 1.2rem;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.95rem">
+            🖨️ Imprimir
+          </button>
+        </body></html>
+      `);
+      win.document.close();
+    }
+
+    renderPedido();
+  </script>
+</body>
+</html>
