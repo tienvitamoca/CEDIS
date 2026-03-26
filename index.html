@@ -156,6 +156,24 @@
     }
     actualizarHora();
     setInterval(actualizarHora, 60000);
+
+    (function () {
+      const acceso = localStorage.getItem('cedis_auth');
+      if (acceso !== 'autorizado') {
+        const pass = prompt("Introduce la contraseña de acceso para CEDISMoCa:");
+        const passCorrecta = "2026"; // <-- CAMBIA ESTO por tu clave real
+
+        if (pass === passCorrecta) {
+          localStorage.setItem('cedis_auth', 'autorizado');
+        } else {
+          alert("Acceso denegado.");
+          // Borramos el contenido para que no vean nada detrás del prompt
+          document.documentElement.innerHTML = "<body style='background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;'><div><h1>🔒 Acceso Restringido</h1><p>Contraseña incorrecta. Recarga la página para intentar de nuevo.</p></div></body>";
+          throw new Error("Acceso no autorizado"); // Detiene la ejecución del resto de scripts
+        }
+      }
+    })();
+    
   </script>
 </body>
 
