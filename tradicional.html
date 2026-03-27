@@ -230,7 +230,7 @@
       }
 
       if (bb) {
-        document.getElementById('r-codigo-barras').textContent = generarCodigoBarras(productoActual, bb.codigo_bb);
+        document.getElementById('r-codigo-barras').textContent = generarCodigoBarras(productoActual, bb.codigo_bb).num;
         document.getElementById('r-presentacion-nombre').textContent = `${bb.nombre} · BB-${bb.codigo_bb}`;
         document.getElementById('card-codigo').style.display = 'block';
       }

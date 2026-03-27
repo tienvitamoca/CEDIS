@@ -138,7 +138,7 @@
         function actualizarVistaPrevia() {
             if (!productoActual) return;
             const bb = document.getElementById('presentacion-bb').value;
-            const codigoFull = generarCodigoBarras(productoActual, bb);
+            const codigoObj = generarCodigoBarras(productoActual, bb);
             const cont = document.getElementById('lista-previa');
             cont.innerHTML = '';
             // Solo mostramos 6 de vista previa para no saturar
@@ -146,7 +146,7 @@
                 cont.innerHTML += `
           <div class="mini-etiqueta">
             <strong>${productoActual.nombre}</strong><br>
-            ${codigoFull}
+            ${codigoObj.num}
           </div>`;
             }
         }

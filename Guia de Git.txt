@@ -1,0 +1,53 @@
+------------Comandos Git ----------------------------
+para descargar el repositorio:
+-- git clone [URL_DE_TU_REPOSITORIO]
+
+Cambiar entre ramas
+--git checkout RAMA
+
+Verificar la rama actual:
+--git status	
+
+Actualizar repostitorio:
+-- git pull
+-- git pull origin [rama]
+
+Preparar (Staging):
+-- git add .
+
+Guardar (Commit):
+-- git commit -m "Mensaje"
+
+subir cambios:
+-- git push
+
+
+subir cambios entre ramas:
+-- git push
+-------------------------para reconectar con el repositorio--------------------------------- 
+# 1. Reemplaza [URL_DE_TU_REPOSITORIO] con la dirección HTTPS de tu proyecto en GitHub:
+-- git remote add origin [URL_DE_TU_REPOSITORIO]
+
+ # 2. intenta jalar las ramas remotas de nuevo para verificar la conexión: 
+-- git fetch origin 
+
+---------------------Levantar ambiente local Oracle para ver cambios y no hacer push---------
+Posicionarte dentro del proyecto y ejecutar:
+-- ojet restore
+-- ojet serve
+
+
+
+---------------Cambios entre ramas---------------
+# 1. Ve a la rama que tiene la información "nueva" y tráela de la nube
+git checkout [RAMA_ORIGEN]
+git pull origin [RAMA_ORIGEN]
+
+# 2. Cámbiate a la rama que quieres actualizar (la que está "atrás")
+git checkout [RAMA_DESTINO]
+
+# 3. Trae los cambios de la Origen a tu rama actual
+git merge [RAMA_ORIGEN]
+
+# 4. Sube la actualización al servidor
+git push origin [RAMA_DESTINO]
