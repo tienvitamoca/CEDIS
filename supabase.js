@@ -60,23 +60,22 @@ function calcularTargetCosting(producto, precio_tienda, margen_cliente, margen_t
   const cpg = costoPorGramo(producto);
   if (!cpg || !precio_tienda) return null;
 
-  // 1. Lo que la tienda te paga a ti (quitando el margen de ellos)
+  // 1. Precio de Venta (Igual que en Tradicional)
   const precio_venta = precio_tienda / (1 + margen_cliente);
 
-  // 2. Tu techo de costo para mantener tu margen de ganancia real
-  const costo_total_permitido = precio_venta * (1 - margen_tuyo);
+  // 2. Costo Total Permitido (Cambiado de * a / para coincidir con Tradicional)
+  const costo_total_permitido = precio_venta / (1 + margen_tuyo);
 
-  // 3. Cuánto queda para producto después de pagar bolsa y mano de obra
-  const costo_mp_disponible = costo_total_permitido - insumos;
-
-  const gramos = costo_mp_disponible > 0 ? costo_mp_disponible / cpg : null;
+  // 3. Costo MP disponible
+  const costo_mp = costo_total_permitido - insumos;
+  const gramos = costo_mp > 0 ? costo_mp / cpg : null;
 
   return {
     precio_venta: redondear(precio_venta),
     insumos: redondear(insumos),
-    costo_mp: redondear(costo_mp_disponible),
+    costo_mp: redondear(costo_mp),
     gramos: gramos ? redondear(gramos, 1) : null,
-    utilidad: redondear(precio_venta - (costo_mp_disponible + insumos))
+    utilidad: redondear(precio_venta - (costo_mp + insumos))
   };
 }
 
@@ -128,8 +127,8 @@ function generarCodigoBarras(producto, codigo_bb) {
   const prefix = tipo_str.slice(0, 2);
   const tipo_dig = tipo_str.slice(2);
   const codigo_str = String(producto.codigo);
-  const ccc = codigo_str.slice(3).padStart(3,'0');
-  
+  const ccc = codigo_str.slice(3).padStart(3, '0');
+
   // Código numérico limpio: ej. 26201092
   const codigoNumerico = `${prefix}${tipo_dig}${ccc}${codigo_bb}`;
 
