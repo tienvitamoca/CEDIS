@@ -155,16 +155,22 @@
     }
 
     async function seleccionar(id) {
-      const data = await dbGet('productos', `select=*,tipos_producto(nombre)&id=eq.${id}`);
+      // El truco está en este select para traer la categoría completa
+      const data = await dbGet('productos', `select=*,tipos_producto(*)&id=eq.${id}`);
       productoActual = data[0];
-      document.getElementById('busqueda').value = '';
-      document.getElementById('sugerencias').style.display = 'none';
+      if (!productoActual) return;
+
+      // Rellenar márgenes automáticamente desde la categoría
+      if (productoActual.tipos_producto) {
+        document.getElementById('margen-tuyo').value = productoActual.tipos_producto.margen_tuyo;
+        document.getElementById('margen-cliente').value = productoActual.tipos_producto.margen_cliente;
+      }
+
       document.getElementById('prod-nombre-sel').textContent = productoActual.nombre;
-      document.getElementById('prod-info-sel').textContent =
-        `Código: ${productoActual.codigo} · ${productoActual.tipos_producto?.nombre || ''}`
-        + (productoActual.costo_kg ? ` · $${productoActual.costo_kg}/kg` : ' · Sin costo');
       document.getElementById('prod-seleccionado').style.display = 'block';
-      calcular();
+      document.getElementById('sugerencias').style.display = 'none';
+
+      calcular(); // Lanza el cálculo con los nuevos márgenes
     }
 
     function limpiarProducto() {
@@ -218,7 +224,7 @@
       // Código de barras
       const bb = bbPorPrecio(presentaciones, precioTienda) || bbPorGramos(presentaciones, res.gramos);
       if (bb) {
-        document.getElementById('r-codigo-barras').textContent = generarCodigoBarras(productoActual, bb.codigo_bb).num;
+        document.getElementById('r-codigo-barras').textContent = generarCodigoBarras(productoActual, bb.codigo_bb);
         document.getElementById('r-presentacion-nombre').textContent = `${bb.nombre} · BB-${bb.codigo_bb}`;
         document.getElementById('card-codigo').style.display = 'block';
       }

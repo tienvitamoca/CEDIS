@@ -87,8 +87,6 @@ function calcularModoTradicional(producto, gramos, margen_tuyo, margen_cliente) 
 
   const costo_mp = cpg * gramos;
   const costo_total = costo_mp + insumos;
-
-  // Aplicamos tus márgenes para llegar al precio final
   const precio_venta = costo_total * (1 + margen_tuyo);
   const precio_tienda = precio_venta * (1 + margen_cliente);
 
