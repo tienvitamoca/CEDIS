@@ -24,15 +24,27 @@ async function dbPost(tabla, data) {
   return res.json();
 }
 
+// async function dbPatch(tabla, id, data) {
+//   const res = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${id}`, {
+//     method: 'PATCH',
+//     headers: { ...headers, 'Prefer': 'return=representation' },
+//     body: JSON.stringify(data)
+//   });
+//   if (!res.ok) throw new Error(await res.text());
+//   return res.json();
+// }
+
+// Ejemplo de cómo debe ser en supabase.js
 async function dbPatch(tabla, id, data) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${id}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Prefer': 'return=representation' },
+    headers: { ...headers, 'Prefer': 'return=minimal' },
     body: JSON.stringify(data)
   });
   if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return true;
 }
+
 
 async function getTipos() {
   return dbGet('tipos_producto', 'order=id.asc');

@@ -549,18 +549,18 @@
     let presFiltro = 'gramos';
 
     async function init() {
+      // 1. Traer datos frescos de la nube
       tipos = await getTipos();
       presentaciones = await getPresentaciones();
 
-      // Primero cargamos la estructura y selects
+      // 2. Llenar la interfaz
       cargarCategorias();
-      llenarSelectsBulk();
+      llenarSelectsBulk(); // <--- Esto pone los IDs correctos en los selects
+
+      // 3. Cargar el resto
       cargarPresentaciones();
       cargarCostos();
       cargarResumen();
-
-      // Al final, cuando ya existen los IDs en el HTML, cargamos los márgenes
-      cargarMargenes();
     }
 
     function mostrarSeccion(id, btn) {
@@ -741,24 +741,43 @@
       cargarPresentaciones();
     }
 
-    async function guardarPresentacion() {
-      const id = document.getElementById('gen-id').value;
-      const data = {
-        nombre: document.getElementById('pres-nombre').value,
-        gramos: parseFloat(document.getElementById('pres-gramos').value) || null,
-        precio: parseFloat(document.getElementById('pres-precio').value) || null,
-        codigo_bb: document.getElementById('pres-codigo').value // Asegúrate que este nombre coincida con tu tabla
-      };
+    async function guardarPresentacion(codigo_bb) {
+      try {
+        // 1. Extraer valores de los inputs usando el codigo_bb
+        const nombre = document.getElementById(`pnom-${codigo_bb}`).value;
+        const gramos = parseFloat(document.getElementById(`pgr-${codigo_bb}`).value) || null;
+        const precio = parseFloat(document.getElementById(`ppr-${codigo_bb}`).value) || null;
 
-      if (id) {
-        // IMPORTANTE: Verifica si tu tabla se llama 'presentacion_bb' o 'presentaciones'
-        await dbPatch('presentaciones', id, data);
-        registrarLog(`Presentación ${data.nombre} actualizada`);
-      } else {
-        await dbPost('presentaciones', data);
-        registrarLog(`Nueva presentación creada: ${data.nombre}`);
+        if (!nombre) return alert("El nombre es obligatorio");
+
+        const data = {
+          nombre: nombre,
+          gramos: gramos,
+          precio_ref: precio
+        };
+
+        // 2. HACER EL PATCH MANUAL (Para asegurar que use codigo_bb como filtro)
+        // Usamos las variables que ya tienes en supabase.js (SUPABASE_URL y headers)
+        const url = `${SUPABASE_URL}/rest/v1/presentaciones?codigo_bb=eq.${codigo_bb}`;
+
+        const res = await fetch(url, {
+          method: 'PATCH',
+          headers: {
+            ...headers, // Usamos tus headers que ya tienen la API KEY
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        mostrarToast('✅ Presentación guardada');
+        registrarLog(`Actualizada BB-${codigo_bb}: ${nombre}`);
+
+      } catch (e) {
+        console.error("Error al guardar presentación:", e);
+        alert("Error al guardar: " + e.message);
       }
-      await cargarPresentaciones();
     }
 
     function nuevaPresentacion() {
@@ -870,46 +889,31 @@
     // Cambia el nombre a cargarMargenesActuales para que coincida con el HTML
     async function cargarMargenesActuales() {
       const select = document.getElementById('m-tipo');
-      if (!select) return; // Si no hay select, salimos
+      if (!select || !select.value) return;
 
       const tipoId = select.value;
-      if (!tipoId) return;
-
       try {
-        const data = await dbGet('tipos_producto', `id=eq.${tipoId}`);
-        const cat = data[0];
+        // Buscamos directamente en el array 'tipos' que ya cargaste en el init
+        const cat = tipos.find(t => t.id == tipoId);
 
         if (cat) {
-          const inputTuyo = document.getElementById('m-tuyo');
-          const inputClie = document.getElementById('m-clie');
-
-          // LA CLAVE: Solo asignar si el input existe en el HTML
-          if (inputTuyo) inputTuyo.value = cat.margen_tuyo;
-          if (inputClie) inputClie.value = cat.margen_cliente;
+          document.getElementById('m-tuyo').value = cat.margen_tuyo || 0.12;
+          document.getElementById('m-clie').value = cat.margen_cliente || 0.22;
         }
       } catch (e) {
-        console.error("Error al cargar márgenes:", e);
+        console.error("Error al mostrar márgenes:", e);
       }
     }
 
     // Función para el botón masivo
     async function actualizarMargenesMasivo() {
-      const tipoId = document.getElementById('m-tipo').value;
+      const select = document.getElementById('m-tipo');
+      const id = select.value; // El ID 261
+
       const mt = parseFloat(document.getElementById('m-tuyo').value);
       const mc = parseFloat(document.getElementById('m-clie').value);
 
-      // Validaciones de seguridad
-      if (!tipoId) {
-        alert("Por favor, selecciona una categoría primero.");
-        return;
-      }
-      if (isNaN(mt) || isNaN(mc)) {
-        alert("Ingresa valores numéricos válidos para los márgenes.");
-        return;
-      }
-
-      // Confirmación al usuario
-      if (!confirm("¿Deseas guardar estos márgenes como predeterminados para esta categoría?")) return;
+      if (!id) return alert("Selecciona una categoría");
 
       try {
         const data = {
@@ -917,32 +921,34 @@
           margen_cliente: mc
         };
 
-        // Petición a la tabla tipos_producto
-        await dbPatch('tipos_producto', tipoId, data);
+        // 1. LLAMADA ÚNICA A DBPATCH (Borra los otros intentos de tu código)
+        await dbPatch('tipos_producto', id, data);
 
-        // Registro en el log y notificación
-        registrarLog(`Márgenes actualizados para categoría ID: ${tipoId} (Tuyo: ${mt}, Cliente: ${mc})`);
-
-        // Feedback visual
-        const msg = document.getElementById('msg-margenes');
-        if (msg) {
-          msg.textContent = "✅ Guardado correctamente en la base de datos";
-          msg.style.display = "block";
-          msg.style.color = "var(--success)";
-          setTimeout(() => msg.style.display = "none", 3000);
+        // 2. ACTUALIZAR VARIABLE LOCAL (Para que la calculadora lo vea)
+        const idx = tipos.findIndex(t => t.id == id);
+        if (idx !== -1) {
+          tipos[idx].margen_tuyo = mt;
+          tipos[idx].margen_cliente = mc;
         }
 
-        mostrarToast('✅ Márgenes actualizados');
+        // 3. MENSAJE DE ÉXITO
+        alert("¡ÉXITO! Se envió la actualización para el ID: " + id);
+        mostrarToast('✅ Base de datos actualizada');
 
-        // Opcional: Recargar los datos locales si los usas en un array global
-        tipos = await getTipos();
+        // Opcional: registrar en el log
+        registrarLog(`Categoría ${id} actualizada a ${mt}/${mc}`);
 
       } catch (e) {
-        console.error("Error al guardar márgenes:", e);
-        alert("Error al guardar: " + e.message);
+        alert("Error real de la base de datos: " + e.message);
       }
     }
 
+
+    function mostrarError(msg) {
+      const el = document.getElementById('modal-error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
 
     function guardarMargenes() {
       const cfg = JSON.parse(localStorage.getItem('cedis_config') || '{}');

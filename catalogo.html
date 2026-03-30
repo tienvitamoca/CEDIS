@@ -251,8 +251,10 @@
 
       try {
         if (id) {
+          console.log('Guardando tipo:', id, data);
           await dbPatch('productos', id, data);
         } else {
+          console.log('Guardando tipo:', data);
           await dbPost('productos', data);
         }
         cerrarModal();
