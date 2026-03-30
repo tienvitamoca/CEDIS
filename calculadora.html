@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora — CEDIS</title>
     <link rel="stylesheet" href="style.css">
-    
 </head>
 
 <body>
@@ -66,58 +65,80 @@
             </div>
         </div>
 
-        <div id="resultados" class="card" style="display:none">
-            <div class="card-title">Análisis de Rentabilidad</div>
+        <!-- ///aquiiiiiii -->
+        <div id="resultados" style="display:none">
+            <div class="card">
+                <div class="card-title">Resultados del Análisis</div>
+                <div class="result-grid">
 
-            <div class="result-grid">
-                <div class="res-item">
-                    <span class="label">Gramos</span>
-                    <span id="r-gramos" class="value">0g</span>
-                </div>
+                    <div class="result-item success">
+                        <div class="label">Gramos Calculados</div>
+                        <div class="value" id="r-gramos">0g</div>
+                    </div>
 
-                <div class="res-item">
-                    <span class="label">Precio Tienda</span>
-                    <span id="r-precio-tienda" class="value">$0.00</span>
-                </div>
+                    <div class="result-item">
+                        <div class="label">Costo MP Permitido</div>
+                        <div class="value" id="r-costo-mp">$0.00</div>
+                    </div>
 
-                <div class="res-item">
-                    <span class="label">Costo MP</span>
-                    <span id="r-costo-mp" class="value">$0.00</span>
-                </div>
+                    <div class="result-item">
+                        <div class="label">Costo Insumos</div>
+                        <div class="value" id="r-insumos">$0.00</div>
+                    </div>
 
-                <div class="res-item">
-                    <span class="label">Insumos</span>
-                    <span id="r-insumos" class="value">$0.00</span>
-                </div>
+                    <div class="result-item">
+                        <div class="label">Costo Total</div>
+                        <div class="value" id="r-costo-total">$0.00</div>
+                    </div>
 
-                <div class="res-item"
-                    style="grid-column: span 2; border-top: 1px solid var(--border); padding-top: 0.5rem; margin-top: 0.25rem;">
-                    <span class="label">Costo Total Pack</span>
-                    <span id="r-costo-total" class="value">$0.00</span>
-                </div>
+                    <div class="result-item highlight">
+                        <div class="label">Precio Venta (Tuyo)</div>
+                        <div class="value" id="r-precio-venta">$0.00</div>
+                    </div>
 
-                <div class="res-item">
-                    <span class="label">Tu Precio Venta</span>
-                    <span id="r-precio-venta" class="value">$0.00</span>
-                </div>
+                    <div class="result-item highlight">
+                        <div class="label">Utilidad Neta</div>
+                        <div class="value" id="r-utilidad">$0.00</div>
+                    </div>
 
-                <div class="res-item">
-                    <span class="label">Utilidad</span>
-                    <span id="r-utilidad" class="value">$0.00</span>
                 </div>
             </div>
-        </div>
 
-        <div id="card-codigo" class="card" style="display:none; border-left: 4px solid var(--primary);">
-            <div style="padding:1rem">
-                <div class="label"
-                    style="font-size:0.65rem; color:var(--text-muted); font-weight:700; text-transform:uppercase">
-                    Presentación sugerida</div>
-                <div id="r-presentacion-nombre" style="font-weight:700; font-size:0.95rem; margin:0.25rem 0"></div>
-                <div id="r-codigo-barras"
-                    style="font-family:monospace; font-size:1.1rem; letter-spacing:2px; color:var(--primary); font-weight:700">
+
+
+
+
+            <div id="card-codigo" class="card"
+                style="display:none; border-left: 4px solid var(--primary); padding: 0px; margin: 0px;">
+                <div style="padding:1.5rem; text-align: center;">
+                    <div class="card-title"
+                        style="color:var(--text-muted); font-weight:700; text-transform:uppercase; font-size:0.7rem; margin-bottom: 0.5rem;">
+                        Código de Barras
+                    </div>
+
+                    <div style="font-weight:700; font-size:0.95rem; margin:0.5rem 0;">
+                        Presentación: <span id="r-presentacion-nombre">—</span>
+                    </div>
+
+                    <div class="codigo-barras" id="r-codigo-barras"
+                        style="font-family:monospace; font-size:1.4rem; letter-spacing:3px; color:var(--primary); font-weight:700; background: rgba(var(--primary-rgb), 0.1); padding: 0.5rem; border-radius: 4px; display: inline-block; min-width: 150px;">
+                        —
+                    </div>
+
                 </div>
             </div>
+            <div id="card-no-codigo" class="card"
+                style="display:none; border-left: 4px solid var(--warning); background: #fffcf0;">
+                <div style="padding:1rem; display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="font-size: 1.5rem;">⚠️</div>
+                    <div>
+                        <div style="font-weight:700; font-size:0.85rem; color: #854d0e;">Sin Código de Barras</div>
+                        <div style="font-size:0.75rem; color: #a16207;">Esta cantidad/precio no corresponde a ninguna
+                            presentación BB registrada en los codigos.</div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -213,10 +234,12 @@
             const bb = bbPorPrecio(presentaciones, pTienda) || bbPorGramos(presentaciones, g);
             if (bb) {
                 document.getElementById('card-codigo').style.display = 'block';
-                document.getElementById('r-presentacion-nombre').textContent = `${bb.nombre} · BB-${bb.codigo_bb}`;
+                // document.getElementById('r-presentacion-nombre').textContent = `${bb.nombre} · <BB-${bb.codigo_bb}>`;
+                document.getElementById('r-presentacion-nombre').textContent = `${bb.nombre}`;
                 document.getElementById('r-codigo-barras').textContent = generarCodigoBarras(productoActual, bb.codigo_bb).num;
             } else {
                 document.getElementById('card-codigo').style.display = 'none';
+                document.getElementById('card-no-codigo').style.display = 'block';
             }
         }
 
