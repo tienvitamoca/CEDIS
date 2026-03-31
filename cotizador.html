@@ -231,6 +231,7 @@
     }
 
     // ACTUALIZACIÓN EN cotizador.html
+    // REEMPLAZO DEFINITIVO EN cotizador.html
     function imprimirPedido() {
       const fecha = new Date().toLocaleDateString('es-MX', {
         day: '2-digit',
@@ -243,6 +244,17 @@
       const total = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
       const totalBolsas = pedido.reduce((s, i) => s + i.cantidad, 0);
 
+      // Generar el texto para WhatsApp
+      let textoWhatsApp = `*📦 CEDIS MORELIA - NOTA DE VENTA*\n`;
+      textoWhatsApp += `📅 _${fecha}_\n`;
+      textoWhatsApp += `--------------------------\n`;
+      pedido.forEach(i => {
+        textoWhatsApp += `• *${i.producto.nombre}*\n  ${i.cantidad} pzas x ${formatPeso(i.precio)} = *${formatPeso(i.precio * i.cantidad)}*\n`;
+      });
+      textoWhatsApp += `--------------------------\n`;
+      textoWhatsApp += `*TOTAL A PAGAR: ${formatPeso(total)}*\n`;
+      textoWhatsApp += `_Artículos totales: ${totalBolsas}_`;
+
       const win = window.open('', '_blank');
       win.document.write(`
 <html>
@@ -250,123 +262,65 @@
     <title>Nota de Venta - CEDIS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            margin: 0; 
-            padding: 10px; 
-            background: #f8fafc; 
-            color: #1e293b;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            font-family: -apple-system, system-ui, sans-serif; 
+            margin: 0; padding: 15px; background: #f8fafc; color: #1e293b;
+            display: flex; flex-direction: column; align-items: center;
         }
-        
         .ticket { 
-            background: white; 
-            width: 100%; 
-            max-width: 450px; /* Ancho máximo para tablets, pero 100% en celulares */
-            padding: 20px; 
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 80px; /* Espacio para el botón flotante */
+            background: white; width: 100%; max-width: 450px; 
+            padding: 25px; border-radius: 20px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 120px;
         }
-
         .header { text-align: center; margin-bottom: 20px; }
-        .header h2 { margin: 0; color: #2563eb; font-size: 1.5rem; }
-        .header p { margin: 4px 0 0; font-size: 0.9rem; color: #64748b; font-weight: 500; }
-        
+        .header h2 { margin: 0; color: #2563eb; font-size: 1.6rem; }
         .info-bar { 
-            display: flex; 
-            justify-content: space-between; 
-            font-size: 0.7rem; 
-            color: #94a3b8; 
-            margin-bottom: 20px; 
-            padding: 8px 0;
-            border-top: 1px solid #f1f5f9;
-            border-bottom: 1px solid #f1f5f9;
+            display: flex; justify-content: space-between; font-size: 0.75rem; 
+            color: #94a3b8; border-y: 1px solid #f1f5f9; padding: 10px 0; margin: 15px 0;
         }
+        .item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8fafc; }
+        .item-name { font-weight: 700; font-size: 1rem; color: #0f172a; display: block; }
+        .item-sub { font-size: 0.85rem; color: #64748b; }
+        .item-total { font-weight: 800; font-size: 1.05rem; color: #1e293b; }
+        .totals { margin-top: 25px; background: #2563eb; color: white; padding: 20px; border-radius: 15px; }
+        .grand-total { display: flex; justify-content: space-between; font-size: 1.4rem; font-weight: 900; }
+        
+        /* Panel de botones flotante */
+        .actions-wrapper {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            padding: 20px; background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(15px); border-top: 1px solid #e2e8f0;
+            display: flex; gap: 10px; justify-content: center;
+        }
+        .btn {
+            border: none; border-radius: 12px; font-weight: 700; font-size: 0.95rem;
+            cursor: pointer; transition: transform 0.1s; flex: 1; max-width: 200px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            height: 50px;
+        }
+        .btn-share { background: #22c55e; color: white; } /* Color WhatsApp */
+        .btn-print { background: #e2e8f0; color: #475569; }
+        .btn:active { transform: scale(0.96); }
 
-        .lista-productos { width: 100%; }
-        .item { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 12px 0;
-            border-bottom: 1px solid #f8fafc;
-        }
-        .item-detail { flex: 1; padding-right: 10px; }
-        .item-name { font-weight: 600; font-size: 1rem; color: #0f172a; display: block; }
-        .item-sub { font-size: 0.85rem; color: #64748b; margin-top: 2px; display: block; }
-        .item-total { font-weight: 700; font-size: 1rem; color: #1e293b; white-space: nowrap; }
-
-        .totals { 
-            margin-top: 25px; 
-            background: #f1f5f9; 
-            padding: 16px; 
-            border-radius: 12px; 
-        }
-        .total-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
-        .grand-total { 
-            border-top: 2px solid #e2e8f0; 
-            margin-top: 10px; 
-            padding-top: 10px; 
-            font-size: 1.4rem; 
-            font-weight: 800; 
-            color: #2563eb; 
-        }
-
-        .footer { text-align: center; margin-top: 30px; font-size: 0.85rem; color: #94a3b8; }
-
-        /* Botón de impresión fijo abajo para móviles */
-        .no-print-wrapper {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 15px;
-            background: rgba(255,255,255,0.9);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: center;
-        }
-        .btn-print {
-            background: #2563eb;
-            color: white;
-            border: none;
-            padding: 14px 30px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 1rem;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-            cursor: pointer;
-        }
-
-        @media print {
-            body { background: white; padding: 0; }
-            .ticket { box-shadow: none; border-radius: 0; max-width: 100%; margin-bottom: 0; }
-            .no-print-wrapper { display: none; }
-        }
+        @media print { .actions-wrapper { display: none; } }
     </style>
 </head>
 <body>
     <div class="ticket">
         <div class="header">
             <h2>📦 CEDIS MORELIA</h2>
-            <p>Comprobante de Pedido</p>
+            <p>Resumen de Pedido</p>
         </div>
-
         <div class="info-bar">
             <span>${fecha}</span>
             <span>ORDEN: #${Math.floor(Date.now() / 100000)}</span>
         </div>
-
-        <div class="lista-productos">
+        <div>
             ${pedido.map(i => `
                 <div class="item">
-                    <div class="item-detail">
+                    <div style="flex:1">
                         <span class="item-name">${i.producto.nombre}</span>
                         <span class="item-sub">${i.cantidad} pzas × ${formatPeso(i.precio)}</span>
                     </div>
@@ -374,33 +328,46 @@
                 </div>
             `).join('')}
         </div>
-
         <div class="totals">
-            <div class="total-row">
-                <span>Total de artículos:</span>
-                <span>${totalBolsas}</span>
-            </div>
-            <div class="total-row grand-total">
-                <span>TOTAL A PAGAR:</span>
+            <div class="grand-total">
+                <span>TOTAL</span>
                 <span>${formatPeso(total)}</span>
             </div>
         </div>
-
-        <div class="footer">
-            ¡Gracias por comprar en CEDIS Morelia!
-        </div>
     </div>
 
-    <div class="no-print-wrapper">
-         <button class="btn-print" onclick="window.print()">
-            🖨️ Imprimir o Guardar PDF
+    <div class="actions-wrapper no-print">
+         <button class="btn btn-print" onclick="window.print()">
+            🖨️ PDF
+         </button>
+         <button class="btn btn-share" onclick="compartirWhatsApp()">
+            <span>💬 WhatsApp</span>
          </button>
     </div>
+
+    <script>
+        function compartirWhatsApp() {
+            const texto = \`${textoWhatsApp.replace(/`/g, '\\`')}\`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Nota de Venta - CEDIS',
+                    text: texto
+                }).catch(console.error);
+            } else {
+                // Fallback si el navegador no soporta Share API
+                const url = "https://wa.me/?text=" + encodeURIComponent(texto);
+                window.open(url, '_blank');
+            }
+        }
+    <\/script>
 </body>
 </html>
     `);
       win.document.close();
     }
+
+
     renderPedido();
   </script>
 </body>
