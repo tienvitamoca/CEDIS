@@ -48,49 +48,33 @@
 
     <div class="card">
       <div class="card-title">Agregar Producto</div>
-      <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem">
-        <div class="search-wrap" style="flex:1; margin:0">
-          <span class="icon">🔍</span>
-          <input type="text" id="busqueda" placeholder="Nombre o código..." oninput="buscarProducto()">
-        </div>
-        <button class="btn" onclick="encenderEscanner()"
-          style="background:var(--primary); color:white; padding:0 1rem; border-radius:8px">
-          📷
-        </button>
+      <div class="search-wrap">
+        <span class="icon">🔍</span>
+        <input type="text" id="busqueda" placeholder="Buscar por nombre o código..." oninput="buscarProducto()"
+          autocomplete="off">
+      </div>
+      <div id="sugerencias"
+        style="display:none;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-top:0.25rem">
       </div>
 
-      <div id="scanner-container"
-        style="display:none; position:relative; width:100%; height:250px; background:#000; border-radius:12px; overflow:hidden; margin-bottom:1rem">
-        <video id="video" style="width:100%; height:100%; object-fit:cover"></video>
-        <div
-          style="position:absolute; inset:0; border:2px solid var(--primary); opacity:0.5; margin:40px; border-radius:8px">
+      <div id="agregar-form" style="display:none;margin-top:0.75rem">
+        <div style="background:var(--bg);border-radius:8px;padding:0.75rem;margin-bottom:0.75rem">
+          <div style="font-weight:700" id="form-nombre"></div>
+          <div style="font-size:0.78rem;color:var(--text-muted)" id="form-info"></div>
         </div>
-        <button onclick="apagarEscanner()"
-          style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:50%; width:30px; height:30px">✕</button>
-      </div>
-
-      <div id="sugerencias" style="display:none; border:1.5px solid var(--border); border-radius:8px; overflow:hidden;">
-      </div>
-
-      <div id="agregar-form" style="display:none; margin-top:0.75rem">
-        <div
-          style="background:var(--bg); border-radius:8px; padding:0.75rem; margin-bottom:0.75rem; border-left:4px solid var(--primary)">
-          <div style="font-weight:700; font-size:1.1rem" id="form-nombre"></div>
-          <div style="font-size:0.85rem; color:var(--text-muted)" id="form-info"></div>
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
           <div class="field">
-            <label>Bolsas</label>
+            <label>Cantidad (bolsas)</label>
             <input type="number" id="form-cantidad" min="1" value="1">
           </div>
           <div class="field">
-            <label>Precio Sugerido ($)</label>
-            <input type="number" step="0.01" id="form-precio" readonly style="background:#f1f5f9; font-weight:700">
+            <label>Precio unitario ($)</label>
+            <input type="number" step="0.01" id="form-precio" placeholder="0.00">
           </div>
         </div>
-        <div style="display:flex; gap:0.5rem; margin-top:0.75rem">
+        <div style="display:flex;gap:0.5rem">
           <button class="btn btn-outline" style="flex:1" onclick="cancelarAgregar()">Cancelar</button>
-          <button class="btn btn-primary" style="flex:1" onclick="agregarAlPedido()">+ Agregar al Pedido</button>
+          <button class="btn btn-primary" style="flex:1" onclick="agregarAlPedido()">+ Agregar</button>
         </div>
       </div>
     </div>
@@ -165,17 +149,15 @@
     }
 
     async function seleccionar(id) {
-      const data = await dbGet('productos', `select=*,tipos_producto(nombre, margen_cliente)&id=eq.${id}`);
+      const data = await dbGet('productos', `select=*,tipos_producto(nombre)&id=eq.${id}`);
       productoTemp = data[0];
-
+      document.getElementById('busqueda').value = '';
       document.getElementById('sugerencias').style.display = 'none';
       document.getElementById('form-nombre').textContent = productoTemp.nombre;
-      document.getElementById('form-info').textContent = `Código: ${productoTemp.codigo}`;
-
-      // Por defecto sugerimos el precio de $10 (BB90)
-      const mc = productoTemp.tipos_producto?.margen_cliente || 0.22;
-      document.getElementById('form-precio').value = redondear(10 / (1 + mc));
-
+      document.getElementById('form-info').textContent =
+        `Código: ${productoTemp.codigo} · ${productoTemp.tipos_producto?.nombre || ''}`;
+      document.getElementById('form-cantidad').value = 1;
+      document.getElementById('form-precio').value = '';
       document.getElementById('agregar-form').style.display = 'block';
     }
 
@@ -247,93 +229,6 @@
       pedido = [];
       renderPedido();
     }
-
-    // VARIABLES NUEVAS
-    let streamActual = null;
-    let intervalEscaneo = null;
-
-    // FUNCIÓN: Encender Cámara
-    async function encenderEscanner() {
-      const container = document.getElementById('scanner-container');
-      const video = document.getElementById('video');
-      container.style.display = 'block';
-
-      try {
-        streamActual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        video.srcObject = streamActual;
-        video.play();
-
-        // Iniciar detección cada 500ms
-        iniciarDeteccion();
-      } catch (err) {
-        alert("Error al acceder a la cámara: " + err);
-      }
-    }
-
-    // FUNCIÓN: Analizar frames del video
-    function iniciarDeteccion() {
-      if (!('BarcodeDetector' in window)) {
-        alert("Tu navegador no soporta escaneo nativo. Usa Chrome en Android.");
-        return;
-      }
-
-      const detector = new BarcodeDetector({ formats: ['code_128', 'ean_13'] });
-
-      intervalEscaneo = setInterval(async () => {
-        try {
-          const barcodes = await detector.detect(video);
-          if (barcodes.length > 0) {
-            const codigoLeido = barcodes[0].rawValue;
-            procesarCodigoEscaneado(codigoLeido);
-          }
-        } catch (e) { console.error(e); }
-      }, 500);
-    }
-
-    // FUNCIÓN CLAVE: Identificar Producto + Presentación + Cálculo
-    async function procesarCodigoEscaneado(codigoFull) {
-      // Ej: 25001990 -> 250019 (Prod) + 90 (BB)
-      const codProd = codigoFull.substring(0, 6);
-      const codBB = codigoFull.substring(6, 8);
-
-      apagarEscanner(); // Detener cámara al encontrar uno
-
-      // 1. Buscar el producto en la base
-      const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProd}`);
-      if (!dataP.length) return alert("Producto no registrado: " + codProd);
-
-      const p = dataP[0];
-
-      // 2. Buscar la presentación BB
-      const presentaciones = await getPresentaciones();
-      const bb = presentaciones.find(b => b.codigo_bb == codBB);
-      if (!bb) return alert("Presentación BB no existe: " + codBB);
-
-      // 3. CÁLCULO AUTOMÁTICO (Lógica Profesional)
-      // Calculamos el Precio Venta basado en el Margen Cliente de la categoría
-      const mCliente = p.tipos_producto?.margen_cliente || 0.22;
-      const precioTienda = bb.precio_ref || 10; // Si BB90 es $10
-      const precioVentaCEDIS = redondear(precioTienda / (1 + mCliente));
-
-      // 4. Llenar Formulario
-      productoTemp = p;
-      document.getElementById('form-nombre').textContent = p.nombre;
-      document.getElementById('form-info').textContent = `Presentación: ${bb.nombre} (BB-${codBB})`;
-      document.getElementById('form-precio').value = precioVentaCEDIS;
-      document.getElementById('agregar-form').style.display = 'block';
-
-      // Vibración sutil de éxito (solo Android)
-      if (navigator.vibrate) navigator.vibrate(100);
-    }
-
-    function apagarEscanner() {
-      if (streamActual) {
-        streamActual.getTracks().forEach(track => track.stop());
-        clearInterval(intervalEscaneo);
-      }
-      document.getElementById('scanner-container').style.display = 'none';
-    }
-
 
     // ACTUALIZACIÓN EN cotizador.html
     // REEMPLAZO DEFINITIVO EN cotizador.html
