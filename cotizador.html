@@ -59,23 +59,12 @@
         </button>
       </div>
 
-      <div id="scanner-container"
-        style="display:none; position:relative; width:100%; height:280px; background:#000; border-radius:12px; overflow:hidden; margin-bottom:1rem; border: 3px solid #ccc;">
-        <video id="video" style="width:100%; height:100%; object-fit:cover"></video>
-
-        <div id="scanner-laser"
-          style="position:absolute; top:50%; left:10%; right:10%; height:2px; background:red; box-shadow: 0 0 8px red; z-index:10; transition: all 0.2s">
-        </div>
-
-        <div id="scanner-status"
-          style="position:absolute; bottom:10px; left:0; right:0; text-align:center; background:rgba(0,0,0,0.7); color:white; font-size:0.8rem; padding:5px; z-index:20">
-          Buscando código de barras...
-        </div>
-
-        <button onclick="apagarEscanner()"
-          style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.5); color:white; border:none; border-radius:50%; width:35px; height:35px; z-index:30">✕</button>
+      <div id="scanner-container" style="display:none; margin-bottom:1rem;">
+        <div id="reader" style="width:100%; border-radius:12px; overflow:hidden;"></div>
+        <button class="btn btn-outline" onclick="apagarEscanner()" style="width:100%; margin-top:0.5rem">
+          Cancelar Escaneo
+        </button>
       </div>
-
       <div id="sugerencias" style="display:none; border:1.5px solid var(--border); border-radius:8px; overflow:hidden;">
       </div>
 
@@ -136,6 +125,7 @@
   </nav>
 
   <script src="supabase.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
     let pedido = [];
     let productoTemp = null;
@@ -255,118 +245,98 @@
       renderPedido();
     }
 
-    // VARIABLES NUEVAS
-    let streamActual = null;
-    let intervalEscaneo = null;
 
-    // FUNCIÓN: Encender Cámara
+
+
+    let html5QrCode = null;
+
     async function encenderEscanner() {
-      const container = document.getElementById('scanner-container');
-      const video = document.getElementById('video');
-      container.style.display = 'block';
+      document.getElementById('scanner-container').style.display = 'block';
+      document.getElementById('agregar-form').style.display = 'none';
+
+      html5QrCode = new Html5Qrcode("reader");
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 150 }, // Recuadro visual de enfoque
+        aspectRatio: 1.0
+      };
 
       try {
-        streamActual = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        video.srcObject = streamActual;
-        video.play();
-
-        // Iniciar detección cada 500ms
-        iniciarDeteccion();
-      } catch (err) {
-        alert("Error al acceder a la cámara: " + err);
-      }
-    }
-
-    // FUNCIÓN: Analizar frames del video
-    // MODIFICACIÓN EN cotizador.html
-    function iniciarDeteccion() {
-      if (!('BarcodeDetector' in window)) {
-        alert("Navegador no compatible. Usa Chrome en Android.");
-        return;
-      }
-
-      const detector = new BarcodeDetector({ formats: ['code_128', 'ean_13', 'upc_a'] });
-      const video = document.getElementById('video');
-      const status = document.getElementById('scanner-status');
-      const laser = document.getElementById('scanner-laser');
-      const container = document.getElementById('scanner-container');
-
-      intervalEscaneo = setInterval(async () => {
-        try {
-          const barcodes = await detector.detect(video);
-
-          if (barcodes.length > 0) {
-            const codigoLeido = barcodes[0].rawValue;
-
-            // FEEDBACK VISUAL INMEDIATO
-            status.textContent = "✅ ¡DETECTADO!: " + codigoLeido;
-            status.style.color = "#4ade80"; // Verde brillante
-            laser.style.background = "#4ade80";
-            laser.style.boxShadow = "0 0 15px #4ade80";
-            container.style.borderColor = "#4ade80";
-
-            // Pausa breve para que el usuario vea que lo leyó
-            setTimeout(() => {
-              procesarCodigoEscaneado(codigoLeido);
-            }, 300);
-
-          } else {
-            // Estado de "Buscando..."
-            status.textContent = "📷 Escaneando... (Apunta al código)";
-            status.style.color = "white";
-            laser.style.background = "red";
-            laser.style.boxShadow = "0 0 8px red";
-            container.style.borderColor = "#ccc";
+        // Iniciamos con la cámara trasera ("environment")
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            // ÉXITO: Cuando detecta un código
+            console.log("Código detectado:", decodedText);
+            procesarCodigoEscaneado(decodedText);
           }
-        } catch (e) {
-          status.textContent = "❌ Error de detector";
-          console.error(e);
-        }
-      }, 300); // Bajamos a 300ms para que sea más sensible
-    }
-    // FUNCIÓN CLAVE: Identificar Producto + Presentación + Cálculo
-    async function procesarCodigoEscaneado(codigoFull) {
-      // Ej: 25001990 -> 250019 (Prod) + 90 (BB)
-      const codProd = codigoFull.substring(0, 6);
-      const codBB = codigoFull.substring(6, 8);
-
-      apagarEscanner(); // Detener cámara al encontrar uno
-
-      // 1. Buscar el producto en la base
-      const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProd}`);
-      if (!dataP.length) return alert("Producto no registrado: " + codProd);
-
-      const p = dataP[0];
-
-      // 2. Buscar la presentación BB
-      const presentaciones = await getPresentaciones();
-      const bb = presentaciones.find(b => b.codigo_bb == codBB);
-      if (!bb) return alert("Presentación BB no existe: " + codBB);
-
-      // 3. CÁLCULO AUTOMÁTICO (Lógica Profesional)
-      // Calculamos el Precio Venta basado en el Margen Cliente de la categoría
-      const mCliente = p.tipos_producto?.margen_cliente || 0.22;
-      const precioTienda = bb.precio_ref || 10; // Si BB90 es $10
-      const precioVentaCEDIS = redondear(precioTienda / (1 + mCliente));
-
-      // 4. Llenar Formulario
-      productoTemp = p;
-      document.getElementById('form-nombre').textContent = p.nombre;
-      document.getElementById('form-info').textContent = `Presentación: ${bb.nombre} (BB-${codBB})`;
-      document.getElementById('form-precio').value = precioVentaCEDIS;
-      document.getElementById('agregar-form').style.display = 'block';
-
-      // Vibración sutil de éxito (solo Android)
-      if (navigator.vibrate) navigator.vibrate(100);
+        );
+      } catch (err) {
+        console.error("Error al iniciar cámara:", err);
+        alert("No se pudo abrir la cámara. Verifica los permisos.");
+      }
     }
 
-    function apagarEscanner() {
-      if (streamActual) {
-        streamActual.getTracks().forEach(track => track.stop());
-        clearInterval(intervalEscaneo);
+    async function apagarEscanner() {
+      if (html5QrCode) {
+        await html5QrCode.stop();
+        html5QrCode = null;
       }
       document.getElementById('scanner-container').style.display = 'none';
     }
+
+    // Modificamos esta función para que limpie el escáner al terminar
+    async function procesarCodigoEscaneado(codigoFull) {
+      // Vibración de éxito
+      if (navigator.vibrate) navigator.vibrate(100);
+
+      await apagarEscanner();
+
+      // Lógica de desglose (6 dígitos prod + 2 dígitos presentación)
+      const codProd = codigoFull.substring(0, 6);
+      const codBB = codigoFull.substring(6, 8);
+
+      try {
+        // 1. Buscar Producto
+        const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProd}`);
+        if (!dataP || !dataP.length) {
+          alert("Producto no encontrado en catálogo: " + codProd);
+          return;
+        }
+        const p = dataP[0];
+
+        // 2. Buscar Presentación (usando la variable global presentaciones de tu init)
+        // Si no tienes getPresentaciones, asegúrate de cargar presentaciones en el init
+        const listaPresentaciones = await dbGet('presentaciones', 'select=*');
+        const bb = listaPresentaciones.find(b => b.codigo_bb == codBB);
+
+        if (!bb) {
+          alert("Código de presentación (BB) no válido: " + codBB);
+          return;
+        }
+
+        // 3. Cálculo Automático basado en Margen Cliente
+        const mCliente = p.tipos_producto?.margen_cliente || 0.22;
+        const precioSugerido = parseFloat(bb.precio_ref) / (1 + mCliente);
+
+        // 4. Llenar Formulario
+        productoTemp = p;
+        document.getElementById('form-nombre').textContent = p.nombre;
+        document.getElementById('form-info').textContent = `${bb.nombre} (Referencia: $${bb.precio_ref})`;
+        document.getElementById('form-cantidad').value = 1;
+        document.getElementById('form-precio').value = precioSugerido.toFixed(2);
+
+        document.getElementById('agregar-form').style.display = 'block';
+        document.getElementById('busqueda').value = '';
+
+      } catch (e) {
+        console.error(e);
+        alert("Error al procesar el código.");
+      }
+    }
+
 
 
     // ACTUALIZACIÓN EN cotizador.html
