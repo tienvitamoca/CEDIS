@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +15,11 @@
       padding: 0.6rem 0;
       border-bottom: 1px solid var(--border);
     }
-    .item-row:last-child { border-bottom: none; }
+
+    .item-row:last-child {
+      border-bottom: none;
+    }
+
     .total-bar {
       position: sticky;
       bottom: 70px;
@@ -26,15 +31,17 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 0.75rem;
-      box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
     }
   </style>
 </head>
+
 <body>
   <nav class="navbar">
     <a href="index.html">←</a>
     <h1>🧾 Cotizador</h1>
-    <button onclick="limpiarTodo()" style="background:rgba(255,255,255,0.2);color:white;border:none;padding:0.3rem 0.6rem;border-radius:6px;font-size:0.8rem;cursor:pointer">Limpiar</button>
+    <button onclick="limpiarTodo()"
+      style="background:rgba(255,255,255,0.2);color:white;border:none;padding:0.3rem 0.6rem;border-radius:6px;font-size:0.8rem;cursor:pointer">Limpiar</button>
   </nav>
 
   <div class="container has-bottom-nav">
@@ -43,10 +50,12 @@
       <div class="card-title">Agregar Producto</div>
       <div class="search-wrap">
         <span class="icon">🔍</span>
-        <input type="text" id="busqueda" placeholder="Buscar por nombre o código..."
-          oninput="buscarProducto()" autocomplete="off">
+        <input type="text" id="busqueda" placeholder="Buscar por nombre o código..." oninput="buscarProducto()"
+          autocomplete="off">
       </div>
-      <div id="sugerencias" style="display:none;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-top:0.25rem"></div>
+      <div id="sugerencias"
+        style="display:none;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-top:0.25rem">
+      </div>
 
       <div id="agregar-form" style="display:none;margin-top:0.75rem">
         <div style="background:var(--bg);border-radius:8px;padding:0.75rem;margin-bottom:0.75rem">
@@ -79,7 +88,8 @@
         </div>
         <div style="text-align:right">
           <div style="font-size:0.78rem;opacity:0.85" id="total-items">0 bolsas</div>
-          <button onclick="imprimirPedido()" style="background:white;color:var(--primary);border:none;padding:0.4rem 0.8rem;border-radius:6px;font-weight:700;cursor:pointer;margin-top:0.3rem;font-size:0.85rem">
+          <button onclick="imprimirPedido()"
+            style="background:white;color:var(--primary);border:none;padding:0.4rem 0.8rem;border-radius:6px;font-weight:700;cursor:pointer;margin-top:0.3rem;font-size:0.85rem">
             🖨️ Imprimir
           </button>
         </div>
@@ -96,10 +106,10 @@
   <nav class="bottom-nav">
     <a href="index.html"><span class="icon">🏠</span> Inicio</a>
     <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
-    <a href="calculadora.html"><span class="icon">🧮</span> calculadora</a>
     <!-- <a href="target.html"><span class="icon">🎯</span> Target</a> -->
     <!-- <a href="tradicional.html"><span class="icon">📦</span> Tradicional</a> -->
-    <a href="cotizador.html" class="active"><span class="icon">🧾</span> Cotizador</a>
+    <a href="etiquetas.html"><span class="icon">🏷️</span> Etiquetas</a>
+    <a href="calculadora.html"><span class="icon">🧮</span> calculadora</a>
   </nav>
 
   <script src="supabase.js"></script>
@@ -118,7 +128,7 @@
           let params = 'select=*,tipos_producto(nombre)&limit=6&order=nombre.asc';
           params += !isNaN(num) ? `&codigo=eq.${num}` : `&nombre=ilike.*${q}*`;
           mostrarSugerencias(await dbGet('productos', params));
-        } catch(e) { console.error(e); }
+        } catch (e) { console.error(e); }
       }, 300);
     }
 
@@ -159,9 +169,9 @@
     function agregarAlPedido() {
       if (!productoTemp) return;
       const cantidad = parseInt(document.getElementById('form-cantidad').value);
-      const precio   = parseFloat(document.getElementById('form-precio').value);
+      const precio = parseFloat(document.getElementById('form-precio').value);
       if (!cantidad || cantidad < 1) { alert('Cantidad inválida'); return; }
-      if (!precio || precio <= 0)    { alert('Precio inválido'); return; }
+      if (!precio || precio <= 0) { alert('Precio inválido'); return; }
 
       const existe = pedido.find(i => i.producto.id === productoTemp.id && i.precio === precio);
       if (existe) {
@@ -187,7 +197,7 @@
       document.getElementById('pedido-container').style.display = 'block';
       document.getElementById('empty-pedido').style.display = 'none';
 
-      const total      = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
+      const total = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
       const totalBolsas = pedido.reduce((s, i) => s + i.cantidad, 0);
 
       document.getElementById('total-monto').textContent = formatPeso(total);
@@ -221,7 +231,7 @@
     }
 
     function imprimirPedido() {
-      const fecha = new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'long', year:'numeric' });
+      const fecha = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
       const total = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
       const totalBolsas = pedido.reduce((s, i) => s + i.cantidad, 0);
 
@@ -270,4 +280,5 @@
     renderPedido();
   </script>
 </body>
+
 </html>
