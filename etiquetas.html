@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Imprimir Etiquetas — CEDIS</title>
   <link rel="stylesheet" href="style.css">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&family=Libre+Barcode+128+Text&family=Libre+Barcode+39&display=swap"
+    rel="stylesheet">
   <style>
     /* Estilo para la vista previa en pantalla */
     .preview-grid {
@@ -152,6 +155,25 @@
       }
     }
 
+    function generarCodigoBarras(producto, codigo_bb) {
+      const tipo_str = String(producto.tipo_id);
+      const prefix = tipo_str.slice(0, 2);
+      const tipo_dig = tipo_str.slice(2);
+      const codigo_str = String(producto.codigo);
+      const ccc = codigo_str.slice(3).padStart(3, '0');
+
+      // Código numérico limpio: ej. 25001990
+      const codigoNumerico = `${prefix}${tipo_dig}${ccc}${codigo_bb}`;
+
+      return {
+        num: codigoNumerico,
+        // IMPORTANTE: Para Barcode 39 se requieren los asteriscos
+        textoParaFuente: `*${codigoNumerico}*`
+      };
+    }
+
+
+
     function imprimirPDF() {
       if (!productoActual) return;
       const bbCode = document.getElementById('presentacion-bb').value;
@@ -173,6 +195,8 @@
 <head>
   <title>Etiquetas - ${productoActual.nombre}</title>
   <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&family=Libre+Barcode+128+Text&family=Libre+Barcode+39&display=swap" rel="stylesheet">
   <style>
     @page { margin: 0.3cm; size: letter; }
     body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; background: #f4f4f4; }
@@ -229,23 +253,42 @@
       line-height: 1;
     }
 
-    .barras-visuales {
-      font-family: 'Libre Barcode 128', cursive;
-      font-size: 34pt; /* Un poco más grande para llenar el hueco */
-      line-height: 0.8; 
-      margin: 0;
-      display: block;
-      height: 30pt; 
-    }
+    // .barras-visuales {
+    //   font-family: 'Libre Barcode 128', cursive;
+    //   font-size: 34pt; /* Un poco más grande para llenar el hueco */
+    //   line-height: 0.8; 
+    //   margin: 0;
+    //   display: block;
+    //   height: 30pt; 
+    // }
 
-    .numero-legible {
-      font-family: monospace;
-      font-size: 8pt;
-      font-weight: bold;
-      margin-top: -3mm; /* PEGA EL NÚMERO A LAS BARRAS */
-      margin-bottom: 0;
-      line-height: 1;
-    }
+    // .numero-legible {
+    //   font-family: monospace;
+    //   font-size: 8pt;
+    //   font-weight: bold;
+    //   margin-top: -3mm; /* PEGA EL NÚMERO A LAS BARRAS */
+    //   margin-bottom: 0;
+    //   line-height: 1;
+    // }
+    /* AJUSTE PROFESIONAL PARA ESCANEO RÁPIDO */
+  .barras-visuales {
+  font-family: 'Libre Barcode 39', cursive !important;
+  font-size: 30pt; /* Lo subí un poquito de 25 a 30 para mejorar la lectura a distancia */
+  line-height: 1;
+  margin: 0;
+  display: block;
+  height: 30pt; 
+  text-align: center;
+}
+
+.numero-legible {
+  font-family: 'Courier New', monospace;
+  font-size: 9pt;
+  font-weight: bold;
+  margin-top: -2mm; /* Ajustado de -3mm a -2mm para que no tape las barras */
+  text-align: center;
+  letter-spacing: 2px;
+}
 
     @media print { 
       body { background: white; }

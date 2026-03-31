@@ -288,55 +288,81 @@
     }
 
     // Modificamos esta función para que limpie el escáner al terminar
+    // ─── FUNCIÓN PROFESIONAL DE PROCESAMIENTO DE ESCANEO ──────────
     async function procesarCodigoEscaneado(codigoFull) {
-      // Vibración de éxito
-      if (navigator.vibrate) navigator.vibrate(100);
+      // 1. Limpieza total de entrada
+      const limpio = codigoFull.replace(/\*/g, '').trim();
 
-      await apagarEscanner();
+      // 2. Desglose (Asumiendo 6 dígitos de producto + 2 de presentación BB)
+      // Ej: 26000301 -> codProdStr: "260003", codBB: "01"
+      const codProdStr = limpio.substring(0, 6);
+      const codBB = limpio.substring(6, 8);
 
-      // Lógica de desglose (6 dígitos prod + 2 dígitos presentación)
-      const codProd = codigoFull.substring(0, 6);
-      const codBB = codigoFull.substring(6, 8);
+      // Convertimos a número para eliminar ceros a la izquierda (ej: "060033" -> 60033)
+      const codProdNum = parseInt(codProdStr);
+
+      if (isNaN(codProdNum)) {
+        alert("Código detectado no es válido: " + limpio);
+        return;
+      }
+
+      console.log(`Buscando Producto: ${codProdNum}, BB: ${codBB}`);
 
       try {
-        // 1. Buscar Producto
-        const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProd}`);
+        // 3. Vibración de éxito inmediata
+        if (navigator.vibrate) navigator.vibrate(100);
+
+        // 4. Detenemos la cámara para procesar
+        await apagarEscanner();
+
+        // 5. Búsqueda en Base de Datos (Buscamos el código numérico)
+        const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
+
         if (!dataP || !dataP.length) {
-          alert("Producto no encontrado en catálogo: " + codProd);
+          alert("Producto no encontrado en catálogo: " + codProdNum);
+          setTimeout(() => encenderEscanner(), 1000);
           return;
         }
+
         const p = dataP[0];
 
-        // 2. Buscar Presentación (usando la variable global presentaciones de tu init)
-        // Si no tienes getPresentaciones, asegúrate de cargar presentaciones en el init
-        const listaPresentaciones = await dbGet('presentaciones', 'select=*');
-        const bb = listaPresentaciones.find(b => b.codigo_bb == codBB);
+        // 6. Buscar la Presentación BB en la base de datos
+        // Consulta directa para asegurar que el dato esté fresco
+        const dataBB = await dbGet('presentaciones', `codigo_bb=eq.${codBB}`);
 
-        if (!bb) {
-          alert("Código de presentación (BB) no válido: " + codBB);
+        if (!dataBB || !dataBB.length) {
+          alert(`Producto hallado: ${p.nombre}, pero la presentación BB-${codBB} no existe.`);
+          setTimeout(() => encenderEscanner(), 1000);
           return;
         }
 
-        // 3. Cálculo Automático basado en Margen Cliente
-        const mCliente = p.tipos_producto?.margen_cliente || 0.22;
-        const precioSugerido = parseFloat(bb.precio_ref) / (1 + mCliente);
+        const bb = dataBB[0];
 
-        // 4. Llenar Formulario
+        // 7. CÁLCULO AUTOMÁTICO PROFESIONAL
+        // Usamos el margen de la categoría o un 22% por defecto
+        const mCliente = p.tipos_producto?.margen_cliente || 0.22;
+        const precioReferencia = parseFloat(bb.precio_ref) || 10;
+
+        // Fórmula: Precio Venta = Precio Tienda / (1 + Margen Cliente)
+        const precioVentaSugerido = precioReferencia / (1 + mCliente);
+
+        // 8. Llenar Formulario en Pantalla
         productoTemp = p;
         document.getElementById('form-nombre').textContent = p.nombre;
-        document.getElementById('form-info').textContent = `${bb.nombre} (Referencia: $${bb.precio_ref})`;
+        document.getElementById('form-info').textContent = `Categoría: ${p.tipos_producto?.nombre || 'General'} | Presentación: ${bb.nombre}`;
         document.getElementById('form-cantidad').value = 1;
-        document.getElementById('form-precio').value = precioSugerido.toFixed(2);
+        document.getElementById('form-precio').value = precioVentaSugerido.toFixed(2);
 
+        // Mostrar el formulario y limpiar la búsqueda manual
         document.getElementById('agregar-form').style.display = 'block';
         document.getElementById('busqueda').value = '';
 
       } catch (e) {
-        console.error(e);
-        alert("Error al procesar el código.");
+        console.error("Error en procesarCodigoEscaneado:", e);
+        alert("Error crítico al procesar: " + e.message);
+        setTimeout(() => encenderEscanner(), 1000);
       }
     }
-
 
 
     // ACTUALIZACIÓN EN cotizador.html
