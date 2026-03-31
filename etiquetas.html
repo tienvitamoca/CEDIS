@@ -2,173 +2,173 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Imprimir Etiquetas — CEDIS</title>
-    <link rel="stylesheet" href="style.css">
-    <style>
-        /* Estilo para la vista previa en pantalla */
-        .preview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-            gap: 5px;
-            margin-top: 1rem;
-            border: 1px dashed #ccc;
-            padding: 10px;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Imprimir Etiquetas — CEDIS</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Estilo para la vista previa en pantalla */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 5px;
+      margin-top: 1rem;
+      border: 1px dashed #ccc;
+      padding: 10px;
+    }
 
-        .mini-etiqueta {
-            border: 1px solid #eee;
-            text-align: center;
-            font-size: 0.6rem;
-            padding: 5px;
-        }
-    </style>
+    .mini-etiqueta {
+      border: 1px solid #eee;
+      text-align: center;
+      font-size: 0.6rem;
+      padding: 5px;
+    }
+  </style>
 </head>
 
 <body>
-    <nav class="navbar">
-        <a href="index.html">←</a>
-        <h1>🏷️ Generador de Etiquetas</h1>
-        <span></span>
-    </nav>
+  <nav class="navbar">
+    <a href="index.html">←</a>
+    <h1>🏷️ Generador de Etiquetas</h1>
+    <span></span>
+  </nav>
 
-    <div class="container has-bottom-nav">
-        <div class="card">
-            <div class="card-title">Configurar Etiquetas</div>
+  <div class="container has-bottom-nav">
+    <div class="card">
+      <div class="card-title">Configurar Etiquetas</div>
 
-            <div class="field">
-                <label>Buscar Producto</label>
-                <div class="search-wrap">
-                    <span class="icon">🔍</span>
-                    <input type="text" id="busqueda" placeholder="Nombre o código..." oninput="buscarProducto()">
-                </div>
-                <div id="sugerencias"
-                    style="display:none;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;"></div>
-            </div>
+      <div class="field">
+        <label>Buscar Producto</label>
+        <div class="search-wrap">
+          <span class="icon">🔍</span>
+          <input type="text" id="busqueda" placeholder="Nombre o código..." oninput="buscarProducto()">
+        </div>
+        <div id="sugerencias" style="display:none;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
+        </div>
+      </div>
 
-            <div id="config-panel" style="display:none">
-                <div class="field">
-                    <label>Presentación / Precio</label>
-                    <select id="presentacion-bb" onchange="actualizarVistaPrevia()"></select>
-                </div>
-                <div class="field">
-                    <label>Cantidad de etiquetas</label>
-                    <input type="number" id="cantidad-etiquetas" value="54" min="1" max="100">
-                </div>
-
-                <button class="btn btn-primary btn-block" onclick="imprimirPDF()">
-                    🖨️ Generar PDF para Impresión
-                </button>
-            </div>
+      <div id="config-panel" style="display:none">
+        <div class="field">
+          <label>Presentación / Precio</label>
+          <select id="presentacion-bb" onchange="actualizarVistaPrevia()"></select>
+        </div>
+        <div class="field">
+          <label>Cantidad de etiquetas</label>
+          <input type="number" id="cantidad-etiquetas" value="54" min="1" max="100">
         </div>
 
-        <div id="preview-container" style="display:none">
-            <div class="card-title">Vista Previa (Muestra)</div>
-            <div class="preview-grid" id="lista-previa"></div>
-        </div>
+        <button class="btn btn-primary btn-block" onclick="imprimirPDF()">
+          🖨️ Generar PDF para Impresión
+        </button>
+      </div>
     </div>
 
-    <nav class="bottom-nav">
-        <a href="index.html"><span class="icon">🏠</span> Inicio</a>
-        <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
-        <!-- <a href="etiquetas.html" class="active"><span class="icon">🏷️</span> Etiquetas</a> -->
-        <a href="cotizador.html"><span class="icon">🧾</span> Cotizador</a>
-        <a href="calculadora.html"><span class="icon">🧮</span> Caulculadora</a>
-    </nav>
+    <div id="preview-container" style="display:none">
+      <div class="card-title">Vista Previa (Muestra)</div>
+      <div class="preview-grid" id="lista-previa"></div>
+    </div>
+  </div>
 
-    <script src="supabase.js"></script>
-    <script>
-        let productoActual = null;
-        let todasPresentaciones = []; // Cambiar nombre para claridad
-        let timer = null;
+  <nav class="bottom-nav">
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
+    <!-- <a href="etiquetas.html" class="active"><span class="icon">🏷️</span> Etiquetas</a> -->
+    <a href="cotizador.html"><span class="icon">🧾</span> Cotizador</a>
+    <a href="calculadora.html"><span class="icon">🧮</span> Caulculadora</a>
+  </nav>
 
-        async function init() {
-            // 1. Obtener todas las presentaciones base
-            todasPresentaciones = await getPresentaciones();
+  <script src="supabase.js"></script>
+  <script>
+    let productoActual = null;
+    let todasPresentaciones = []; // Cambiar nombre para claridad
+    let timer = null;
 
-            // 2. Filtrar para tener solo UN ejemplar de cada código BB único
-            // Esto evita que se repita " Jamaica $8" si hay múltiples registros base.
-            const presentacionesUnicas = [];
-            const codigosVistos = new Set();
+    async function init() {
+      // 1. Obtener todas las presentaciones base
+      todasPresentaciones = await getPresentaciones();
 
-            todasPresentaciones.forEach(p => {
-                if (!codigosVistos.has(p.codigo_bb)) {
-                    codigosVistos.add(p.codigo_bb);
-                    presentacionesUnicas.push(p);
-                }
-            });
+      // 2. Filtrar para tener solo UN ejemplar de cada código BB único
+      // Esto evita que se repita " Jamaica $8" si hay múltiples registros base.
+      const presentacionesUnicas = [];
+      const codigosVistos = new Set();
 
-            // 3. Llenar el select con las únicas
-            const sel = document.getElementById('presentacion-bb');
-            sel.innerHTML = '<option value="">-- Selecciona --</option>'; // Opción vacía inicial
-            presentacionesUnicas.forEach(p => {
-                // Mostramos el nombre de la presentación (ej: "Jamaica $8")
-                sel.innerHTML += `<option value="${p.codigo_bb}">${p.nombre}</option>`;
-            });
+      todasPresentaciones.forEach(p => {
+        if (!codigosVistos.has(p.codigo_bb)) {
+          codigosVistos.add(p.codigo_bb);
+          presentacionesUnicas.push(p);
         }
+      });
 
-        async function buscarProducto() {
-            const q = document.getElementById('busqueda').value.trim();
-            clearTimeout(timer);
-            if (q.length < 2) { document.getElementById('sugerencias').style.display = 'none'; return; }
-            timer = setTimeout(async () => {
-                const params = `select=*,tipos_producto(nombre)&limit=5&nombre=ilike.*${q}*`;
-                mostrarSugerencias(await dbGet('productos', params));
-            }, 300);
-        }
+      // 3. Llenar el select con las únicas
+      const sel = document.getElementById('presentacion-bb');
+      sel.innerHTML = '<option value="">-- Selecciona --</option>'; // Opción vacía inicial
+      presentacionesUnicas.forEach(p => {
+        // Mostramos el nombre de la presentación (ej: "Jamaica $8")
+        sel.innerHTML += `<option value="${p.codigo_bb}">${p.nombre}</option>`;
+      });
+    }
 
-        function mostrarSugerencias(lista) {
-            const cont = document.getElementById('sugerencias');
-            cont.innerHTML = lista.map(p => `
+    async function buscarProducto() {
+      const q = document.getElementById('busqueda').value.trim();
+      clearTimeout(timer);
+      if (q.length < 2) { document.getElementById('sugerencias').style.display = 'none'; return; }
+      timer = setTimeout(async () => {
+        const params = `select=*,tipos_producto(nombre)&limit=5&nombre=ilike.*${q}*`;
+        mostrarSugerencias(await dbGet('productos', params));
+      }, 300);
+    }
+
+    function mostrarSugerencias(lista) {
+      const cont = document.getElementById('sugerencias');
+      cont.innerHTML = lista.map(p => `
         <div onclick="seleccionar(${p.id})" style="padding:10px; cursor:pointer; border-bottom:1px solid #eee;">
           ${p.nombre} <small>(${p.codigo})</small>
         </div>`).join('');
-            cont.style.display = 'block';
-        }
+      cont.style.display = 'block';
+    }
 
-        async function seleccionar(id) {
-            const data = await dbGet('productos', `id=eq.${id}`);
-            productoActual = data[0];
-            document.getElementById('sugerencias').style.display = 'none';
-            document.getElementById('config-panel').style.display = 'block';
-            document.getElementById('preview-container').style.display = 'block';
-            actualizarVistaPrevia();
-        }
+    async function seleccionar(id) {
+      const data = await dbGet('productos', `id=eq.${id}`);
+      productoActual = data[0];
+      document.getElementById('sugerencias').style.display = 'none';
+      document.getElementById('config-panel').style.display = 'block';
+      document.getElementById('preview-container').style.display = 'block';
+      actualizarVistaPrevia();
+    }
 
-        function actualizarVistaPrevia() {
-            if (!productoActual) return;
-            const bb = document.getElementById('presentacion-bb').value;
-            const codigoObj = generarCodigoBarras(productoActual, bb);
-            const cont = document.getElementById('lista-previa');
-            cont.innerHTML = '';
-            // Solo mostramos 6 de vista previa para no saturar
-            for (let i = 0; i < 6; i++) {
-                cont.innerHTML += `
+    function actualizarVistaPrevia() {
+      if (!productoActual) return;
+      const bb = document.getElementById('presentacion-bb').value;
+      const codigoObj = generarCodigoBarras(productoActual, bb);
+      const cont = document.getElementById('lista-previa');
+      cont.innerHTML = '';
+      // Solo mostramos 6 de vista previa para no saturar
+      for (let i = 0; i < 6; i++) {
+        cont.innerHTML += `
           <div class="mini-etiqueta">
             <strong>${productoActual.nombre}</strong><br>
             ${codigoObj.num}
           </div>`;
-            }
-        }
+      }
+    }
 
-function imprimirPDF() {
-    if (!productoActual) return;
-    const bbCode = document.getElementById('presentacion-bb').value;
-    if (!bbCode) { alert('Selecciona una presentación'); return; }
+    function imprimirPDF() {
+      if (!productoActual) return;
+      const bbCode = document.getElementById('presentacion-bb').value;
+      if (!bbCode) { alert('Selecciona una presentación'); return; }
 
-    const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
-    const codigoObj = generarCodigoBarras(productoActual, bbCode);
-    const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value);
+      const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
+      const codigoObj = generarCodigoBarras(productoActual, bbCode);
+      const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value);
 
-    const fechaHoy = new Date().toLocaleDateString('es-MX', {
+      const fechaHoy = new Date().toLocaleDateString('es-MX', {
         day: '2-digit',
         month: '2-digit',
         year: '2-digit'
-    });
+      });
 
-    const win = window.open('', '_blank');
-    win.document.write(`
+      const win = window.open('', '_blank');
+      win.document.write(`
 <html>
 <head>
   <title>Etiquetas - ${productoActual.nombre}</title>
@@ -191,10 +191,10 @@ function imprimirPDF() {
       border: 0.1mm solid #eee;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start; /* Alinea desde arriba para ganar espacio */
       align-items: center;
       text-align: center;
-      padding: 1mm;
+      padding: 1.5mm 1mm;
       box-sizing: border-box;
       overflow: hidden;
     }
@@ -203,41 +203,47 @@ function imprimirPDF() {
       font-size: 7.2pt; 
       font-weight: bold; 
       text-transform: uppercase; 
-      margin-bottom: 0.2mm;
+      margin-bottom: 0.5mm;
       width: 100%;
-      white-space: nowrap;
+      white-space: normal; /* PERMITE SALTO DE LÍNEA */
+      display: -webkit-box;
+      -webkit-line-clamp: 2; /* MÁXIMO 2 LÍNEAS */
+      -webkit-box-orient: vertical;
       overflow: hidden;
-      text-overflow: ellipsis;
+      line-height: 1.1;
     }
 
     .presentacion { 
-      font-size: 6.8pt; 
+      font-size: 7.5pt; 
       color: #000;
       font-weight: bold;
       line-height: 1;
+      margin-bottom: 0.2mm;
     }
 
     .fecha-empaque {
       font-size: 5.5pt;
       color: #555;
-      margin-bottom: 1.5mm; /* Espacio para que no choque con las barras */
+      margin-bottom: 2mm;
+      margin-top: 1mm;
       line-height: 1;
     }
 
     .barras-visuales {
       font-family: 'Libre Barcode 128', cursive;
-      font-size: 32pt; 
-      line-height: 1; /* Ajustado para dar aire */
+      font-size: 34pt; /* Un poco más grande para llenar el hueco */
+      line-height: 0.8; 
       margin: 0;
       display: block;
-      height: 32pt; /* Altura fija para control */
+      height: 30pt; 
     }
 
     .numero-legible {
       font-family: monospace;
-      font-size: 7.5pt;
+      font-size: 8pt;
       font-weight: bold;
-      margin-top: 0.5mm; /* Un poco de respiro abajo */
+      margin-top: -3mm; /* PEGA EL NÚMERO A LAS BARRAS */
+      margin-bottom: 0;
       line-height: 1;
     }
 
@@ -269,11 +275,12 @@ function imprimirPDF() {
 </body>
 </html>
 `);
-    win.document.close();
-}
+      win.document.close();
+    }
 
-        init();
-    </script>
+
+    init();
+  </script>
 </body>
 
 </html>
