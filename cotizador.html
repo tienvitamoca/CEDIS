@@ -230,50 +230,118 @@
       renderPedido();
     }
 
+    // REEMPLAZO COMPLETO DE imprimirPedido EN cotizador.html
     function imprimirPedido() {
-      const fecha = new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+      const fecha = new Date().toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
       const total = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
       const totalBolsas = pedido.reduce((s, i) => s + i.cantidad, 0);
 
       const win = window.open('', '_blank');
       win.document.write(`
-        <html><head><title>Pedido CEDIS</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; color: #111; }
-          h2 { margin-bottom: 0.2rem; }
-          .sub { color: #666; font-size: 0.88rem; margin-bottom: 1.5rem; }
-          table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-          th { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 2px solid #111; }
-          td { padding: 0.5rem 0.4rem; border-bottom: 1px solid #eee; }
-          .total-row td { border-top: 2px solid #111; border-bottom: none; font-weight: 700; font-size: 1rem; }
-          @media print { .no-print { display: none; } }
-        </style></head>
-        <body>
-          <h2>📦 CEDIS — Pedido</h2>
-          <div class="sub">${fecha} · ${totalBolsas} bolsas en total</div>
-          <table>
-            <thead><tr><th>Producto</th><th>Cant.</th><th>P. Unit.</th><th>Total</th></tr></thead>
-            <tbody>
-              ${pedido.map(i => `
-                <tr>
-                  <td>${i.producto.nombre}<br><small style="color:#888">${i.producto.codigo}</small></td>
-                  <td>${i.cantidad}</td>
-                  <td>${formatPeso(i.precio)}</td>
-                  <td><strong>${formatPeso(i.precio * i.cantidad)}</strong></td>
-                </tr>`).join('')}
-              <tr class="total-row">
-                <td colspan="3">TOTAL</td>
-                <td>${formatPeso(total)}</td>
-              </tr>
-            </tbody>
-          </table>
-          <br>
-          <button class="no-print" onclick="window.print()"
-            style="padding:0.5rem 1.2rem;background:#2563eb;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.95rem">
-            🖨️ Imprimir
-          </button>
-        </body></html>
-      `);
+<html>
+<head>
+    <title>Nota de Venta - CEDIS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            padding: 15px; 
+            background: #f1f5f9; 
+            color: #1e293b;
+            display: flex;
+            justify-content: center;
+        }
+        .ticket { 
+            background: white; 
+            width: 100%; 
+            max-width: 380px; /* Ancho ideal para captura de pantalla en celular */
+            padding: 25px; 
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .header { text-align: center; border-bottom: 2px dashed #e2e8f0; padding-bottom: 15px; margin-bottom: 15px; }
+        .header h2 { margin: 0; color: #2563eb; letter-spacing: -0.5px; }
+        .header p { margin: 5px 0 0; font-size: 0.85rem; color: #64748b; }
+        
+        .info-bar { display: flex; justify-content: space-between; font-size: 0.75rem; color: #94a3b8; margin-bottom: 20px; font-weight: 600; text-transform: uppercase; }
+
+        .item { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; font-size: 0.95rem; }
+        .item-detail { flex: 1; }
+        .item-name { font-weight: 700; display: block; margin-bottom: 2px; }
+        .item-sub { font-size: 0.8rem; color: #64748b; }
+        .item-total { font-weight: 800; color: #0f172a; margin-left: 10px; }
+
+        .divider { border-top: 1px solid #f1f5f9; margin: 10px 0; }
+        
+        .totals { margin-top: 20px; background: #f8fafc; padding: 15px; border-radius: 8px; }
+        .total-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
+        .grand-total { border-top: 2px solid #e2e8f0; margin-top: 10px; padding-top: 10px; font-size: 1.25rem; font-weight: 900; color: #2563eb; }
+
+        .footer { text-align: center; margin-top: 25px; font-size: 0.8rem; color: #94a3b8; font-style: italic; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .ticket { box-shadow: none; max-width: 100%; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <div class="header">
+            <h2>📦 CEDIS MORELIA</h2>
+            <p>Nota de Pedido</p>
+        </div>
+
+        <div class="info-bar">
+            <span>${fecha}</span>
+            <span>ID: # ${Math.floor(Math.random() * 9000) + 1000}</span>
+        </div>
+
+        ${pedido.map(i => `
+            <div class="item">
+                <div class="item-detail">
+                    <span class="item-name">${i.producto.nombre}</span>
+                    <span class="item-sub">${i.cantidad} pzas × ${formatPeso(i.precio)}</span>
+                </div>
+                <div class="item-total">${formatPeso(i.precio * i.cantidad)}</div>
+            </div>
+            <div class="divider"></div>
+        `).join('')}
+
+        <div class="totals">
+            <div class="total-row">
+                <span>Artículos:</span>
+                <span>${totalBolsas}</span>
+            </div>
+            <div class="total-row grand-total">
+                <span>TOTAL:</span>
+                <span>${formatPeso(total)}</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            ¡Muchas gracias por su preferencia!
+        </div>
+        
+        <div class="no-print" style="margin-top: 20px; text-align: center;">
+             <button onclick="window.print()" style="padding:12px 25px; background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; width: 100%;">
+                📸 Capturar o Imprimir
+             </button>
+        </div>
+    </div>
+</body>
+</html>
+    `);
       win.document.close();
     }
 

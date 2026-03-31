@@ -34,6 +34,8 @@
                         <div id="prod-nombre-sel" style="font-weight:700; color:var(--primary)"></div>
                         <div id="prod-codigo-sel" style="font-size:0.75rem; color:var(--text-muted)"></div>
                     </div>
+                    <button onclick="limpiarProducto()"
+                        style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--text-muted)">✕</button>
                 </div>
             </div>
         </div>
@@ -148,7 +150,7 @@
         <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
         <a href="etiquetas.html" class="active"><span class="icon">🏷️</span> Etiquetas</a>
         <a href="cotizador.html"> <span class="icon">🧾</span> Cotizador </a>
-        
+
     </nav>
 
     <script src="supabase.js"></script>
@@ -223,7 +225,10 @@
             document.getElementById('r-insumos').textContent = formatPeso(res.insumos || (res.costo_total - res.costo_mp));
             document.getElementById('r-costo-total').textContent = formatPeso(res.costo_total || (res.costo_mp + res.insumos));
             document.getElementById('r-precio-venta').textContent = formatPeso(res.precio_venta);
-document.getElementById('r-precio-tienda').textContent = formatPeso(pTienda);
+            // document.getElementById('r-precio-tienda').textContent = formatPeso(pTienda);
+            document.getElementById('r-precio-tienda').textContent = formatPeso(
+                ultimaEntrada === 'gramos' ? res.precio_tienda : pTienda
+            );
             // Utilidad con Alerta (Estilo Target Costing)
             const elUtilidad = document.getElementById('r-utilidad');
             const estado = obtenerEstadoRentabilidad(res.utilidad, res.precio_venta);
@@ -247,6 +252,13 @@ document.getElementById('r-precio-tienda').textContent = formatPeso(pTienda);
             }
         }
 
+        function limpiarProducto() {
+            productoActual = null;
+            document.getElementById('prod-seleccionado').style.display = 'none';
+            document.getElementById('panel-calculos').style.display = 'none';
+            document.getElementById('resultados').style.display = 'none';
+            document.getElementById('busqueda').value = '';
+        }
         init();
     </script>
 </body>
