@@ -151,124 +151,125 @@
             }
         }
 
-        function imprimirPDF() {
-            if (!productoActual) return;
-            const bbCode = document.getElementById('presentacion-bb').value;
-            if (!bbCode) { alert('Selecciona una presentación'); return; }
+function imprimirPDF() {
+    if (!productoActual) return;
+    const bbCode = document.getElementById('presentacion-bb').value;
+    if (!bbCode) { alert('Selecciona una presentación'); return; }
 
-            const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
-            const codigoObj = generarCodigoBarras(productoActual, bbCode);
-            const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value);
+    const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
+    const codigoObj = generarCodigoBarras(productoActual, bbCode);
+    const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value);
 
-            const win = window.open('', '_blank');
-            win.document.write(`
-    <html>
-    <head>
-      <title>Imprimir Etiquetas - ${productoActual.nombre}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
-      <style>
-        /* Configuración de página al mínimo */
-        @page { 
-          margin: 0.3cm; 
-          size: letter; 
-        }
-        
-        body { 
-          font-family: 'Segoe UI', sans-serif; 
-          margin: 0; 
-          padding: 0; 
-          display: flex;
-          justify-content: center; /* Centra la cuadrícula en la hoja */
-          background: #f4f4f4;
-        }
+    const fechaHoy = new Date().toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+    });
 
-        .hoja {
-          display: grid;
-          grid-template-columns: repeat(6, 31mm); /* Ancho fijo para 6 columnas */
-          grid-auto-rows: 27mm; /* Altura fija reducida para 9 filas */
-          gap: 1mm;
-          width: fit-content;
-          background: white;
-          padding: 2mm;
-          box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
+    const win = window.open('', '_blank');
+    win.document.write(`
+<html>
+<head>
+  <title>Etiquetas - ${productoActual.nombre}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
+  <style>
+    @page { margin: 0.3cm; size: letter; }
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; background: #f4f4f4; }
 
-        .etiqueta {
-          border: 0.1mm solid #eee;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          text-align: center;
-          overflow: hidden;
-          padding: 1mm;
-          box-sizing: border-box;
-        }
+    .hoja {
+      display: grid;
+      grid-template-columns: repeat(6, 31mm);
+      grid-auto-rows: 27mm;
+      gap: 1mm;
+      width: fit-content;
+      background: white;
+      padding: 2mm;
+    }
 
-        .nombre { 
-          font-size: 7pt; 
-          font-weight: bold; 
-          text-transform: uppercase; 
-          line-height: 1.1;
-          margin-bottom: 0.5mm;
-          width: 100%;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
+    .etiqueta {
+      border: 0.1mm solid #eee;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 1mm;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
 
-        .presentacion { 
-          font-size: 6.5pt; 
-          color: #333;
-          margin-bottom: 0.5mm;
-        }
+    .nombre { 
+      font-size: 7.2pt; 
+      font-weight: bold; 
+      text-transform: uppercase; 
+      margin-bottom: 0.2mm;
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-        .barras-visuales {
-          font-family: 'Libre Barcode 128', cursive;
-          font-size: 28pt; /* Tamaño reducido para evitar desbordamiento */
-          line-height: 0.8;
-          margin: 0;
-          display: block;
-        }
+    .presentacion { 
+      font-size: 6.8pt; 
+      color: #000;
+      font-weight: bold;
+      line-height: 1;
+    }
 
-        .numero-legible {
-          font-family: monospace;
-          font-size: 7.5pt;
-          font-weight: bold;
-          margin-top: 0.5mm;
-        }
+    .fecha-empaque {
+      font-size: 5.5pt;
+      color: #555;
+      margin-bottom: 1.5mm; /* Espacio para que no choque con las barras */
+      line-height: 1;
+    }
 
-        @media print { 
-          body { background: white; }
-          .hoja { box-shadow: none; margin: 0; }
-          .no-print { display: none; } 
-        }
-      </style>
-    </head>
-    <body>
-      <div style="position: fixed; top: 0; width: 100%; text-align: center; padding: 15px; background: white; z-index: 100;" class="no-print">
-        <button onclick="window.print()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-          🖨️ IMPRIMIR AHORA
-        </button>
+    .barras-visuales {
+      font-family: 'Libre Barcode 128', cursive;
+      font-size: 32pt; 
+      line-height: 1; /* Ajustado para dar aire */
+      margin: 0;
+      display: block;
+      height: 32pt; /* Altura fija para control */
+    }
+
+    .numero-legible {
+      font-family: monospace;
+      font-size: 7.5pt;
+      font-weight: bold;
+      margin-top: 0.5mm; /* Un poco de respiro abajo */
+      line-height: 1;
+    }
+
+    @media print { 
+      body { background: white; }
+      .no-print { display: none; } 
+      .hoja { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="padding: 15px; background: white; width: 100%; text-align: center; border-bottom: 1px solid #ddd; margin-bottom: 10px;">
+    <button onclick="window.print()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+      🖨️ IMPRIMIR AHORA
+    </button>
+  </div>
+  
+  <div class="hoja">
+    ${Array(cantidad).fill(0).map(() => `
+      <div class="etiqueta">
+        <div class="nombre">${productoActual.nombre}</div>
+        <div class="presentacion">${pres.nombre}</div>
+        <div class="fecha-empaque">Emp: ${fechaHoy}</div>
+        <div class="barras-visuales">${codigoObj.textoParaFuente}</div>
+        <div class="numero-legible">${codigoObj.num}</div>
       </div>
-      <div style="margin-top: 60px;" class="no-print"></div>
-      
-      <div class="hoja">
-        ${Array(cantidad).fill(0).map(() => `
-          <div class="etiqueta">
-            <div class="nombre">${productoActual.nombre}</div>
-            <div class="presentacion">${pres.nombre}</div>
-            <div class="barras-visuales">${codigoObj.textoParaFuente}</div>
-            <div class="numero-legible">${codigoObj.num}</div>
-          </div>
-        `).join('')}
-      </div>
-    </body>
-    </html>
-  `);
-            win.document.close();
-        }
-
+    `).join('')}
+  </div>
+</body>
+</html>
+`);
+    win.document.close();
+}
 
         init();
     </script>

@@ -307,3 +307,7 @@ input[readonly] {
   display: block;
   margin-top: 4px;
 }
+
+.hidden {
+  display: none !important;
+}

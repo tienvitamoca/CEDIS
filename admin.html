@@ -425,43 +425,63 @@
       </div>
 
       <div class="card">
-        <div class="card-title">Simulador de Rentabilidad</div>
-        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem">Prueba escenarios sin guardar.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem">
+        <div class="card-title">Simulador de Impacto Real</div>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem">
+          Proyecta la rentabilidad real seleccionando un producto específico de tu inventario.
+        </p>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem; margin-bottom: 1rem;">
           <div class="field">
-            <label>Precio Tienda ($)</label>
-            <input type="number" id="sim-precio" placeholder="10" oninput="simular()">
+            <label>1. Categoría (Márgenes)</label>
+            <select id="sim-cat" onchange="cargarSimuladorCategoria()"></select>
           </div>
           <div class="field">
-            <label>Tu Margen</label>
-            <input type="number" step="0.01" id="sim-mtuyo" placeholder="0.80" oninput="simular()">
-          </div>
-          <div class="field">
-            <label>Margen Cliente</label>
-            <input type="number" step="0.01" id="sim-mcliente" placeholder="0.80" oninput="simular()">
+            <label>2. Producto (Costos)</label>
+            <select id="sim-prod" onchange="ejecutarSimulacion()"></select>
           </div>
         </div>
-        <div id="sim-resultado" style="display:none">
-          <div class="result-grid">
-            <div class="result-item highlight">
-              <div class="label">Tu Precio Venta</div>
-              <div class="value" id="sim-r1">—</div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem">
+          <div class="field">
+            <label>Precio Tienda ($)</label>
+            <input type="number" id="sim-precio" placeholder="10" oninput="ejecutarSimulacion()">
+          </div>
+          <div class="field">
+            <label>M. Tuyo (Sim)</label>
+            <input type="number" step="0.01" id="sim-mtuyo" oninput="ejecutarSimulacion()">
+          </div>
+          <div class="field">
+            <label>M. Cliente (Sim)</label>
+            <input type="number" step="0.01" id="sim-mcliente" oninput="ejecutarSimulacion()">
+          </div>
+        </div>
+
+        <div id="sim-resultado" style="display:none; margin-top: 1rem;">
+          <div id="sim-detalles-prod"
+            style="font-size: 0.75rem; background: #f8fafc; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; border: 1px dashed var(--border);">
+          </div>
+
+          <div class="result-grid" style="background: var(--bg); padding: 1rem; border-radius: 8px;">
+            <div class="res-item">
+              <div class="label">Gramos Posibles</div>
+              <div class="value" id="sim-r-gramos" style="color: var(--primary); font-size: 1.2rem;">—</div>
             </div>
-            <div class="result-item">
-              <div class="label">Costo Máx Total</div>
-              <div class="value" id="sim-r2">—</div>
+            <div class="res-item">
+              <div class="label">Tu Utilidad ($)</div>
+              <div class="value success" id="sim-r-utilidad">—</div>
             </div>
-            <div class="result-item success">
-              <div class="label">Tu Utilidad</div>
-              <div class="value" id="sim-r3">—</div>
+            <div class="res-item" style="border-top: 1px solid var(--border); padding-top: 0.5rem;">
+              <div class="label">Precio CEDIS</div>
+              <div class="value" id="sim-r-cedis" style="font-size: 0.9rem;">—</div>
             </div>
-            <div class="result-item">
-              <div class="label">Utilidad %</div>
-              <div class="value" id="sim-r4">—</div>
+            <div class="res-item" style="border-top: 1px solid var(--border); padding-top: 0.5rem;">
+              <div class="label">Margen Real</div>
+              <div class="value" id="sim-r-marginp">—</div>
             </div>
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- MASIVO -->
@@ -549,18 +569,16 @@
     let presFiltro = 'gramos';
 
     async function init() {
-      // 1. Traer datos frescos de la nube
       tipos = await getTipos();
       presentaciones = await getPresentaciones();
 
-      // 2. Llenar la interfaz
       cargarCategorias();
-      llenarSelectsBulk(); // <--- Esto pone los IDs correctos en los selects
-
-      // 3. Cargar el resto
+      llenarSelectsBulk();
+      llenarSelectSimulador(); // <-- AGREGAR ESTA LÍNEA
       cargarPresentaciones();
       cargarCostos();
       cargarResumen();
+      cargarMargenes();
     }
 
     function mostrarSeccion(id, btn) {
@@ -1119,6 +1137,95 @@
       t.style.opacity = '1';
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => t.style.opacity = '0', 2500);
+    }
+
+    // Esta función llena el select del simulador al iniciar
+    function llenarSelectSimulador() {
+      const sel = document.getElementById('sim-cat');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Selecciona una categoría...</option>' +
+        tipos.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
+    }
+
+    // Al cambiar la categoría, cargamos sus márgenes en los inputs
+    function cargarSimuladorCategoria() {
+      const catId = document.getElementById('sim-cat').value;
+      if (!catId) return;
+
+      const cat = tipos.find(t => t.id == catId);
+      if (cat) {
+        document.getElementById('sim-mtuyo').value = cat.margen_tuyo || 0.12;
+        document.getElementById('sim-mcliente').value = cat.margen_cliente || 0.22;
+
+        // CORRECCIÓN: Usamos productosCostos que es tu variable global
+        // Filtramos productos que pertenecen a esta categoría
+        const productosCat = productosCostos.filter(p => {
+          // Intentamos filtrar por tipo_id o por los primeros dígitos del código
+          return p.tipo_id == catId || String(p.codigo).startsWith(String(catId).substring(0, 2));
+        });
+
+        const selProd = document.getElementById('sim-prod');
+        selProd.innerHTML = '<option value="">Selecciona un producto...</option>' +
+          productosCat.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+
+        ejecutarSimulacion();
+      }
+    }
+
+    // Realiza los cálculos matemáticos profesionales
+    // REEMPLAZAR COMPLETAMENTE
+    function ejecutarSimulacion() {
+      const precioTienda = parseFloat(document.getElementById('sim-precio').value);
+      const mtuyo = parseFloat(document.getElementById('sim-mtuyo').value);
+      const mclie = parseFloat(document.getElementById('sim-mcliente').value);
+      const idProd = document.getElementById('sim-prod').value;
+
+      if (!precioTienda || isNaN(mtuyo) || isNaN(mclie)) return;
+
+      // 1. Cálculos de Precios
+      const precioCedis = redondear(precioTienda / (1 + mclie));
+      const costoTotalMax = redondear(precioCedis / (1 + mtuyo));
+      const utilidadDeseada = redondear(precioCedis - costoTotalMax);
+
+      // 2. Impacto Real
+      let gramos = "N/A";
+      let infoExtra = "Selecciona un producto para ver el peso permitido.";
+
+      if (idProd) {
+        // CORRECCIÓN: Buscamos en productosCostos por ID
+        const p = productosCostos.find(c => c.id == idProd);
+        if (p) {
+          // Aplicamos la fórmula profesional: Costo / (1 - Merma)
+          const costoGramoReal = (p.costo_kg / 1000) / (1 - (p.merma_pct || 0.02));
+          const insumos = (p.costo_bolsa || 0.29) + (p.costo_produccion || 1.30);
+          const dineroParaMP = costoTotalMax - insumos;
+
+          if (dineroParaMP > 0) {
+            gramos = Math.floor(dineroParaMP / costoGramoReal) + "g";
+            infoExtra = `📦 <b>Insumos:</b> ${formatPeso(insumos)} | <b>Costo g real:</b> ${formatPeso(costoGramoReal)}`;
+          } else {
+            gramos = "0g";
+            infoExtra = "<span style='color:var(--danger)'>⚠️ El precio no cubre ni los insumos fijos.</span>";
+          }
+        }
+      }
+
+      // 3. Inyectar en el HTML
+      document.getElementById('sim-r-gramos').textContent = gramos;
+      document.getElementById('sim-r-cedis').textContent = formatPeso(precioCedis);
+      document.getElementById('sim-r-utilidad').textContent = formatPeso(utilidadDeseada);
+      document.getElementById('sim-r-marginp').textContent = redondear((utilidadDeseada / precioCedis) * 100, 1) + "%";
+      document.getElementById('sim-detalles-prod').innerHTML = infoExtra;
+
+      document.getElementById('sim-resultado').style.display = 'block';
+    }
+
+    // FUNCIÓN NUEVA: Llenar el select inicial
+    function llenarSelectSimulador() {
+      const sel = document.getElementById('sim-cat');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Selecciona categoría...</option>' +
+        tipos.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
     }
 
     init();
