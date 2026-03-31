@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Catálogo — CEDIS</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <nav class="navbar">
     <a href="index.html">←</a>
     <h1>📋 Catálogo</h1>
-    <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none" onclick="abrirModal()">+ Nuevo</button>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none" onclick="abrirModal()">+
+      Nuevo</button>
   </nav>
 
   <div class="container has-bottom-nav">
@@ -33,7 +36,8 @@
 
   <!-- Modal producto -->
   <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;overflow-y:auto">
-    <div style="background:white;margin:1rem auto;border-radius:var(--radius);padding:1.25rem;max-width:500px;margin-top:2rem">
+    <div
+      style="background:white;margin:1rem auto;border-radius:var(--radius);padding:1.25rem;max-width:500px;margin-top:2rem">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
         <h3 id="modal-titulo">Producto</h3>
         <button onclick="cerrarModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer">✕</button>
@@ -49,7 +53,8 @@
 
       <div class="field">
         <label>Categoría</label>
-        <select id="prod-tipo" onchange="actualizarCodigoAuto()"></select>
+        <select id="prod-tipo" onchange="sugerirCodigo()" required>
+        </select>
       </div>
 
       <div class="field">
@@ -82,6 +87,7 @@
 
       <div id="modal-error" class="alert alert-error" style="display:none"></div>
 
+      
       <div style="display:flex;gap:0.75rem;margin-top:0.75rem">
         <button class="btn btn-outline" style="flex:1" onclick="cerrarModal()">Cancelar</button>
         <button class="btn btn-primary" style="flex:1" onclick="guardarProducto()">Guardar</button>
@@ -106,18 +112,18 @@
       tipos = await getTipos();
 
       const selFiltro = document.getElementById('filtro-tipo');
-      const selModal  = document.getElementById('prod-tipo');
+      const selModal = document.getElementById('prod-tipo');
 
       tipos.forEach(t => {
         selFiltro.innerHTML += `<option value="${t.id}">${t.nombre}</option>`;
-        selModal.innerHTML  += `<option value="${t.id}">${t.nombre}</option>`;
+        selModal.innerHTML += `<option value="${t.id}">${t.nombre}</option>`;
       });
 
       await buscar();
     }
 
     async function buscar() {
-      const q    = document.getElementById('busqueda').value.trim();
+      const q = document.getElementById('busqueda').value.trim();
       const tipo = document.getElementById('filtro-tipo').value;
       document.getElementById('lista-container').innerHTML = '<div class="spinner"></div>';
 
@@ -130,7 +136,7 @@
         if (tipo) params += `&tipo_id=eq.${tipo}`;
         productos = await dbGet('productos', params);
         renderLista();
-      } catch(e) {
+      } catch (e) {
         document.getElementById('lista-container').innerHTML =
           `<div class="alert alert-error">${e.message}</div>`;
       }
@@ -150,8 +156,8 @@
               <span class="badge badge-blue">${p.codigo}</span>
               &nbsp;${p.tipos_producto?.nombre || ''}
               ${p.costo_kg
-                ? `&nbsp;·&nbsp;<strong>$${p.costo_kg}/kg</strong>`
-                : '&nbsp;·&nbsp;<span style="color:#dc2626">Sin costo</span>'}
+          ? `&nbsp;·&nbsp;<strong>$${p.costo_kg}/kg</strong>`
+          : '&nbsp;·&nbsp;<span style="color:#dc2626">Sin costo</span>'}
             </div>
           </div>
           <span class="arrow">›</span>
@@ -174,7 +180,7 @@
 
       try {
         const prefijo = tipoId * 1000;       // 260000
-        const maximo  = tipoId * 1000 + 999; // 260999
+        const maximo = tipoId * 1000 + 999; // 260999
 
         const data = await dbGet('productos',
           `select=codigo&codigo=gte.${prefijo}&codigo=lte.${maximo}&order=codigo.desc&limit=1`
@@ -195,7 +201,7 @@
 
         document.getElementById('prod-codigo').value = siguiente;
         document.getElementById('codigo-estado').textContent = '✅';
-      } catch(e) {
+      } catch (e) {
         document.getElementById('codigo-estado').textContent = '❌';
         console.error(e);
       }
@@ -203,16 +209,17 @@
 
     // ── Modal ──────────────────────────────────────────────────
     async function abrirModal(prod = null) {
+      
       const esNuevo = !prod;
       document.getElementById('modal-titulo').textContent = esNuevo ? 'Nuevo Producto' : 'Editar Producto';
-      document.getElementById('prod-id').value         = prod?.id || '';
-      document.getElementById('prod-es-nuevo').value   = esNuevo ? '1' : '0';
-      document.getElementById('prod-nombre').value     = prod?.nombre || '';
-      document.getElementById('prod-tipo').value       = prod?.tipo_id || tipos[0]?.id || '';
-      document.getElementById('prod-codigo').value     = prod?.codigo || '';
-      document.getElementById('prod-costo-kg').value   = prod?.costo_kg || '';
-      document.getElementById('prod-merma').value      = prod?.merma_pct ?? 0.02;
-      document.getElementById('prod-bolsa').value      = prod?.costo_bolsa || '';
+      document.getElementById('prod-id').value = prod?.id || '';
+      document.getElementById('prod-es-nuevo').value = esNuevo ? '1' : '0';
+      document.getElementById('prod-nombre').value = prod?.nombre || '';
+      document.getElementById('prod-tipo').value = prod?.tipo_id || tipos[0]?.id || '';
+      document.getElementById('prod-codigo').value = prod?.codigo || '';
+      document.getElementById('prod-costo-kg').value = prod?.costo_kg || '';
+      document.getElementById('prod-merma').value = prod?.merma_pct ?? 0.02;
+      document.getElementById('prod-bolsa').value = prod?.costo_bolsa || '';
       document.getElementById('prod-produccion').value = prod?.costo_produccion || '';
       document.getElementById('modal-error').style.display = 'none';
       document.getElementById('codigo-estado').textContent = esNuevo ? '' : '🔒';
@@ -232,21 +239,21 @@
     }
 
     async function guardarProducto() {
-      const id     = document.getElementById('prod-id').value;
+      const id = document.getElementById('prod-id').value;
       const nombre = document.getElementById('prod-nombre').value.trim();
       const codigo = parseInt(document.getElementById('prod-codigo').value);
 
-      if (!nombre)           { mostrarError('El nombre es obligatorio'); return; }
+      if (!nombre) { mostrarError('El nombre es obligatorio'); return; }
       if (!codigo || isNaN(codigo)) { mostrarError('Código inválido, selecciona una categoría'); return; }
 
       const data = {
         nombre,
         codigo,
-        tipo_id          : parseInt(document.getElementById('prod-tipo').value),
-        costo_kg         : parseFloat(document.getElementById('prod-costo-kg').value) || null,
-        merma_pct        : parseFloat(document.getElementById('prod-merma').value) || 0.02,
-        costo_bolsa      : parseFloat(document.getElementById('prod-bolsa').value) || null,
-        costo_produccion : parseFloat(document.getElementById('prod-produccion').value) || null,
+        tipo_id: parseInt(document.getElementById('prod-tipo').value),
+        costo_kg: parseFloat(document.getElementById('prod-costo-kg').value) || null,
+        merma_pct: parseFloat(document.getElementById('prod-merma').value) || 0.02,
+        costo_bolsa: parseFloat(document.getElementById('prod-bolsa').value) || null,
+        costo_produccion: parseFloat(document.getElementById('prod-produccion').value) || null,
       };
 
       try {
@@ -259,7 +266,7 @@
         }
         cerrarModal();
         await buscar();
-      } catch(e) {
+      } catch (e) {
         mostrarError(e.message);
       }
     }
@@ -270,7 +277,71 @@
       el.style.display = 'block';
     }
 
+    // Agrega esta función a catalogo.html
+    function actualizarCodigoPorCategoria() {
+      const tipoId = document.getElementById('prod-tipo').value; // Ej: 250
+      const inputCodigo = document.getElementById('prod-codigo');
+
+      if (!tipoId) return;
+
+      const prefijoNuevo = String(tipoId).substring(0, 3);
+      const codigoActual = String(inputCodigo.value);
+
+      // Si el código actual no empieza con el prefijo de la categoría elegida
+      if (!codigoActual.startsWith(prefijoNuevo)) {
+        // Tomamos los últimos 3 dígitos del código viejo para mantener la secuencia
+        const correlativo = codigoActual.slice(-3);
+        inputCodigo.value = prefijoNuevo + correlativo;
+
+        console.log(`Sistema: Código actualizado a ${inputCodigo.value} para coincidir con la categoría.`);
+      }
+    }
+    // REEMPLAZAR en catalogo.html
+// REEMPLAZAR COMPLETAMENTE EN catalogo.html
+async function sugerirCodigo() {
+  const tipoId = document.getElementById('prod-tipo').value;
+  const inputCodigo = document.getElementById('prod-codigo');
+  const prodId = document.getElementById('prod-id').value;
+
+  if (!tipoId) return;
+
+  const prefijo = String(tipoId).substring(0, 3);
+  
+  try {
+    // CONSULTA REAL: Traemos solo el código más alto de esta categoría desde Supabase
+    const data = await dbGet('productos', `select=codigo&tipo_id=eq.${tipoId}&order=codigo.desc&limit=1`);
+    
+    // Si estamos editando, verificamos si el código actual ya pertenece a la categoría
+    if (prodId) {
+      const pActual = productos.find(x => x.id == prodId);
+      if (pActual && pActual.tipo_id == tipoId) {
+        inputCodigo.value = pActual.codigo;
+        return;
+      }
+    }
+
+    if (data && data.length > 0) {
+      // Si hay productos, sumamos 1 al más alto
+      const ultimoCodigo = parseInt(data[0].codigo);
+      inputCodigo.value = ultimoCodigo + 1;
+    } else {
+      // Si la categoría está vacía, empezamos en 001
+      inputCodigo.value = prefijo + "001";
+    }
+  } catch (e) {
+    console.error("Error al sugerir código:", e);
+    // Fallback: usar la lista local si la red falla
+    const locales = productos.filter(p => p.tipo_id == tipoId);
+    if (locales.length > 0) {
+      const max = Math.max(...locales.map(p => p.codigo));
+      inputCodigo.value = max + 1;
+    } else {
+      inputCodigo.value = prefijo + "001";
+    }
+  }
+}
     init();
   </script>
 </body>
+
 </html>
