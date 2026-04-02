@@ -238,15 +238,18 @@
       win.document.write(`
 <html>
 <head>
-  <title>Etiquetas - ${productoActual.nombre}</title>
+ <title>Etiquetas - ${productoActual.nombre}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&family=Libre+Barcode+128+Text&family=Libre+Barcode+39&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
   <style>
     @page { margin: 0.3cm; size: letter; }
-    body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; background: #f4f4f4; }
 
+    body { 
+      font-family: -apple-system, sans-serif; 
+      margin: 0; padding: 0; 
+      display: flex; flex-direction: column; align-items: center; 
+      background: #f4f4f7; 
+    }
     /* 1. Ajustamos la altura de la fila en la rejilla */
     .hoja {
       display: grid;
@@ -301,25 +304,6 @@
       line-height: 1;
     }
 
-    // .barras-visuales {
-    //   font-family: 'Libre Barcode 128', cursive;
-    //   font-size: 34pt; /* Un poco más grande para llenar el hueco */
-    //   line-height: 0.8; 
-    //   margin: 0;
-    //   display: block;
-    //   height: 30pt; 
-    // }
-
-    // .numero-legible {
-    //   font-family: monospace;
-    //   font-size: 8pt;
-    //   font-weight: bold;
-    //   margin-top: -3mm; /* PEGA EL NÚMERO A LAS BARRAS */
-    //   margin-bottom: 0;
-    //   line-height: 1;
-    // }
-    /* AJUSTE PROFESIONAL PARA ESCANEO RÁPIDO */
-  
    .barras-visuales {
   font-family: 'Libre Barcode 39', cursive !important;
   font-size: 18pt; 
@@ -356,10 +340,10 @@
 
     @media print { 
       body { background: white; padding: 0; }
-      .no-print-tools { display: none; }
+      .no-print { display: none; }
       .hoja { 
         display: grid;
-        grid-template-columns: repeat(6, 31mm); /* Fuerza 6 columnas en papel */
+        grid-template-columns: repeat(6, 31mm);
         grid-auto-rows: 22mm;
         padding: 0; gap: 1mm;
       }
