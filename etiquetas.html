@@ -73,7 +73,7 @@
           </div>
           <div class="field">
             <label>Cantidad de etiquetas</label>
-            <input type="number" id="cantidad-etiquetas" value="66" min="1" max="100">
+            <input type="number" id="cantidad-etiquetas" value="60" min="1" max="100">
           </div>
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem;">
@@ -238,26 +238,27 @@
       win.document.write(`
 <html>
 <head>
- <title>Etiquetas - ${productoActual.nombre}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
+  <title>Etiquetas - ${productoActual.nombre}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&family=Libre+Barcode+128+Text&family=Libre+Barcode+39&display=swap" rel="stylesheet">
   <style>
     @page { margin: 0.3cm; size: letter; }
-
     body { 
       font-family: -apple-system, sans-serif; 
       margin: 0; padding: 0; 
       display: flex; flex-direction: column; align-items: center; 
       background: #f4f4f7; 
     }
-    /* 1. Ajustamos la altura de la fila en la rejilla */
+
     .btn-print {
       padding: 14px 28px; background: white; color: #2563eb; 
       border: none; border-radius: 10px; cursor: pointer; 
       font-weight: bold; font-size: 18px; width: 90%;
     }
 
-    /* VISTA EN CELULAR: Se adapta al ancho del teléfono para que lo veas grande */
+    /* 1. Ajustamos la altura de la fila en la rejilla */
     .hoja {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(45%, 1fr)); /* 2 columnas en celular para verlas bien */
@@ -348,23 +349,14 @@
 
     @media print { 
       body { background: white; padding: 0; }
-      .no-print { display: none; }
+      .no-print-tools { display: none; }
       .hoja { 
-        display: grid !important;
-        grid-template-columns: repeat(6, 31mm) !important;
-        grid-auto-rows: 22mm !important;
-        padding: 0 !important; gap: 1mm !important;
-        width: 190mm !important; /* Ancho real de la hoja carta menos margenes */
+        display: grid;
+        grid-template-columns: repeat(6, 31mm); /* Fuerza 6 columnas en papel */
+        grid-auto-rows: 22mm;
+        padding: 0; gap: 1mm;
       }
-      .etiqueta { 
-        border: 0.1mm solid #eee !important; 
-        height: 22mm !important; 
-        min-height: 22mm !important;
-        padding: 1mm 0.5mm !important;
-      }
-      .nombre { font-size: 7pt !important; }
-      .barras-visuales { font-size: 18pt !important; transform: scaleY(2) !important; height: 35pt !important; }
-      .numero-legible { margin-top: -10mm !important; }
+      .etiqueta { border: 0.1mm solid #ddd; }
     }
   </style>
 </head>
