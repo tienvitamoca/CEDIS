@@ -289,91 +289,92 @@
 
     // Modificamos esta función para que limpie el escáner al terminar
     // ─── FUNCIÓN PROFESIONAL DE PROCESAMIENTO DE ESCANEO ──────────
-// ─── FUNCIÓN COMPLETA Y CORREGIDA PARA COTIZADOR.HTML ──────────
-async function procesarCodigoEscaneado(codigoFull) {
-  // 1. Limpieza de entrada (quita asteriscos si vienen de la fuente Barcode 39)
-  const limpio = codigoFull.replace(/\*/g, '').trim();
+    // ─── FUNCIÓN COMPLETA Y CORREGIDA PARA COTIZADOR.HTML ──────────
+    // ─── PROCESAMIENTO AUTOMÁTICO BASADO EN COSTOS ──────────
+    async function procesarCodigoEscaneado(codigoFull) {
+      // 1. Limpieza de asteriscos y espacios
+      const limpio = codigoFull.replace(/\*/g, '').trim();
 
-  // 2. Desglose del código (6 dígitos producto + 2 dígitos presentación BB)
-  // Ej: 263001 + 12 = 26300112
-  const codProdStr = limpio.substring(0, 6);
-  const codBB = limpio.substring(6, 8);
+      // 2. Separar Código de Producto (6) y Presentación (2)
+      const codProdStr = limpio.substring(0, 6);
+      const codBB = limpio.substring(6, 8);
+      const codProdNum = parseInt(codProdStr);
 
-  // Convertimos a número para asegurar coincidencia con la DB (quita ceros a la izquierda)
-  const codProdNum = parseInt(codProdStr);
+      if (isNaN(codProdNum)) {
+        alert("Código no reconocido: " + limpio);
+        return;
+      }
 
-  if (isNaN(codProdNum)) {
-    alert("El código detectado no es un número válido: " + limpio);
-    return;
-  }
+      try {
+        // Feedback táctil para Morelia
+        if (navigator.vibrate) navigator.vibrate(100);
 
-  console.log(`Buscando Producto: ${codProdNum}, Presentación BB: ${codBB}`);
+        // Detener escáner antes de procesar
+        await apagarEscanner();
 
-  try {
-    // 3. Feedback táctil (vibración) si el celular lo permite
-    if (navigator.vibrate) navigator.vibrate(100);
+        // 3. Obtener datos del Producto (Costo y Margen)
+        const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
+        if (!dataP || !dataP.length) {
+          alert("Producto no registrado: " + codProdNum);
+          setTimeout(() => encenderEscanner(), 1000);
+          return;
+        }
+        const p = dataP[0];
 
-    // 4. Detener el escáner para procesar la información
-    await apagarEscanner();
+        // 4. Obtener datos de la Presentación (Gramos)
+        const dataBB = await dbGet('presentaciones', `codigo_bb=eq.${codBB}`);
+        if (!dataBB || !dataBB.length) {
+          alert(`Error: La presentación BB-${codBB} no existe.`);
+          setTimeout(() => encenderEscanner(), 1000);
+          return;
+        }
+        const bb = dataBB[0];
 
-    // 5. Buscar el Producto en la base de datos
-    const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
+        // 5. LÓGICA DE CÁLCULO AUTOMÁTICA (Igual a la Calculadora)
+        // Extraemos valores o usamos valores por defecto si están vacíos
+        const costoPorGramo = parseFloat(p.costo_gramo) || 0;
+        const gramosBolsa = parseFloat(bb.gramos) || 0;
+        const mTuyo = parseFloat(p.margen_ganancia) || 0.12; // Tu 12%
+        const mCliente = p.tipos_producto?.margen_cliente || 0.22; // El 22% de la tienda
 
-    if (!dataP || !dataP.length) {
-      alert("Producto no encontrado en el catálogo: " + codProdNum);
-      setTimeout(() => encenderEscanner(), 1000); // Reintento automático
-      return;
+        if (costoPorGramo <= 0 || gramosBolsa <= 0) {
+          alert(`Faltan datos técnicos para ${p.nombre}. Revisa el costo por gramo y los gramos de la presentación.`);
+          setTimeout(() => encenderEscanner(), 1000);
+          return;
+        }
+
+        // --- LA MATEMÁTICA ---
+        const costoNetoBolsa = costoPorGramo * gramosBolsa;
+        const precioVentaTuyo = costoNetoBolsa * (1 + mTuyo); // Ej: $20.64
+        const precioTiendaSugerido = precioVentaTuyo * (1 + mCliente); // Ej: $25.18
+
+        // 6. Llenar el formulario del Cotizador
+        productoTemp = p;
+        document.getElementById('form-nombre').textContent = p.nombre;
+        document.getElementById('form-info').textContent =
+          `${bb.nombre} (${gramosBolsa}g) | Sugerido Público: $${precioTiendaSugerido.toFixed(2)}`;
+
+        document.getElementById('form-cantidad').value = 1;
+
+        // El precio que entra al pedido es el que tú cobras ($20.64)
+        const campoPrecio = document.getElementById('form-precio');
+        campoPrecio.value = precioVentaTuyo.toFixed(2);
+
+        // Lo dejamos como solo lectura para evitar errores de dedo en la tienda
+        campoPrecio.readOnly = true;
+        campoPrecio.style.background = "#f1f5f9";
+
+        // Mostrar formulario y limpiar buscador
+        document.getElementById('agregar-form').style.display = 'block';
+        document.getElementById('busqueda').value = '';
+
+      } catch (e) {
+        console.error("Error en escaneo:", e);
+        alert("Error al procesar el código. Reintenta.");
+        setTimeout(() => encenderEscanner(), 1000);
+      }
     }
-
-    const p = dataP[0];
-
-    // 6. Buscar la Presentación específica (BB)
-    const dataBB = await dbGet('presentaciones', `codigo_bb=eq.${codBB}`);
-
-    if (!dataBB || !dataBB.length) {
-      alert(`Producto hallado: ${p.nombre}\nPero la presentación BB-${codBB} no existe en la base de datos.`);
-      setTimeout(() => encenderEscanner(), 1000);
-      return;
-    }
-
-    const bb = dataBB[0];
-
-    // 7. CÁLCULO DE PRECIO SUGERIDO (CORREGIDO)
-    // Obtenemos el margen configurado para el tipo de producto (ej: 0.22 para 22%)
-    const mCliente = p.tipos_producto?.margen_cliente || 0.22;
     
-    // Obtenemos el precio de referencia real de la tabla presentaciones
-    const precioReferencia = parseFloat(bb.precio_ref);
-
-    // Validamos que el precio de referencia exista y sea mayor a cero
-    if (isNaN(precioReferencia) || precioReferencia <= 0) {
-      alert(`Error: El producto "${p.nombre}" no tiene un precio de referencia válido para la presentación ${bb.nombre}.`);
-      setTimeout(() => encenderEscanner(), 1000);
-      return;
-    }
-
-    // FÓRMULA: Precio Sugerido = Precio de Lista / (1 + Margen)
-    // Ejemplo Frijol 500g: 25.18 / 1.22 = 20.64
-    const precioVentaSugerido = precioReferencia / (1 + mCliente);
-
-    // 8. Llenar el formulario en pantalla
-    productoTemp = p;
-    document.getElementById('form-nombre').textContent = p.nombre;
-    document.getElementById('form-info').textContent = `Categoría: ${p.tipos_producto?.nombre || 'General'} | Presentación: ${bb.nombre}`;
-    document.getElementById('form-cantidad').value = 1; // Por defecto 1 bolsa
-    document.getElementById('form-precio').value = precioVentaSugerido.toFixed(2);
-
-    // Mostrar el formulario y limpiar el campo de búsqueda manual
-    document.getElementById('agregar-form').style.display = 'block';
-    document.getElementById('busqueda').value = '';
-
-  } catch (e) {
-    console.error("Error crítico en procesarCodigoEscaneado:", e);
-    alert("Hubo un error al procesar el código de barras.");
-    setTimeout(() => encenderEscanner(), 1000);
-  }
-}
-
     // ACTUALIZACIÓN EN cotizador.html
     // REEMPLAZO DEFINITIVO EN cotizador.html
     function imprimirPedido() {
