@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cotizador — CEDIS</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .item-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .item-row:last-child {
+      border-bottom: none;
+    }
+
+    .total-bar {
+      position: sticky;
+      bottom: 70px;
+      background: var(--primary);
+      color: white;
+      padding: 1rem;
+      border-radius: var(--radius);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <a href="index.html">←</a>
+    <h1>🧾 Cotizador</h1>
+    <button onclick="limpiarTodo()"
+      style="background:rgba(255,255,255,0.2);color:white;border:none;padding:0.3rem 0.6rem;border-radius:6px;font-size:0.8rem;cursor:pointer">Limpiar</button>
+  </nav>
+
+  <div class="container has-bottom-nav">
+
+    <div class="card">
+      <div class="card-title">Agregar Producto</div>
+      <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem">
+        <div class="search-wrap" style="flex:1; margin:0">
+          <span class="icon">🔍</span>
+          <input type="text" id="busqueda" placeholder="Nombre o código..." oninput="buscarProducto()">
+        </div>
+        <button class="btn" onclick="encenderEscanner()"
+          style="background:var(--primary); color:white; padding:0 1rem; border-radius:8px">
+          📷
+        </button>
+      </div>
+
+      <div id="scanner-container" style="display:none; margin-bottom:1rem;">
+        <div id="reader" style="width:100%; border-radius:12px; overflow:hidden;"></div>
+        <button class="btn btn-outline" onclick="apagarEscanner()" style="width:100%; margin-top:0.5rem">
+          Cancelar Escaneo
+        </button>
+      </div>
+      <div id="sugerencias" style="display:none; border:1.5px solid var(--border); border-radius:8px; overflow:hidden;">
+      </div>
+
+      <div id="agregar-form" style="display:none; margin-top:0.75rem">
+        <div
+          style="background:var(--bg); border-radius:8px; padding:0.75rem; margin-bottom:0.75rem; border-left:4px solid var(--primary)">
+          <div style="font-weight:700; font-size:1.1rem" id="form-nombre"></div>
+          <div style="font-size:0.85rem; color:var(--text-muted)" id="form-info"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem">
+          <div class="field">
+            <label>Bolsas</label>
+            <input type="number" id="form-cantidad" min="1" value="1">
+          </div>
+          <div class="field">
+            <label>Precio Sugerido ($)</label>
+            <input type="number" step="0.01" id="form-precio" readonly style="background:#f1f5f9; font-weight:700">
+          </div>
+        </div>
+        <div style="display:flex; gap:0.5rem; margin-top:0.75rem">
+          <button class="btn btn-outline" style="flex:1" onclick="cancelarAgregar()">Cancelar</button>
+          <button class="btn btn-primary" style="flex:1" onclick="agregarAlPedido()">+ Agregar al Pedido</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pedido-container" style="display:none">
+      <div class="card" id="lista-pedido"></div>
+      <div class="total-bar">
+        <div>
+          <div style="font-size:0.78rem;opacity:0.85">Total del pedido</div>
+          <div style="font-size:1.5rem;font-weight:700" id="total-monto">$0.00</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:0.78rem;opacity:0.85" id="total-items">0 bolsas</div>
+          <button onclick="imprimirPedido()"
+            style="background:white;color:var(--primary);border:none;padding:0.4rem 0.8rem;border-radius:6px;font-weight:700;cursor:pointer;margin-top:0.3rem;font-size:0.85rem">
+            🖨️ Imprimir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="empty-pedido" class="empty">
+      <div class="icon">🧾</div>
+      <p>Agrega productos para comenzar el pedido</p>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
+    <!-- <a href="target.html"><span class="icon">🎯</span> Target</a> -->
+    <!-- <a href="tradicional.html"><span class="icon">📦</span> Tradicional</a> -->
+    <a href="etiquetas.html"><span class="icon">🏷️</span> Etiquetas</a>
+    <a href="calculadora.html"><span class="icon">🧮</span> calculadora</a>
+  </nav>
+
+  <script src="supabase.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    let pedido = [];
+    let productoTemp = null;
+    let timer = null;
+
+    async function buscarProducto() {
+      const q = document.getElementById('busqueda').value.trim();
+      clearTimeout(timer);
+      if (q.length < 2) { document.getElementById('sugerencias').style.display = 'none'; return; }
+      timer = setTimeout(async () => {
+        try {
+          const num = parseInt(q);
+          let params = 'select=*,tipos_producto(nombre)&limit=6&order=nombre.asc';
+          params += !isNaN(num) ? `&codigo=eq.${num}` : `&nombre=ilike.*${q}*`;
+          mostrarSugerencias(await dbGet('productos', params));
+        } catch (e) { console.error(e); }
+      }, 300);
+    }
+
+    function mostrarSugerencias(lista) {
+      const cont = document.getElementById('sugerencias');
+      if (!lista.length) { cont.style.display = 'none'; return; }
+      cont.innerHTML = lista.map(p => `
+        <div onclick="seleccionar(${p.id})"
+          style="padding:0.75rem 1rem;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"
+          onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='white'">
+          <div>
+            <div style="font-weight:600">${p.nombre}</div>
+            <div style="font-size:0.75rem;color:var(--text-muted)">${p.tipos_producto?.nombre || ''}</div>
+          </div>
+          <span class="badge badge-blue">${p.codigo}</span>
+        </div>`).join('');
+      cont.style.display = 'block';
+    }
+
+    async function seleccionar(id) {
+      const data = await dbGet('productos', `select=*,tipos_producto(nombre, margen_cliente)&id=eq.${id}`);
+      productoTemp = data[0];
+
+      document.getElementById('sugerencias').style.display = 'none';
+      document.getElementById('form-nombre').textContent = productoTemp.nombre;
+      document.getElementById('form-info').textContent = `Código: ${productoTemp.codigo}`;
+
+      // Por defecto sugerimos el precio de $10 (BB90)
+      const mc = productoTemp.tipos_producto?.margen_cliente || 0.22;
+      document.getElementById('form-precio').value = redondear(10 / (1 + mc));
+
+      document.getElementById('agregar-form').style.display = 'block';
+    }
+
+    function cancelarAgregar() {
+      productoTemp = null;
+      document.getElementById('agregar-form').style.display = 'none';
+    }
+
+    function agregarAlPedido() {
+      if (!productoTemp) return;
+      const cantidad = parseInt(document.getElementById('form-cantidad').value);
+      const precio = parseFloat(document.getElementById('form-precio').value);
+      if (!cantidad || cantidad < 1) { alert('Cantidad inválida'); return; }
+      if (!precio || precio <= 0) { alert('Precio inválido'); return; }
+
+      const existe = pedido.find(i => i.producto.id === productoTemp.id && i.precio === precio);
+      if (existe) {
+        existe.cantidad += cantidad;
+      } else {
+        pedido.push({ producto: productoTemp, cantidad, precio });
+      }
+      cancelarAgregar();
+      renderPedido();
+    }
+
+    function eliminarItem(idx) {
+      pedido.splice(idx, 1);
+      renderPedido();
+    }
+
+    function renderPedido() {
+      if (!pedido.length) {
+        document.getElementById('pedido-container').style.display = 'none';
+        document.getElementById('empty-pedido').style.display = 'block';
+        return;
+      }
+      document.getElementById('pedido-container').style.display = 'block';
+      document.getElementById('empty-pedido').style.display = 'none';
+
+      const total = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
+      const totalBolsas = pedido.reduce((s, i) => s + i.cantidad, 0);
+
+      document.getElementById('total-monto').textContent = formatPeso(total);
+      document.getElementById('total-items').textContent = `${totalBolsas} bolsa${totalBolsas !== 1 ? 's' : ''}`;
+
+      document.getElementById('lista-pedido').innerHTML = `
+        <div class="card-title">${pedido.length} producto${pedido.length !== 1 ? 's' : ''}</div>
+        ${pedido.map((item, idx) => `
+          <div class="item-row">
+            <div>
+              <div style="font-weight:600;font-size:0.9rem">${item.producto.nombre}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">
+                ${item.cantidad} × ${formatPeso(item.precio)}
+              </div>
+            </div>
+            <div style="font-weight:700;color:var(--primary);white-space:nowrap">${formatPeso(item.precio * item.cantidad)}</div>
+            <button onclick="eliminarItem(${idx})"
+              style="background:none;border:none;color:#dc2626;font-size:1.1rem;cursor:pointer">✕</button>
+          </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;padding-top:0.75rem;font-weight:700">
+          <span>TOTAL</span><span>${formatPeso(total)}</span>
+        </div>
+      `;
+    }
+
+    function limpiarTodo() {
+      if (!pedido.length) return;
+      if (!confirm('¿Limpiar todo el pedido?')) return;
+      pedido = [];
+      renderPedido();
+    }
+
+
+
+
+    let html5QrCode = null;
+
+    async function encenderEscanner() {
+      document.getElementById('scanner-container').style.display = 'block';
+      document.getElementById('agregar-form').style.display = 'none';
+
+      html5QrCode = new Html5Qrcode("reader");
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 150 }, // Recuadro visual de enfoque
+        aspectRatio: 1.0
+      };
+
+      try {
+        // Iniciamos con la cámara trasera ("environment")
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            // ÉXITO: Cuando detecta un código
+            console.log("Código detectado:", decodedText);
+            procesarCodigoEscaneado(decodedText);
+          }
+        );
+      } catch (err) {
+        console.error("Error al iniciar cámara:", err);
+        alert("No se pudo abrir la cámara. Verifica los permisos.");
+      }
+    }
+
+    async function apagarEscanner() {
+      if (html5QrCode) {
+        await html5QrCode.stop();
+        html5QrCode = null;
+      }
+      document.getElementById('scanner-container').style.display = 'none';
+    }
+
+    // Modificamos esta función para que limpie el escáner al terminar
+    // ─── FUNCIÓN PROFESIONAL DE PROCESAMIENTO DE ESCANEO ──────────
+    async function procesarCodigoEscaneado(codigoFull) {
+      // 1. Limpieza total de entrada
+      const limpio = codigoFull.replace(/\*/g, '').trim();
+
+      // 2. Desglose (Asumiendo 6 dígitos de producto + 2 de presentación BB)
+      // Ej: 26000301 -> codProdStr: "260003", codBB: "01"
+      const codProdStr = limpio.substring(0, 6);
+      const codBB = limpio.substring(6, 8);
+
+      // Convertimos a número para eliminar ceros a la izquierda (ej: "060033" -> 60033)
+      const codProdNum = parseInt(codProdStr);
+
+      if (isNaN(codProdNum)) {
+        alert("Código detectado no es válido: " + limpio);
+        return;
+      }
+
+      console.log(`Buscando Producto: ${codProdNum}, BB: ${codBB}`);
+
+      try {
+        // 3. Vibración de éxito inmediata
+        if (navigator.vibrate) navigator.vibrate(100);
+
+        // 4. Detenemos la cámara para procesar
+        await apagarEscanner();
+
+        // 5. Búsqueda en Base de Datos (Buscamos el código numérico)
+        const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
+
+        if (!dataP || !dataP.length) {
+          alert("Producto no encontrado en catálogo: " + codProdNum);
+          setTimeout(() => encenderEscanner(), 1000);
+          return;
+        }
+
+        const p = dataP[0];
+
+        // 6. Buscar la Presentación BB en la base de datos
+        // Consulta directa para asegurar que el dato esté fresco
+        const dataBB = await dbGet('presentaciones', `codigo_bb=eq.${codBB}`);
+
+        if (!dataBB || !dataBB.length) {
+          alert(`Producto hallado: ${p.nombre}, pero la presentación BB-${codBB} no existe.`);
+          setTimeout(() => encenderEscanner(), 1000);
+          return;
+        }
+
+        const bb = dataBB[0];
+
+        // 7. CÁLCULO AUTOMÁTICO PROFESIONAL
+        // Usamos el margen de la categoría o un 22% por defecto
+        const mCliente = p.tipos_producto?.margen_cliente || 0.22;
+        const precioReferencia = parseFloat(bb.precio_ref) || 10;
+
+        // Fórmula: Precio Venta = Precio Tienda / (1 + Margen Cliente)
+        const precioVentaSugerido = precioReferencia / (1 + mCliente);
+
+        // 8. Llenar Formulario en Pantalla
+        productoTemp = p;
+        document.getElementById('form-nombre').textContent = p.nombre;
+        document.getElementById('form-info').textContent = `Categoría: ${p.tipos_producto?.nombre || 'General'} | Presentación: ${bb.nombre}`;
+        document.getElementById('form-cantidad').value = 1;
+        document.getElementById('form-precio').value = precioVentaSugerido.toFixed(2);
+
+        // Mostrar el formulario y limpiar la búsqueda manual
+        document.getElementById('agregar-form').style.display = 'block';
+        document.getElementById('busqueda').value = '';
+
+      } catch (e) {
+        console.error("Error en procesarCodigoEscaneado:", e);
+        alert("Error crítico al procesar: " + e.message);
+        setTimeout(() => encenderEscanner(), 1000);
+      }
+    }
+
+
+    // ACTUALIZACIÓN EN cotizador.html
+    // REEMPLAZO DEFINITIVO EN cotizador.html
+    function imprimirPedido() {
+      const fecha = new Date().toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const total = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
+      const totalBolsas = pedido.reduce((s, i) => s + i.cantidad, 0);
+
+      // Generar el texto para WhatsApp
+      let textoWhatsApp = `*📦 CEDIS MORELIA - NOTA DE VENTA*\n`;
+      textoWhatsApp += `📅 _${fecha}_\n`;
+      textoWhatsApp += `--------------------------\n`;
+      pedido.forEach(i => {
+        textoWhatsApp += `• *${i.producto.nombre}*\n  ${i.cantidad} pzas x ${formatPeso(i.precio)} = *${formatPeso(i.precio * i.cantidad)}*\n`;
+      });
+      textoWhatsApp += `--------------------------\n`;
+      textoWhatsApp += `*TOTAL A PAGAR: ${formatPeso(total)}*\n`;
+      textoWhatsApp += `_Artículos totales: ${totalBolsas}_`;
+
+      const win = window.open('', '_blank');
+      win.document.write(`
+<html>
+<head>
+    <title>Nota de Venta - CEDIS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif; 
+            margin: 0; padding: 15px; background: #f8fafc; color: #1e293b;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .ticket { 
+            background: white; width: 100%; max-width: 450px; 
+            padding: 25px; border-radius: 20px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 120px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header h2 { margin: 0; color: #2563eb; font-size: 1.6rem; }
+        .info-bar { 
+            display: flex; justify-content: space-between; font-size: 0.75rem; 
+            color: #94a3b8; border-y: 1px solid #f1f5f9; padding: 10px 0; margin: 15px 0;
+        }
+        .item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f8fafc; }
+        .item-name { font-weight: 700; font-size: 1rem; color: #0f172a; display: block; }
+        .item-sub { font-size: 0.85rem; color: #64748b; }
+        .item-total { font-weight: 800; font-size: 1.05rem; color: #1e293b; }
+        .totals { margin-top: 25px; background: #2563eb; color: white; padding: 20px; border-radius: 15px; }
+        .grand-total { display: flex; justify-content: space-between; font-size: 1.4rem; font-weight: 900; }
+        
+        /* Panel de botones flotante */
+        .actions-wrapper {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            padding: 20px; background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(15px); border-top: 1px solid #e2e8f0;
+            display: flex; gap: 10px; justify-content: center;
+        }
+        .btn {
+            border: none; border-radius: 12px; font-weight: 700; font-size: 0.95rem;
+            cursor: pointer; transition: transform 0.1s; flex: 1; max-width: 200px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            height: 50px;
+        }
+        .btn-share { background: #22c55e; color: white; } /* Color WhatsApp */
+        .btn-print { background: #e2e8f0; color: #475569; }
+        .btn:active { transform: scale(0.96); }
+
+        @media print { .actions-wrapper { display: none; } }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <div class="header">
+            <h2>📦 CEDIS MORELIA</h2>
+            <p>Resumen de Pedido</p>
+        </div>
+        <div class="info-bar">
+            <span>${fecha}</span>
+            <span>ORDEN: #${Math.floor(Date.now() / 100000)}</span>
+        </div>
+        <div>
+            ${pedido.map(i => `
+                <div class="item">
+                    <div style="flex:1">
+                        <span class="item-name">${i.producto.nombre}</span>
+                        <span class="item-sub">${i.cantidad} pzas × ${formatPeso(i.precio)}</span>
+                    </div>
+                    <div class="item-total">${formatPeso(i.precio * i.cantidad)}</div>
+                </div>
+            `).join('')}
+        </div>
+        <div class="totals">
+            <div class="grand-total">
+                <span>TOTAL</span>
+                <span>${formatPeso(total)}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions-wrapper no-print">
+         <button class="btn btn-print" onclick="window.print()">
+            🖨️ PDF
+         </button>
+         <button class="btn btn-share" onclick="compartirWhatsApp()">
+            <span>💬 WhatsApp</span>
+         </button>
+    </div>
+
+    <script>
+        function compartirWhatsApp() {
+            const texto = \`${textoWhatsApp.replace(/`/g, '\\`')}\`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Nota de Venta - CEDIS',
+                    text: texto
+                }).catch(console.error);
+            } else {
+                // Fallback si el navegador no soporta Share API
+                const url = "https://wa.me/?text=" + encodeURIComponent(texto);
+                window.open(url, '_blank');
+            }
+        }
+    <\/script>
+</body>
+</html>
+    `);
+      win.document.close();
+    }
+
+
+    renderPedido();
+  </script>
+</body>
+
+</html>
