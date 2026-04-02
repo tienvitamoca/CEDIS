@@ -11,7 +11,6 @@
     href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&family=Libre+Barcode+128+Text&family=Libre+Barcode+39&display=swap"
     rel="stylesheet">
   <style>
-    
     /* Estilo para la vista previa en pantalla */
     .preview-grid {
       display: grid;
@@ -220,24 +219,24 @@
     }
 
 
-async function compartirPDF() {
-  if (!productoActual) return;
-  const bbCode = document.getElementById('presentacion-bb').value;
-  if (!bbCode) { alert('Selecciona una presentación'); return; }
-  
-  const cant = document.getElementById('cantidad-etiquetas').value;
-  const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
-  const nombreArchivo = `Etiquetas_${productoActual.nombre.replace(/ /g, '_')}.pdf`;
+    async function compartirPDF() {
+      if (!productoActual) return;
+      const bbCode = document.getElementById('presentacion-bb').value;
+      if (!bbCode) { alert('Selecciona una presentación'); return; }
 
-  // 1. Crear contenedor con estilos específicos para html2pdf
-  const elemento = document.createElement('div');
-  elemento.style.width = '190mm'; // Ancho carta estándar
-  elemento.innerHTML = `
+      const cant = document.getElementById('cantidad-etiquetas').value;
+      const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
+      const nombreArchivo = `Etiquetas_${productoActual.nombre.replace(/ /g, '_')}.pdf`;
+
+      // 1. Creamos el diseño oculto que se convertirá en PDF
+      const elemento = document.createElement('div');
+      elemento.style.width = '190mm';
+      elemento.innerHTML = `
     <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
-    <div style="display: grid; grid-template-columns: repeat(6, 31mm); grid-auto-rows: 20mm; gap: 0.5mm; background: white;">
+    <div style="display: grid; grid-template-columns: repeat(6, 31mm); grid-auto-rows: 20mm; gap: 0.5mm; background: white; padding: 5mm;">
         ${Array(parseInt(cant)).fill(0).map(() => {
-          const cod = generarCodigoBarras(productoActual, bbCode);
-          return `
+        const cod = generarCodigoBarras(productoActual, bbCode);
+        return `
             <div style="border: 0.1mm solid #eee; height: 20mm; display: flex; flex-direction: column; align-items: center; text-align: center; overflow: hidden; padding: 0.8mm 0.5mm; box-sizing: border-box; font-family: sans-serif;">
                 <div style="font-size: 7pt; font-weight: bold; line-height: 0.85; text-transform: uppercase;">${productoActual.nombre}</div>
                 <div style="font-size: 6pt; font-weight: bold;">${pres.nombre}</div>
@@ -246,41 +245,46 @@ async function compartirPDF() {
                 <div style="font-size: 7.5pt; font-weight: bold; font-family: monospace; margin-top: -1.5mm;">${cod.num}</div>
             </div>
           `;
-        }).join('')}
+      }).join('')}
     </div>
   `;
 
-  const opt = {
-    margin: 5,
-    filename: nombreArchivo,
-    image: { type: 'jpeg', quality: 1 },
-    html2canvas: { scale: 3, useCORS: true, letterRendering: true },
-    jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-  };
+      const opt = {
+        margin: 0,
+        filename: nombreArchivo,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { scale: 3, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+      };
 
-  try {
-    // Esperar a que las fuentes carguen antes de generar
-    const worker = html2pdf().set(opt).from(elemento);
-    const pdfBlob = await worker.output('blob');
-    
-    const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+      try {
+        // 2. Generar el archivo binario (Blob)
+        const worker = html2pdf().set(opt).from(elemento);
+        const pdfBlob = await worker.output('blob');
+        const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
 
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        files: [file],
-        title: 'Etiquetas CEDIS',
-        text: `Etiquetas de ${productoActual.nombre}`
-      });
-    } else {
-      // Fallback: Descarga directa si no se puede compartir
-      await worker.save();
-      alert("El PDF se descargó. Ahora puedes adjuntarlo manualmente a WhatsApp.");
+        // 3. Usar el menú de compartir del celular
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Etiquetas CEDIS',
+            text: `🏷️ *ETIQUETAS: ${productoActual.nombre}*\nCant: ${cant}\nFecha: ${new Date().toLocaleDateString()}`
+          });
+        } else {
+          // Si el cel es muy viejo o no soporta compartir archivos, lo descarga
+          await worker.save();
+          alert("Tu celular no permite enviar archivos directo. El PDF se descargó a tu carpeta de Descargas.");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Error al generar el PDF. Verifica que tengas internet.");
+      }
     }
-  } catch (error) {
-    console.error("Error al generar PDF:", error);
-    alert("Error al generar el archivo PDF.");
-  }
-}
+
+
+
+
+
 
     function imprimirPDF() {
       if (!productoActual) return;
