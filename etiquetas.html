@@ -355,9 +355,15 @@
 }
 
     @media print { 
-      body { background: white; }
-      .no-print { display: none; } 
-      .hoja { box-shadow: none; }
+      body { background: white; padding: 0; }
+      .no-print-tools { display: none; }
+      .hoja { 
+        display: grid;
+        grid-template-columns: repeat(6, 31mm); /* Fuerza 6 columnas en papel */
+        grid-auto-rows: 22mm;
+        padding: 0; gap: 1mm;
+      }
+      .etiqueta { border: 0.1mm solid #ddd; }
     }
   </style>
 </head>
