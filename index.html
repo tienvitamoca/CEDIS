@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CEDIS — Sistema de Precios</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .menu-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem 1rem;
+      text-align: center;
+      text-decoration: none;
+      color: var(--text);
+      transition: transform 0.15s, box-shadow 0.15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .menu-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .menu-card .icon {
+      font-size: 2.2rem;
+    }
+
+    .menu-card .titulo {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .menu-card .desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .menu-card.blue {
+      border-top: 4px solid #2563eb;
+    }
+
+    .menu-card.green {
+      border-top: 4px solid #16a34a;
+    }
+
+    .menu-card.orange {
+      border-top: 4px solid #ea580c;
+    }
+
+    .menu-card.purple {
+      border-top: 4px solid #7c3aed;
+    }
+
+    .menu-card.teal {
+      border-top: 4px solid #0891b2;
+    }
+
+    .header-info {
+      background: var(--primary);
+      color: white;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      margin: -1rem -1rem 1.5rem;
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    .header-info h2 {
+      font-size: 1.3rem;
+    }
+
+    .header-info p {
+      font-size: 0.85rem;
+      opacity: 0.85;
+      margin-top: 0.2rem;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <h1>📦 CEDIS</h1>
+    <span id="hora" style="font-size:0.8rem;opacity:0.85"></span>
+  </nav>
+
+  <div class="container has-bottom-nav">
+    <div class="header-info">
+      <h2>Sistema de Precios</h2>
+      <p>Cedis MoCa</p>
+    </div>
+
+    <div class="menu-grid">
+      <a href="catalogo.html" class="menu-card blue">
+        <span class="icon">📋</span>
+        <span class="titulo">Catálogo</span>
+        <span class="desc">Productos y costos</span>
+      </a>
+      <a href="calculadora.html" class="menu-card" style="border-top:4px solid #1e293b">
+        <span class="icon">🧮</span>
+        <span class="titulo">calculadora de empaque</span>
+        <span class="desc">Calculadora</span>
+      </a>
+
+      <!-- <a href="target.html" class="menu-card green">
+        <span class="icon">🎯</span>
+        <span class="titulo">Target Costing</span>
+        <span class="desc">Precio → Gramos</span>
+      </a>
+      <a href="tradicional.html" class="menu-card orange">
+        <span class="icon">📦</span>
+        <span class="titulo">Modo Tradicional</span>
+        <span class="desc">Gramos → Precio</span>
+      </a> -->
+
+      <a href="cotizador.html" class="menu-card purple">
+        <span class="icon">🧾</span>
+        <span class="titulo">Cotizador</span>
+        <span class="desc">Calcular pedido</span>
+      </a>
+      <a href="etiquetas.html" class="menu-card teal">
+        <span class="icon">🏷️</span>
+        <span class="titulo">Etiquetas</span>
+        <span class="desc">Imprimir códigos</span>
+      </a>
+      <a href="admin.html" class="menu-card" style="border-top:4px solid #1e293b">
+        <span class="icon">⚙️</span>
+        <span class="titulo">Administración</span>
+        <span class="desc">Configuración avanzada</span>
+      </a>
+
+      
+
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html" class="active">
+      <span class="icon">🏠</span> Inicio
+    </a>
+    <a href="catalogo.html">
+      <span class="icon">📋</span> Catálogo
+    </a>
+    <!-- <a href="target.html">
+      <span class="icon">🎯</span> Target
+    </a>
+    <a href="tradicional.html">
+      <span class="icon">📦</span> Tradicional
+    </a> -->
+    <a href="calculadora.html"><span class="icon">🧮</span> calculadora</a>
+    <a href="cotizador.html">
+      <span class="icon">🧾</span> Cotizador
+    </a>
+  </nav>
+
+  <script>
+    function actualizarHora() {
+      const ahora = new Date();
+      document.getElementById('hora').textContent =
+        ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    }
+    actualizarHora();
+    setInterval(actualizarHora, 60000);
+
+    // --- PROTECCIÓN DE ACCESO ---
+    (function () {
+      const acceso = localStorage.getItem('cedis_auth');
+      if (acceso !== 'autorizado') {
+        const pass = prompt("Introduce la contraseña de acceso para CEDISMoCa:");
+        const passCorrecta = "2026"; // <-- CAMBIA ESTO por tu clave real
+
+        if (pass === passCorrecta) {
+          localStorage.setItem('cedis_auth', 'autorizado');
+        } else {
+          alert("Acceso denegado.");
+          // Borramos el contenido para que no vean nada detrás del prompt
+          document.documentElement.innerHTML = "<body style='background:#f1f5f9;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;'><div><h1>🔒 Acceso Restringido</h1><p>Contraseña incorrecta. Recarga la página para intentar de nuevo.</p></div></body>";
+          throw new Error("Acceso no autorizado"); // Detiene la ejecución del resto de scripts
+        }
+      }
+    })();
+
+
+  </script>
+</body>
+
+</html>

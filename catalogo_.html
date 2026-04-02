@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo — CEDIS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html">←</a>
+    <h1>📋 Catálogo</h1>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none" onclick="abrirModal()">+ Nuevo</button>
+  </nav>
+
+  <div class="container has-bottom-nav">
+
+    <!-- Búsqueda y filtro -->
+    <div class="card" style="padding:1rem">
+      <div class="search-wrap">
+        <span class="icon">🔍</span>
+        <input type="text" id="busqueda" placeholder="Buscar por nombre o código..." oninput="buscar()">
+      </div>
+      <select id="filtro-tipo" onchange="buscar()" style="margin-top:0.5rem">
+        <option value="">Todas las categorías</option>
+      </select>
+    </div>
+
+    <!-- Lista -->
+    <div class="card" id="lista-container">
+      <div class="spinner"></div>
+    </div>
+
+  </div>
+
+  <!-- Modal producto -->
+  <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;overflow-y:auto">
+    <div style="background:white;margin:1rem;border-radius:var(--radius);padding:1.25rem;max-width:500px;margin-left:auto;margin-right:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h3 id="modal-titulo">Producto</h3>
+        <button onclick="cerrarModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer">✕</button>
+      </div>
+
+      <input type="hidden" id="prod-id">
+
+      <div class="field">
+        <label>Nombre</label>
+        <input type="text" id="prod-nombre">
+      </div>
+      <div class="field">
+        <label>Código</label>
+        <input type="number" id="prod-codigo">
+      </div>
+      <div class="field">
+        <label>Categoría</label>
+        <select id="prod-tipo"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+        <div class="field">
+          <label>Costo por Kg ($)</label>
+          <input type="number" step="0.01" id="prod-costo-kg" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Merma (%)</label>
+          <input type="number" step="0.01" id="prod-merma" placeholder="0.02">
+        </div>
+        <div class="field">
+          <label>Costo Bolsa ($)</label>
+          <input type="number" step="0.01" id="prod-bolsa" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Costo Producción ($)</label>
+          <input type="number" step="0.01" id="prod-produccion" placeholder="0.00">
+        </div>
+      </div>
+
+      <div id="modal-error" class="alert alert-error" style="display:none"></div>
+
+      <div style="display:flex;gap:0.75rem;margin-top:0.5rem">
+        <button class="btn btn-outline" style="flex:1" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn btn-primary" style="flex:1" onclick="guardarProducto()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="catalogo.html" class="active"><span class="icon">📋</span> Catálogo</a>
+    <a href="target.html"><span class="icon">🎯</span> Target</a>
+    <a href="tradicional.html"><span class="icon">📦</span> Tradicional</a>
+    <a href="cotizador.html"><span class="icon">🧾</span> Cotizador</a>
+  </nav>
+
+  <script src="supabase.js"></script>
+  <script>
+    let productos = [];
+    let tipos = [];
+
+    async function init() {
+      tipos = await getTipos();
+      // Llenar filtro
+      const sel = document.getElementById('filtro-tipo');
+      tipos.forEach(t => {
+        sel.innerHTML += `<option value="${t.id}">${t.nombre}</option>`;
+      });
+      // Llenar select del modal
+      const selModal = document.getElementById('prod-tipo');
+      tipos.forEach(t => {
+        selModal.innerHTML += `<option value="${t.id}">${t.nombre}</option>`;
+      });
+      await buscar();
+    }
+
+    async function buscar() {
+      const q = document.getElementById('busqueda').value.trim();
+      const tipo = document.getElementById('filtro-tipo').value;
+      document.getElementById('lista-container').innerHTML = '<div class="spinner"></div>';
+
+      try {
+        let params = 'select=*,tipos_producto(nombre)&order=codigo.asc';
+        if (q) {
+          const num = parseInt(q);
+          params += !isNaN(num) ? `&codigo=eq.${num}` : `&nombre=ilike.*${q}*`;
+        }
+        if (tipo) params += `&tipo_id=eq.${tipo}`;
+        productos = await dbGet('productos', params);
+        renderLista();
+      } catch(e) {
+        document.getElementById('lista-container').innerHTML =
+          `<div class="alert alert-error">${e.message}</div>`;
+      }
+    }
+
+    function renderLista() {
+      const cont = document.getElementById('lista-container');
+      if (!productos.length) {
+        cont.innerHTML = `<div class="empty"><div class="icon">📭</div><p>Sin resultados</p></div>`;
+        return;
+      }
+      cont.innerHTML = productos.map(p => `
+        <div class="list-item" onclick="editarProducto(${p.id})">
+          <div>
+            <div class="nombre">${p.nombre}</div>
+            <div class="sub">
+              <span class="badge badge-blue">${p.codigo}</span>
+              &nbsp;${p.tipos_producto?.nombre || ''}
+              ${p.costo_kg ? `&nbsp;·&nbsp;$${p.costo_kg}/kg` : '<span style="color:#dc2626"> · Sin costo</span>'}
+            </div>
+          </div>
+          <span class="arrow">›</span>
+        </div>
+      `).join('');
+    }
+
+    function abrirModal(prod = null) {
+      document.getElementById('modal-titulo').textContent = prod ? 'Editar Producto' : 'Nuevo Producto';
+      document.getElementById('prod-id').value         = prod?.id || '';
+      document.getElementById('prod-nombre').value     = prod?.nombre || '';
+      document.getElementById('prod-codigo').value     = prod?.codigo || '';
+      document.getElementById('prod-tipo').value       = prod?.tipo_id || tipos[0]?.id || '';
+      document.getElementById('prod-costo-kg').value   = prod?.costo_kg || '';
+      document.getElementById('prod-merma').value      = prod?.merma_pct || 0.02;
+      document.getElementById('prod-bolsa').value      = prod?.costo_bolsa || '';
+      document.getElementById('prod-produccion').value = prod?.costo_produccion || '';
+      document.getElementById('modal-error').style.display = 'none';
+      document.getElementById('modal').style.display = 'block';
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal').style.display = 'none';
+    }
+
+    async function editarProducto(id) {
+      const prod = productos.find(p => p.id === id);
+      if (prod) abrirModal(prod);
+    }
+
+    async function guardarProducto() {
+      const id     = document.getElementById('prod-id').value;
+      const nombre = document.getElementById('prod-nombre').value.trim();
+      const codigo = parseInt(document.getElementById('prod-codigo').value);
+
+      if (!nombre || !codigo) {
+        mostrarError('Nombre y código son obligatorios');
+        return;
+      }
+
+      const data = {
+        nombre,
+        codigo,
+        tipo_id          : parseInt(document.getElementById('prod-tipo').value),
+        costo_kg         : parseFloat(document.getElementById('prod-costo-kg').value) || null,
+        merma_pct        : parseFloat(document.getElementById('prod-merma').value) || 0.02,
+        costo_bolsa      : parseFloat(document.getElementById('prod-bolsa').value) || null,
+        costo_produccion : parseFloat(document.getElementById('prod-produccion').value) || null,
+      };
+
+      try {
+        if (id) {
+          await dbPatch('productos', id, data);
+        } else {
+          await dbPost('productos', data);
+        }
+        cerrarModal();
+        await buscar();
+      } catch(e) {
+        mostrarError(e.message);
+      }
+    }
+
+    function mostrarError(msg) {
+      const el = document.getElementById('modal-error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    init();
+  </script>
+</body>
+</html>
