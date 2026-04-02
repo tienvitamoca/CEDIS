@@ -245,29 +245,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&family=Libre+Barcode+128+Text&family=Libre+Barcode+39&display=swap" rel="stylesheet">
   <style>
     @page { margin: 0.3cm; size: letter; }
-    body { 
-      font-family: -apple-system, sans-serif; 
-      margin: 0; padding: 0; 
-      display: flex; flex-direction: column; align-items: center; 
-      background: #f4f4f7; 
-    }
-
-    .btn-print {
-      padding: 14px 28px; background: white; color: #2563eb; 
-      border: none; border-radius: 10px; cursor: pointer; 
-      font-weight: bold; font-size: 18px; width: 90%;
-    }
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; background: #f4f4f4; }
 
     /* 1. Ajustamos la altura de la fila en la rejilla */
     .hoja {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(45%, 1fr)); /* 2 columnas en celular para verlas bien */
-      grid-auto-rows: auto;
-      gap: 2mm;
-      width: 100%;
+      grid-template-columns: repeat(6, 31mm);
+      grid-auto-rows: 22mm; /* BAJAMOS DE 27mm A 22mm */
+      gap: 1mm;
+      width: fit-content;
       background: white;
-      padding: 10px;
-      box-sizing: border-box;
+      padding: 2mm;
+							 
     }
 
     /* 2. Definimos el alto exacto de la etiqueta para que no sobre nada */
@@ -349,14 +338,23 @@
 
     @media print { 
       body { background: white; padding: 0; }
-      .no-print-tools { display: none; }
+      .no-print { display: none; }
       .hoja { 
-        display: grid;
-        grid-template-columns: repeat(6, 31mm); /* Fuerza 6 columnas en papel */
-        grid-auto-rows: 22mm;
-        padding: 0; gap: 1mm;
+        display: grid !important;
+        grid-template-columns: repeat(6, 31mm) !important;
+        grid-auto-rows: 22mm !important;
+        padding: 0 !important; gap: 1mm !important;
+        width: 190mm !important; /* Ancho real de la hoja carta menos margenes */
       }
-      .etiqueta { border: 0.1mm solid #ddd; }
+      .etiqueta { 
+        border: 0.1mm solid #eee !important; 
+        height: 22mm !important; 
+        min-height: 22mm !important;
+        padding: 1mm 0.5mm !important;
+      }
+      .nombre { font-size: 7pt !important; }
+      .barras-visuales { font-size: 18pt !important; transform: scaleY(2) !important; height: 35pt !important; }
+      .numero-legible { margin-top: -10mm !important; }
     }
   </style>
 </head>
