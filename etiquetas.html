@@ -6,10 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Imprimir Etiquetas — CEDIS</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&family=Libre+Barcode+128+Text&family=Libre+Barcode+39&display=swap"
     rel="stylesheet">
   <style>
+    
     /* Estilo para la vista previa en pantalla */
     .preview-grid {
       display: grid;
@@ -17,7 +19,7 @@
       gap: 5px;
       margin-top: 1rem;
       border: 1px dashed #ccc;
-      padding: 10px; 
+      padding: 10px;
     }
 
     .mini-etiqueta {
@@ -218,24 +220,85 @@
     }
 
 
-
-function imprimirPDF() {
+async function compartirPDF() {
   if (!productoActual) return;
   const bbCode = document.getElementById('presentacion-bb').value;
   if (!bbCode) { alert('Selecciona una presentación'); return; }
-
+  
+  const cant = document.getElementById('cantidad-etiquetas').value;
   const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
-  const codigoObj = generarCodigoBarras(productoActual, bbCode);
-  const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value);
+  const nombreArchivo = `Etiquetas_${productoActual.nombre.replace(/ /g, '_')}.pdf`;
 
-  const fechaHoy = new Date().toLocaleDateString('es-MX', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit'
-  });
+  // 1. Crear contenedor con estilos específicos para html2pdf
+  const elemento = document.createElement('div');
+  elemento.style.width = '190mm'; // Ancho carta estándar
+  elemento.innerHTML = `
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
+    <div style="display: grid; grid-template-columns: repeat(6, 31mm); grid-auto-rows: 20mm; gap: 0.5mm; background: white;">
+        ${Array(parseInt(cant)).fill(0).map(() => {
+          const cod = generarCodigoBarras(productoActual, bbCode);
+          return `
+            <div style="border: 0.1mm solid #eee; height: 20mm; display: flex; flex-direction: column; align-items: center; text-align: center; overflow: hidden; padding: 0.8mm 0.5mm; box-sizing: border-box; font-family: sans-serif;">
+                <div style="font-size: 7pt; font-weight: bold; line-height: 0.85; text-transform: uppercase;">${productoActual.nombre}</div>
+                <div style="font-size: 6pt; font-weight: bold;">${pres.nombre}</div>
+                <div style="font-size: 4.5pt; color: #555;">Emp: ${new Date().toLocaleDateString('es-MX')}</div>
+                <div style="font-family: 'Libre Barcode 39'; font-size: 18pt; transform: scaleY(1.6); transform-origin: top; height: 20pt; margin-bottom: 1.5mm; color: #000;">${cod.textoParaFuente}</div>
+                <div style="font-size: 7.5pt; font-weight: bold; font-family: monospace; margin-top: -1.5mm;">${cod.num}</div>
+            </div>
+          `;
+        }).join('')}
+    </div>
+  `;
 
-  const win = window.open('', '_blank');
-  win.document.write(`
+  const opt = {
+    margin: 5,
+    filename: nombreArchivo,
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: { scale: 3, useCORS: true, letterRendering: true },
+    jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+  };
+
+  try {
+    // Esperar a que las fuentes carguen antes de generar
+    const worker = html2pdf().set(opt).from(elemento);
+    const pdfBlob = await worker.output('blob');
+    
+    const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: 'Etiquetas CEDIS',
+        text: `Etiquetas de ${productoActual.nombre}`
+      });
+    } else {
+      // Fallback: Descarga directa si no se puede compartir
+      await worker.save();
+      alert("El PDF se descargó. Ahora puedes adjuntarlo manualmente a WhatsApp.");
+    }
+  } catch (error) {
+    console.error("Error al generar PDF:", error);
+    alert("Error al generar el archivo PDF.");
+  }
+}
+
+    function imprimirPDF() {
+      if (!productoActual) return;
+      const bbCode = document.getElementById('presentacion-bb').value;
+      if (!bbCode) { alert('Selecciona una presentación'); return; }
+
+      const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
+      const codigoObj = generarCodigoBarras(productoActual, bbCode);
+      const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value);
+
+      const fechaHoy = new Date().toLocaleDateString('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit'
+      });
+
+      const win = window.open('', '_blank');
+      win.document.write(`
 <html>
 <head>
   <title>Etiquetas - ${productoActual.nombre}</title>
@@ -361,28 +424,7 @@ function imprimirPDF() {
 </body>
 </html>
 `);
-  win.document.close();
-}
-
-    function compartirPDF() {
-      if (!productoActual) return;
-      const bbCode = document.getElementById('presentacion-bb').value;
-      const cant = document.getElementById('cantidad-etiquetas').value;
-
-      const texto = `*🏷️ ETIQUETAS LISTAS - CEDIS*\n` +
-        `• *Producto:* ${productoActual.nombre}\n` +
-        `• *Cantidad:* ${cant} etiquetas\n` +
-        `• *Fecha:* ${new Date().toLocaleDateString()}\n\n` +
-        `_Las etiquetas se han generado correctamente para su impresión._`;
-
-      if (navigator.share) {
-        navigator.share({
-          title: 'Etiquetas CEDIS',
-          text: texto
-        }).catch(console.error);
-      } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
-      }
+      win.document.close();
     }
 
 
