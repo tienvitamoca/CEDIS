@@ -73,7 +73,7 @@
           </div>
           <div class="field">
             <label>Cantidad de etiquetas</label>
-            <input type="number" id="cantidad-etiquetas" value="66" min="1" max="100">
+            <input type="number" id="cantidad-etiquetas" value="78" min="1" max="100">
           </div>
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem;">
@@ -257,12 +257,11 @@ function imprimirPDF() {
       position: sticky; top: 0; z-index: 100;
     }
 
-    /* Vista optimizada para ver en celular */
     .hoja {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(45%, 1fr)); 
-      grid-auto-rows: auto;
-      gap: 2mm;
+      grid-auto-rows: 20mm; /* REDUCIDO A 20mm */
+      gap: 1mm;
       width: 100%;
       background: white;
       padding: 10px;
@@ -276,21 +275,21 @@ function imprimirPDF() {
       justify-content: flex-start;
       align-items: center;
       text-align: center;
-      padding: 1mm 0.5mm; 
+      padding: 0.8mm 0.5mm; /* Padding más ajustado */
       box-sizing: border-box;
       overflow: hidden;
-      height: 22mm;
+      height: 20mm; /* ETIQUETA MÁS COMPACTA */
       background: white;
     }
 
     .nombre { 
       font-size: 7pt; font-weight: bold; text-transform: uppercase; 
       margin-bottom: 0.1mm; width: 100%; white-space: normal; 
-      line-height: 0.9; color: #000;
+      line-height: 0.85; color: #000;
     }
 
-    .presentacion { font-size: 6.5pt; color: #000; font-weight: bold; line-height: 1; margin-bottom: 0.1mm; }
-    .fecha-empaque { font-size: 5pt; color: #555; margin-bottom: 1mm; margin-top: 0.1mm; line-height: 1; }
+    .presentacion { font-size: 6pt; color: #000; font-weight: bold; line-height: 1; margin-bottom: 0.1mm; }
+    .fecha-empaque { font-size: 4.5pt; color: #555; margin-bottom: 0.5mm; line-height: 1; }
 
     .barras-visuales {
       font-family: 'Libre Barcode 39', cursive !important;
@@ -299,23 +298,21 @@ function imprimirPDF() {
       text-align: center;
       color: #000 !important;
       letter-spacing: 0 !important;
-      word-spacing: 0 !important;
       white-space: nowrap;
       image-rendering: pixelated;
-      -webkit-font-smoothing: none;
-      transform: scaleY(1.8); /* Reducido un poco para dar aire */
+      transform: scaleY(1.6); /* Reducido ligeramente para ganar espacio vertical */
       transform-origin: top;
-      height: 25pt; /* Altura fija controlada */
-      margin-bottom: 3.5mm;
+      height: 20pt; /* Contenedor más bajo */
+      margin-bottom: 1.5mm; /* PEGADO AL NÚMERO */
     } 
 
     .numero-legible {
       font-family: 'Courier New', monospace;
-      font-size: 7pt;
+      font-size: 7.5pt;
       font-weight: bold;
-      margin-top: -10mm; /* Quitamos el margin positivo que empuja */
+      margin-top: -1.5mm; /* SUCCIÓN PARA ELIMINAR ESPACIO BLANCO */
       text-align: center;
-      letter-spacing: 2px;
+      letter-spacing: 1.5px;
       line-height: 1;
     }
 
@@ -325,21 +322,20 @@ function imprimirPDF() {
       .hoja { 
         display: grid !important;
         grid-template-columns: repeat(6, 31mm) !important;
-        grid-auto-rows: 22mm !important;
-        padding: 0 !important; gap: 1mm !important;
+        grid-auto-rows: 20mm !important; /* FORZAR 20mm EN IMPRESIÓN */
+        padding: 0 !important; gap: 0.5mm !important;
         width: 190mm !important;
       }
       .etiqueta { 
         border: 0.1mm solid #eee !important; 
-        height: 22mm !important; 
+        height: 20mm !important; 
       }
-      /* Ajuste fino para que el número no se encime al imprimir */
       .numero-legible { 
-        margin-top: -1mm !important; 
+        margin-top: -1.5mm !important; 
       }
       .barras-visuales {
-        height: 25pt !important;
-        margin-bottom: 3mm !important;
+        height: 20pt !important;
+        margin-bottom: 1.5mm !important;
       }
     }
   </style>
@@ -367,8 +363,6 @@ function imprimirPDF() {
 `);
   win.document.close();
 }
-
-
 
     function compartirPDF() {
       if (!productoActual) return;
