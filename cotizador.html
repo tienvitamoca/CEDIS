@@ -291,11 +291,8 @@
     // ─── FUNCIÓN PROFESIONAL DE PROCESAMIENTO DE ESCANEO ──────────
     // ─── FUNCIÓN COMPLETA Y CORREGIDA PARA COTIZADOR.HTML ──────────
     // ─── PROCESAMIENTO AUTOMÁTICO BASADO EN COSTOS ──────────
-    // ─── PROCESAMIENTO CON SCHEMAS REALES DE SUPABASE ──────────
     async function procesarCodigoEscaneado(codigoFull) {
       const limpio = codigoFull.replace(/\*/g, '').trim();
-
-      // Separación de códigos (6 para producto, 2 para presentación)
       const codProdStr = limpio.substring(0, 6);
       const codBB = limpio.substring(6, 8);
       const codProdNum = parseInt(codProdStr);
@@ -309,7 +306,7 @@
         if (navigator.vibrate) navigator.vibrate(100);
         await apagarEscanner();
 
-        // 1. Obtener Producto con su categoría (tipos_producto)
+        // 1. Obtener Producto y Categoría
         const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
         if (!dataP || !dataP.length) {
           alert("Producto no registrado: " + codProdNum);
@@ -318,7 +315,7 @@
         }
         const p = dataP[0];
 
-        // 2. Obtener Presentación por su codigo_bb
+        // 2. Obtener Presentación
         const dataBB = await dbGet('presentaciones', `select=*&codigo_bb=eq.${codBB}`);
         if (!dataBB || !dataBB.length) {
           alert(`Error: La presentación BB-${codBB} no existe.`);
@@ -327,41 +324,39 @@
         }
         const bb = dataBB[0];
 
-        // 3. LÓGICA TÉCNICA (Basada en tus columnas reales)
-        // Usamos costo_kg, costo_produccion y consideramos la merma
+        // 3. VARIABLES TÉCNICAS (Schema Real)
         const costoKg = parseFloat(p.costo_kg) || 0;
         const costoProd = parseFloat(p.costo_produccion) || 0;
         const mermaPct = parseFloat(p.merma_pct) || 0;
         const gramosBolsa = parseFloat(bb.gramos) || 0;
 
-        // Márgenes desde tipos_producto
         const mTuyo = parseFloat(p.tipos_producto?.margen_tuyo) || 0.12;
         const mCliente = parseFloat(p.tipos_producto?.margen_cliente) || 0.22;
 
         if (costoKg <= 0 || gramosBolsa <= 0) {
-          alert(`Datos incompletos para ${p.nombre}. Revisa costo_kg y gramos.`);
+          alert(`Datos insuficientes para ${p.nombre}.`);
           setTimeout(() => encenderEscanner(), 1000);
           return;
         }
 
-        // --- CÁLCULO REAL ---
-        // A. Costo del contenido con merma: (Costo / 1000) * gramos * (1 + merma)
+        // --- CÁLCULO ESTRICTO (OPCIÓN B) ---
+        // A. Costo del contenido incluyendo merma
         const costoContenido = (costoKg / 1000) * gramosBolsa * (1 + mermaPct);
 
-        // B. Costo total puesto en bolsa (Contenido + Producción/Empaque)
-        const costoTotalBolsa = costoContenido + costoProd;
+        // B. Costo Total (Contenido + Bolsa/Producción)
+        const costoTotalReal = costoContenido + costoProd;
 
-        // C. Precio Venta Tuyo (Lo que CEDIS cobra a la tienda)
-        const precioVentaTuyo = costoTotalBolsa * (1 + mTuyo);
+        // C. Precio Venta CEDIS (Tu cobro)
+        const precioVentaTuyo = costoTotalReal * (1 + mTuyo);
 
-        // D. Precio Tienda Sugerido (Lo que la tienda cobra al público)
+        // D. Precio Tienda Sugerido (Público)
         const precioTiendaSugerido = precioVentaTuyo * (1 + mCliente);
 
         // 4. Llenar Formulario
         productoTemp = p;
         document.getElementById('form-nombre').textContent = p.nombre;
         document.getElementById('form-info').textContent =
-          `${bb.nombre} (${gramosBolsa}g) | Público Sugerido: $${precioTiendaSugerido.toFixed(2)}`;
+          `${bb.nombre} (${gramosBolsa}g) | Sugerido: $${precioTiendaSugerido.toFixed(2)}`;
 
         document.getElementById('form-cantidad').value = 1;
 
@@ -374,12 +369,11 @@
         document.getElementById('busqueda').value = '';
 
       } catch (e) {
-        console.error("Error en procesamiento:", e);
-        alert("Error de conexión o base de datos.");
+        console.error("Error:", e);
+        alert("Error al procesar. Reintenta.");
         setTimeout(() => encenderEscanner(), 1000);
       }
     }
-
     // ACTUALIZACIÓN EN cotizador.html
     // REEMPLAZO DEFINITIVO EN cotizador.html
     function imprimirPedido() {

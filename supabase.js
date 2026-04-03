@@ -60,45 +60,50 @@ async function getPresentaciones() {
 
 function costoPorGramo(producto) {
   if (!producto.costo_kg) return null;
-  // Cálculo Profesional: Recupera el costo del desperdicio (merma)
-  // Si el producto cuesta $100 y tiene 2% de merma, el costo real es 100 / 0.98
   const merma = parseFloat(producto.merma_pct) || 0;
-  return (producto.costo_kg / 1000) / (1 - merma);
+  // Cambio: Multiplicación directa para que coincida con la calculadora manual
+  return (producto.costo_kg / 1000) * (1 + merma);
 }
 
 // Target Costing (Precio -> Gramos)
 function calcularTargetCosting(producto, precio_tienda, margen_cliente, margen_tuyo) {
-  const insumos = (parseFloat(producto.costo_bolsa) || 0) + (parseFloat(producto.costo_produccion) || 0);
   const cpg = costoPorGramo(producto);
   if (!cpg || !precio_tienda) return null;
 
-  // 1. Precio de Venta (Igual que en Tradicional)
+  const insumos = (parseFloat(producto.costo_bolsa) || 0) + (parseFloat(producto.costo_produccion) || 0);
+
+  // 1. Cuánto debe cobrar CEDIS
   const precio_venta = precio_tienda / (1 + margen_cliente);
 
-  // 2. Costo Total Permitido (Cambiado de * a / para coincidir con Tradicional)
+  // 2. Cuánto debe ser el costo total para mantener tu margen
   const costo_total_permitido = precio_venta / (1 + margen_tuyo);
 
-  // 3. Costo MP disponible
+  // 3. Cuánto queda para el grano después de pagar la bolsa/producción
   const costo_mp = costo_total_permitido - insumos;
+  
+  // 4. Gramos resultantes
   const gramos = costo_mp > 0 ? costo_mp / cpg : null;
 
   return {
     precio_venta: redondear(precio_venta),
     insumos: redondear(insumos),
     costo_mp: redondear(costo_mp),
-    gramos: gramos ? redondear(gramos, 1) : null,
-    utilidad: redondear(precio_venta - (costo_mp + insumos))
+    gramos: gramos ? Math.floor(gramos) : null, // Gramos enteros para empaque
+    utilidad: redondear(precio_venta - costo_total_permitido)
   };
 }
-
 // Modo Tradicional (Gramos -> Precio)
 function calcularModoTradicional(producto, gramos, margen_tuyo, margen_cliente) {
-  const insumos = (parseFloat(producto.costo_bolsa) || 0) + (parseFloat(producto.costo_produccion) || 0);
   const cpg = costoPorGramo(producto);
   if (!cpg || !gramos) return null;
 
+  // Sumamos ambos tipos de insumos de tu schema
+  const insumos = (parseFloat(producto.costo_bolsa) || 0) + (parseFloat(producto.costo_produccion) || 0);
+  
   const costo_mp = cpg * gramos;
   const costo_total = costo_mp + insumos;
+  
+  // Cálculo de precios
   const precio_venta = costo_total * (1 + margen_tuyo);
   const precio_tienda = precio_venta * (1 + margen_cliente);
 
