@@ -18,11 +18,26 @@
     <div class="container has-bottom-nav">
         <div class="card">
             <div class="card-title">Seleccionar Producto</div>
-            <div class="search-wrap">
-                <span class="icon">🔍</span>
-                <input type="text" id="busqueda" placeholder="Buscar por nombre o código..." oninput="buscarProducto()"
-                    autocomplete="off">
+            <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem">
+                <div class="search-wrap" style="flex:1; margin:0">
+                    <span class="icon">🔍</span>
+                    <input type="text" id="busqueda" placeholder="Buscar por nombre o código..."
+                        oninput="buscarProducto()" autocomplete="off">
+                </div>
+                <button class="btn" onclick="encenderEscanner()"
+                    style="background:var(--primary); color:white; padding:0 1rem; border-radius:8px; cursor:pointer">
+                    📷
+                </button>
             </div>
+
+            <div id="scanner-container" style="display:none; margin-bottom:1rem;">
+                <div id="reader"
+                    style="width:100%; border-radius:12px; overflow:hidden; border: 2px solid var(--primary);"></div>
+                <button class="btn btn-outline" onclick="apagarEscanner()" style="width:100%; margin-top:0.5rem">
+                    Cancelar Escaneo
+                </button>
+            </div>
+
             <div id="sugerencias"
                 style="display:none; border:1.5px solid var(--border); border-radius:8px; overflow:hidden; margin-top:0.25rem; background:white;">
             </div>
@@ -152,15 +167,100 @@
         <a href="cotizador.html"> <span class="icon">🧾</span> Cotizador </a>
 
     </nav>
-
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="supabase.js"></script>
     <script src="supabase.js"></script>
     <script>
         let productoActual = null;
         let presentaciones = [];
         let ultimaEntrada = 'precio';
+        let html5QrCode = null;
 
         async function init() {
             presentaciones = await dbGet('presentaciones', 'order=codigo_bb.asc');
+        }
+
+
+        // --- FUNCIÓN PARA ENCENDER CÁMARA ---
+        async function encenderEscanner() {
+            document.getElementById('scanner-container').style.display = 'block';
+            document.getElementById('prod-seleccionado').style.display = 'none';
+
+            html5QrCode = new Html5Qrcode("reader");
+            const config = {
+                fps: 10,
+                qrbox: { width: 250, height: 150 },
+                aspectRatio: 1.0
+            };
+
+            try {
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    (decodedText) => {
+                        procesarEscaneoCalculadora(decodedText);
+                    }
+                );
+            } catch (err) {
+                console.error(err);
+                alert("No se pudo acceder a la cámara. Revisa los permisos.");
+            }
+        }
+
+        // --- FUNCIÓN PARA APAGAR CÁMARA ---
+        async function apagarEscanner() {
+            if (html5QrCode) {
+                await html5QrCode.stop();
+                html5QrCode = null;
+            }
+            document.getElementById('scanner-container').style.display = 'none';
+        }
+
+        // --- PROCESAMIENTO INTELIGENTE DEL CÓDIGO ---
+        async function procesarEscaneoCalculadora(codigoFull) {
+            // 1. Limpiar el código (quitar asteriscos de etiquetas físicas)
+            const limpio = codigoFull.replace(/\*/g, '').trim();
+
+            // 2. Extraer partes (Ej: 263001 12)
+            const codProdStr = limpio.substring(0, 6); // 263001
+            const codBB = limpio.substring(6, 8);      // 12
+            const codProdNum = parseInt(codProdStr);
+
+            try {
+                // Feedback táctil
+                if (navigator.vibrate) navigator.vibrate(100);
+                await apagarEscanner();
+
+                // 3. Buscar el producto en Supabase
+                const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
+                if (!dataP || !dataP.length) {
+                    alert("Producto no encontrado en el catálogo: " + codProdNum);
+                    return;
+                }
+
+                // 4. Buscar la presentación para obtener los gramos
+                const dataBB = await dbGet('presentaciones', `select=*&codigo_bb=eq.${codBB}`);
+
+                // 5. Cargar el producto en la calculadora
+                const p = dataP[0];
+                seleccionar(p);
+
+                // 6. Si detectamos presentación válida, cargar gramos y recalcular
+                if (dataBB && dataBB.length) {
+                    const gramosPresentacion = dataBB[0].gramos;
+                    document.getElementById('in-gramos').value = gramosPresentacion;
+
+                    // IMPORTANTE: Disparamos el cálculo como 'gramos' para que 
+                    // la calculadora nos diga el precio sugerido para ese peso.
+                    dispararCalculo('gramos');
+                } else {
+                    console.warn("Código de presentación no reconocido, cargando solo producto.");
+                }
+
+            } catch (e) {
+                console.error("Error al procesar el código:", e);
+                apagarEscanner();
+            }
         }
 
         async function buscarProducto() {
