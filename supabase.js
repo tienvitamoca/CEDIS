@@ -66,32 +66,30 @@ function costoPorGramo(producto) {
 }
 
 // Target Costing (Precio -> Gramos)
+// Target Costing (Precio -> Gramos)
 function calcularTargetCosting(producto, precio_tienda, margen_cliente, margen_tuyo) {
   const cpg = costoPorGramo(producto);
   if (!cpg || !precio_tienda) return null;
 
   const insumos = (parseFloat(producto.costo_bolsa) || 0) + (parseFloat(producto.costo_produccion) || 0);
 
-  // 1. Cuánto debe cobrar CEDIS
   const precio_venta = precio_tienda / (1 + margen_cliente);
-
-  // 2. Cuánto debe ser el costo total para mantener tu margen
   const costo_total_permitido = precio_venta / (1 + margen_tuyo);
-
-  // 3. Cuánto queda para el grano después de pagar la bolsa/producción
   const costo_mp = costo_total_permitido - insumos;
   
-  // 4. Gramos resultantes
+  // CAMBIO: Quitamos Math.floor y usamos redondear con 2 decimales para precisión extra
   const gramos = costo_mp > 0 ? costo_mp / cpg : null;
 
   return {
     precio_venta: redondear(precio_venta),
     insumos: redondear(insumos),
     costo_mp: redondear(costo_mp),
-    gramos: gramos ? Math.floor(gramos) : null, // Gramos enteros para empaque
-    utilidad: redondear(precio_venta - costo_total_permitido)
+    // Cambiamos el 1 por un 2 o 3 para ver los decimales de los gramos
+    gramos: gramos ? redondear(gramos, 1) : null, 
+    utilidad: redondear(precio_venta - (costo_mp + insumos))
   };
 }
+
 // Modo Tradicional (Gramos -> Precio)
 function calcularModoTradicional(producto, gramos, margen_tuyo, margen_cliente) {
   const cpg = costoPorGramo(producto);
