@@ -292,38 +292,91 @@
     // ─── FUNCIÓN COMPLETA Y CORREGIDA PARA COTIZADOR.HTML ──────────
     // ─── PROCESAMIENTO AUTOMÁTICO BASADO EN COSTOS ──────────
 async function procesarCodigoEscaneado(codigoFull) {
-  const limpio = codigoFull.replace(/\*/g, '').trim();
-  const codProdStr = limpio.substring(0, 6);
-  const codBB = limpio.substring(6, 8);
-  const codProdNum = parseInt(codProdStr);
+      const limpio = codigoFull.replace(/\*/g, '').trim();
+      const codProdStr = limpio.substring(0, 6);
+      const codBB = limpio.substring(6, 8);
+      const codProdNum = parseInt(codProdStr);
 
-  try {
-    await apagarEscanner();
-    const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
-    const dataBB = await dbGet('presentaciones', `select=*&codigo_bb=eq.${codBB}`);
-    
-    if (!dataP.length || !dataBB.length) return;
+      if (isNaN(codProdNum)) {
+        alert("Código no reconocido: " + limpio);
+        return;
+      }
 
-    const p = dataP[0];
-    const bb = dataBB[0];
+      try {
+        if (navigator.vibrate) navigator.vibrate(100);
+        await apagarEscanner();
 
-    // USAMOS LA FUNCIÓN DE SUPABASE.JS QUE YA CORREGIMOS
-    // Esto garantiza que use: (Costo + Merma + Bolsa + Prod) * Margen
-    const res = calcularModoTradicional(p, bb.gramos, p.margen_tuyo, p.tipos_producto.margen_cliente);
+        // 1. Obtener Producto y Categoría
+        const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
+        if (!dataP || !dataP.length) {
+          alert("Producto no registrado: " + codProdNum);
+          setTimeout(() => encenderEscanner(), 1000);
+          return;
+        }
+        const p = dataP[0];
 
-    productoTemp = p;
-    document.getElementById('form-nombre').textContent = p.nombre;
-    document.getElementById('form-info').textContent = `${bb.nombre} | Sugerido: ${formatPeso(res.precio_tienda)}`;
-    document.getElementById('form-cantidad').value = 1;
-    
-    // EL PRECIO QUE DEBE DAR $20.63
-    document.getElementById('form-precio').value = res.precio_venta.toFixed(2);
-    document.getElementById('agregar-form').style.display = 'block';
+        // 2. Obtener Presentación
+        const dataBB = await dbGet('presentaciones', `select=*&codigo_bb=eq.${codBB}`);
+        if (!dataBB || !dataBB.length) {
+          alert(`Error: La presentación BB-${codBB} no existe.`);
+          setTimeout(() => encenderEscanner(), 1000);
+          return;
+        }
+        const bb = dataBB[0];
 
-  } catch (e) {
-    console.error(e);
-  }
-}
+        // 3. VARIABLES TÉCNICAS (Schema Real de Supabase)
+        const costoKg = parseFloat(p.costo_kg) || 0;
+        const gramosBolsa = parseFloat(bb.gramos) || 0;
+        const mermaPct = parseFloat(p.merma_pct) || 0;
+        
+        // SUMA DE AMBOS INSUMOS: Bolsa + Producción (Aquí estaban los centavos perdidos)
+        const costoInsumos = (parseFloat(p.costo_bolsa) || 0) + (parseFloat(p.costo_produccion) || 0);
+
+        // Márgenes desde la base de datos
+        const mTuyo = parseFloat(p.margen_tuyo) || 0.12;
+        const mCliente = parseFloat(p.tipos_producto?.margen_cliente) || 0.22;
+
+        if (costoKg <= 0 || gramosBolsa <= 0) {
+          alert(`Datos insuficientes para ${p.nombre}.`);
+          setTimeout(() => encenderEscanner(), 1000);
+          return;
+        }
+
+        // --- CÁLCULO ESTRICTO UNIFICADO ---
+        // A. Costo del contenido incluyendo merma
+        const costoContenido = (costoKg / 1000) * gramosBolsa * (1 + mermaPct);
+
+        // B. Costo Total Real (Grano con merma + Bolsa + Producción)
+        const costoTotalReal = costoContenido + costoInsumos;
+
+        // C. Precio Venta CEDIS (Tu cobro a la tienda)
+        const precioVentaTuyo = costoTotalReal * (1 + mTuyo);
+
+        // D. Precio Tienda Sugerido (Venta al público)
+        const precioTiendaSugerido = precioVentaTuyo * (1 + mCliente);
+
+        // 4. Llenar Formulario
+        productoTemp = p;
+        document.getElementById('form-nombre').textContent = p.nombre;
+        document.getElementById('form-info').textContent =
+          `${bb.nombre} (${gramosBolsa}g) | Sugerido Público: $${precioTiendaSugerido.toFixed(2)}`;
+
+        document.getElementById('form-cantidad').value = 1;
+
+        const campoPrecio = document.getElementById('form-precio');
+        campoPrecio.value = precioVentaTuyo.toFixed(2); // Debería dar $20.63 con tu ejemplo
+        campoPrecio.readOnly = true;
+        campoPrecio.style.background = "#f1f5f9";
+
+        document.getElementById('agregar-form').style.display = 'block';
+        document.getElementById('busqueda').value = '';
+
+      } catch (e) {
+        console.error("Error:", e);
+        alert("Error al procesar. Reintenta.");
+        setTimeout(() => encenderEscanner(), 1000);
+      }
+    }
     
     
     // ACTUALIZACIÓN EN cotizador.html
