@@ -127,6 +127,10 @@
   <script src="supabase.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
+    let html5QrCode = null;
+    let estaProcesando = false; // Bloqueo para evitar ciclos
+    let scannerTimer = null;    // Temporizador de inactividad
+
     let pedido = [];
     let productoTemp = null;
     let timer = null;
@@ -248,35 +252,48 @@
 
 
 
-    let html5QrCode = null;
 
     async function encenderEscanner() {
+      estaProcesando = false; // Reset de seguridad
       document.getElementById('scanner-container').style.display = 'block';
-      document.getElementById('agregar-form').style.display = 'none';
-
       html5QrCode = new Html5Qrcode("reader");
 
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 150 }, // Recuadro visual de enfoque
-        aspectRatio: 1.0
-      };
+      const config = { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 };
 
       try {
-        // Iniciamos con la cámara trasera ("environment")
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          config,
-          (decodedText) => {
-            // ÉXITO: Cuando detecta un código
-            console.log("Código detectado:", decodedText);
-            procesarCodigoEscaneado(decodedText);
+        await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+          procesarCodigoEscaneado(text);
+        });
+
+        // AUTO-APAGADO TRAS 30 SEGUNDOS DE INACTIVIDAD
+        clearTimeout(scannerTimer);
+        scannerTimer = setTimeout(() => {
+          if (html5QrCode) {
+            apagarEscanner();
+            alert("Escáner apagado por inactividad.");
           }
-        );
+        }, 30000);
+
       } catch (err) {
-        console.error("Error al iniciar cámara:", err);
-        alert("No se pudo abrir la cámara. Verifica los permisos.");
+        console.error("No se pudo iniciar la cámara", err);
       }
+    }
+
+    async function apagarEscanner() {
+      clearTimeout(scannerTimer);
+      if (html5QrCode) {
+        try {
+          // Intentamos detenerlo de forma segura
+          await html5QrCode.stop();
+          html5QrCode = null;
+          // Limpieza manual del DOM para evitar el error 'removeChild'
+          const reader = document.getElementById('reader');
+          if (reader) reader.innerHTML = "";
+        } catch (e) {
+          console.warn("El escáner ya estaba detenido o falló al limpiar.");
+        }
+      }
+      document.getElementById('scanner-container').style.display = 'none';
     }
 
     async function apagarEscanner() {
@@ -291,7 +308,11 @@
     // ─── FUNCIÓN PROFESIONAL DE PROCESAMIENTO DE ESCANEO ──────────
     // ─── FUNCIÓN COMPLETA Y CORREGIDA PARA COTIZADOR.HTML ──────────
     // ─── PROCESAMIENTO AUTOMÁTICO BASADO EN COSTOS ──────────
-async function procesarCodigoEscaneado(codigoFull) {
+    async function procesarCodigoEscaneado(codigoFull) {
+      // SI YA ESTÁ PROCESANDO, IGNORA CUALQUIER OTRA LECTURA
+      if (estaProcesando) return;
+      estaProcesando = true;
+
       const limpio = codigoFull.replace(/\*/g, '').trim();
       const codProdStr = limpio.substring(0, 6);
       const codBB = limpio.substring(6, 8);
@@ -299,76 +320,62 @@ async function procesarCodigoEscaneado(codigoFull) {
 
       try {
         if (navigator.vibrate) navigator.vibrate(100);
+
+        // APAGADO INMEDIATO Y SEGURO DEL ESCÁNER
         await apagarEscanner();
 
-        // 1. Obtener Producto y su Categoría
         const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
         if (!dataP || !dataP.length) {
           alert(`❌ PRODUCTO NO ENCONTRADO: [${codProdNum}]`);
-          setTimeout(() => encenderEscanner(), 1000);
+          estaProcesando = false; // Liberamos el candado
           return;
         }
         const p = dataP[0];
 
-        // 2. LÓGICA DE PRECIO ESPECIAL (Presentación 90 = $10)
         let precioVentaTuyo = 0;
         let precioTiendaSugerido = 0;
         let infoPresentacion = "";
 
         if (codBB === "90") {
-          // --- MODO TARGET COSTING AUTOMÁTICO ---
-          // Si es código 90, sabemos que el precio al público SIEMPRE es $10
           precioTiendaSugerido = 10;
           const mCliente = parseFloat(p.tipos_producto?.margen_cliente) || 0.30;
-          
-          // Calculamos cuánto cobras tú (CEDIS) para que la tienda lo de a $10
           precioVentaTuyo = precioTiendaSugerido / (1 + mCliente);
           infoPresentacion = "Presentación Fija: $10.00";
         } else {
-          // --- MODO TRADICIONAL (Para códigos como 11, 12, 13...) ---
           const dataBB = await dbGet('presentaciones', `select=*&codigo_bb=eq.${codBB}`);
           if (!dataBB || !dataBB.length) {
-            alert(`❌ ERROR: No existe la presentación [${codBB}] para el producto ${p.nombre}.`);
-            setTimeout(() => encenderEscanner(), 1000);
+            alert(`❌ ERROR: No existe la presentación [${codBB}].`);
+            estaProcesando = false;
             return;
           }
           const bb = dataBB[0];
           const gramosBolsa = parseFloat(bb.gramos) || 0;
 
-          if (gramosBolsa <= 0) {
-            alert(`⚠️ ERROR TÉCNICO:\nLa presentación ${bb.nombre} no tiene gramos asignados en Supabase.`);
-            setTimeout(() => encenderEscanner(), 1000);
-            return;
-          }
-
-          // Usamos la función del cerebro (supabase.js) para calcular precio por gramos
           const mTuyo = parseFloat(p.margen_tuyo) || 0.12;
           const mCliente = parseFloat(p.tipos_producto?.margen_cliente) || 0.22;
           const res = calcularModoTradicional(p, gramosBolsa, mTuyo, mCliente);
-          
+
           precioVentaTuyo = res.precio_venta;
           precioTiendaSugerido = res.precio_tienda;
           infoPresentacion = `${bb.nombre} (${gramosBolsa}g)`;
         }
 
-        // 3. Llenar Formulario del Cotizador
         productoTemp = p;
         document.getElementById('form-nombre').textContent = p.nombre;
-        document.getElementById('form-info').textContent = 
-          `${infoPresentacion} | Sugerido: $${precioTiendaSugerido.toFixed(2)}`;
-        
+        document.getElementById('form-info').textContent = `${infoPresentacion} | Sugerido: $${precioTiendaSugerido.toFixed(2)}`;
         document.getElementById('form-cantidad').value = 1;
         document.getElementById('form-precio').value = precioVentaTuyo.toFixed(2);
-
         document.getElementById('agregar-form').style.display = 'block';
-        if(document.getElementById('busqueda')) document.getElementById('busqueda').value = '';
 
       } catch (e) {
-        alert(`🚨 ERROR DE SISTEMA:\n${e.message}`);
-        setTimeout(() => encenderEscanner(), 1000);
+        // Captura el error 'removeChild' o 'undefined' sin ciclarse
+        console.error("Error de escaneo:", e);
+      } finally {
+        // IMPORTANTE: Solo liberamos el candado después de que todo terminó
+        estaProcesando = false;
       }
     }
-    
+
     // ACTUALIZACIÓN EN cotizador.html
     // REEMPLAZO DEFINITIVO EN cotizador.html
     function imprimirPedido() {
