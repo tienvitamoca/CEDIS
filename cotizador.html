@@ -297,87 +297,77 @@ async function procesarCodigoEscaneado(codigoFull) {
       const codBB = limpio.substring(6, 8);
       const codProdNum = parseInt(codProdStr);
 
-      if (isNaN(codProdNum)) {
-        alert("Código no reconocido: " + limpio);
-        return;
-      }
-
       try {
         if (navigator.vibrate) navigator.vibrate(100);
         await apagarEscanner();
 
-        // 1. Obtener Producto y Categoría
+        // 1. Intentar obtener Producto
         const dataP = await dbGet('productos', `select=*,tipos_producto(*)&codigo=eq.${codProdNum}`);
+        
         if (!dataP || !dataP.length) {
-          alert("Producto no registrado: " + codProdNum);
+          alert(`❌ ERROR DE PRODUCTO:\nEl código [${codProdNum}] no existe en tu tabla de productos.`);
           setTimeout(() => encenderEscanner(), 1000);
           return;
         }
         const p = dataP[0];
 
-        // 2. Obtener Presentación
+        // 2. Intentar obtener Presentación
         const dataBB = await dbGet('presentaciones', `select=*&codigo_bb=eq.${codBB}`);
+        
         if (!dataBB || !dataBB.length) {
-          alert(`Error: La presentación BB-${codBB} no existe.`);
+          alert(`❌ ERROR DE PRESENTACIÓN:\nLa presentación [${codBB}] no existe en la tabla presentaciones.\n\nProducto: ${p.nombre}`);
           setTimeout(() => encenderEscanner(), 1000);
           return;
         }
         const bb = dataBB[0];
 
-        // 3. VARIABLES TÉCNICAS (Schema Real de Supabase)
-        const costoKg = parseFloat(p.costo_kg) || 0;
-        const gramosBolsa = parseFloat(bb.gramos) || 0;
-        const mermaPct = parseFloat(p.merma_pct) || 0;
+        // 3. Extraer y Validar cada dato individualmente
+        const c_kg = parseFloat(p.costo_kg);
+        const g_bolsa = parseFloat(bb.gramos);
+        const merma = parseFloat(p.merma_pct) || 0;
+        const bolsa = parseFloat(p.costo_bolsa) || 0;
+        const prod = parseFloat(p.costo_produccion) || 0;
         
-        // SUMA DE AMBOS INSUMOS: Bolsa + Producción (Aquí estaban los centavos perdidos)
-        const costoInsumos = (parseFloat(p.costo_bolsa) || 0) + (parseFloat(p.costo_produccion) || 0);
+        // Buscamos márgenes en el producto o en su categoría
+        const mTuyo = parseFloat(p.margen_tuyo) || parseFloat(p.tipos_producto?.margen_tuyo);
+        const mCliente = parseFloat(p.tipos_producto?.margen_cliente);
 
-        // Márgenes desde la base de datos
-        const mTuyo = parseFloat(p.margen_tuyo) || 0.12;
-        const mCliente = parseFloat(p.tipos_producto?.margen_cliente) || 0.22;
+        // --- SISTEMA DE ALERTAS ESPECÍFICAS ---
+        let errores = [];
+        if (isNaN(c_kg) || c_kg <= 0) errores.push(`- Costo KG: [${p.costo_kg}]`);
+        if (isNaN(g_bolsa) || g_bolsa <= 0) errores.push(`- Gramos Bolsa: [${bb.gramos}]`);
+        if (isNaN(mTuyo)) errores.push(`- Tu Margen: [No hallado]`);
+        if (isNaN(mCliente)) errores.push(`- Margen Cliente: [No hallado]`);
 
-        if (costoKg <= 0 || gramosBolsa <= 0) {
-          alert(`Datos insuficientes para ${p.nombre}.`);
+        if (errores.length > 0) {
+          alert(`⚠️ DATOS INCOMPLETOS EN ${p.nombre.toUpperCase()}:\n\n${errores.join('\n')}\n\nRevisa estos campos en Supabase.`);
           setTimeout(() => encenderEscanner(), 1000);
           return;
         }
 
-        // --- CÁLCULO ESTRICTO UNIFICADO ---
-        // A. Costo del contenido incluyendo merma
-        const costoContenido = (costoKg / 1000) * gramosBolsa * (1 + mermaPct);
-
-        // B. Costo Total Real (Grano con merma + Bolsa + Producción)
-        const costoTotalReal = costoContenido + costoInsumos;
-
-        // C. Precio Venta CEDIS (Tu cobro a la tienda)
+        // 4. Cálculo Final si todo está OK
+        const costoContenido = (c_kg / 1000) * g_bolsa * (1 + merma);
+        const costoTotalReal = costoContenido + bolsa + prod;
         const precioVentaTuyo = costoTotalReal * (1 + mTuyo);
-
-        // D. Precio Tienda Sugerido (Venta al público)
         const precioTiendaSugerido = precioVentaTuyo * (1 + mCliente);
 
-        // 4. Llenar Formulario
+        // 5. Llenar Formulario
         productoTemp = p;
         document.getElementById('form-nombre').textContent = p.nombre;
-        document.getElementById('form-info').textContent =
-          `${bb.nombre} (${gramosBolsa}g) | Sugerido Público: $${precioTiendaSugerido.toFixed(2)}`;
-
+        document.getElementById('form-info').textContent = 
+          `${bb.nombre} (${g_bolsa}g) | Sugerido: $${precioTiendaSugerido.toFixed(2)}`;
+        
         document.getElementById('form-cantidad').value = 1;
-
-        const campoPrecio = document.getElementById('form-precio');
-        campoPrecio.value = precioVentaTuyo.toFixed(2); // Debería dar $20.63 con tu ejemplo
-        campoPrecio.readOnly = true;
-        campoPrecio.style.background = "#f1f5f9";
+        document.getElementById('form-precio').value = precioVentaTuyo.toFixed(2);
 
         document.getElementById('agregar-form').style.display = 'block';
-        document.getElementById('busqueda').value = '';
+        if(document.getElementById('busqueda')) document.getElementById('busqueda').value = '';
 
       } catch (e) {
-        console.error("Error:", e);
-        alert("Error al procesar. Reintenta.");
+        alert(`🚨 ERROR CRÍTICO DE SISTEMA:\n${e.message}`);
         setTimeout(() => encenderEscanner(), 1000);
       }
     }
-    
     
     // ACTUALIZACIÓN EN cotizador.html
     // REEMPLAZO DEFINITIVO EN cotizador.html
