@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cotizador — CEDIS</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <link rel="stylesheet" href="style.css">
   <style>
     .item-row {
@@ -381,84 +382,88 @@
 async function imprimirPedido() {
     if (pedido.length === 0) return alert("El pedido está vacío.");
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ unit: 'mm', format: [80, 150] }); // Formato Ticket 80mm
-    const fecha = new Date().toLocaleString();
-    const total = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
-
-    // --- CARGA DE LOGOTIPO (Temporal) ---
-    // Asegúrate de tener 'logo-cedis.png' en la misma carpeta
-    const imgData = "logo-cedis.png"; 
-
-    try {
-        // Añadir Logotipo (Imagen, x, y, ancho, alto)
-        doc.addImage(imgData, 'PNG', 25, 5, 30, 15); // Centrado aprox.
-    } catch (e) {
-        console.warn("No se pudo cargar el logotipo. Se imprimirá sin él.");
+    // SOLUCIÓN AL ERROR: Acceso correcto a la librería en navegadores móviles
+    const { jsPDF } = window.jspdf; 
+    if (!jsPDF) {
+        alert("La librería de PDF aún no carga. Reintenta en 2 segundos.");
+        return;
     }
 
-    // --- DISEÑO DEL PDF ---
+    const doc = new jsPDF({ unit: 'mm', format: [80, 150] }); 
+    const fecha = new Date().toLocaleString('es-MX');
+    const total = pedido.reduce((s, i) => s + i.precio * i.cantidad, 0);
+
+    // --- LOGOTIPO TEMPORAL (Base64 para evitar errores de carga externa) ---
+    // Usaremos un círculo azul como logo temporal para que no falle si no halla el archivo
+    doc.setFillColor(37, 99, 235); // Azul de tu App
+    doc.circle(40, 12, 8, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.text("CEDIS", 40, 13, { align: "center" });
+
+    // --- DISEÑO DEL TICKET ---
+    doc.setTextColor(0, 0, 0);
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("CEDIS MORELIA", 40, 25, { align: "center" }); // Bajamos el texto por el logo
+    doc.text("CEDIS MORELIA", 40, 28, { align: "center" });
     
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.text(`Fecha: ${fecha}`, 10, 32);
-    doc.text("------------------------------------------", 10, 36);
+    doc.text(`Fecha: ${fecha}`, 10, 35);
+    doc.text("------------------------------------------", 10, 39);
 
-    let y = 42;
+    let y = 45;
     pedido.forEach((item) => {
         doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
         doc.text(`${item.producto.nombre}`, 10, y);
+        
         doc.setFont("helvetica", "normal");
         y += 5;
         const subtotal = item.precio * item.cantidad;
         doc.text(`${item.cantidad} pzas x $${item.precio.toFixed(2)}`, 10, y);
         doc.text(`$${subtotal.toFixed(2)}`, 70, y, { align: "right" });
         y += 7;
-        
-        // Si el ticket es muy largo, añadir página y logo de nuevo
-        if (y > 135) { 
+
+        if (y > 130) { 
             doc.addPage(); 
-            try { doc.addImage(imgData, 'PNG', 25, 5, 30, 15); } catch(e){}
-            doc.text("CEDIS MORELIA", 40, 25, { align: "center" });
-            y = 35; 
+            y = 15; 
         }
     });
 
     doc.text("------------------------------------------", 10, y);
     y += 8;
-    doc.setFontSize(12);
+    doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL: $${total.toFixed(2)}`, 70, y, { align: "right" });
+    doc.text(`TOTAL A PAGAR: $${total.toFixed(2)}`, 70, y, { align: "right" });
 
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
-    y += 8;
-    doc.text("¡Gracias por su compra!", 40, y, { align: "center" });
+    y += 10;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("Gracias por su preferencia", 40, y, { align: "center" });
 
-    // --- GENERACIÓN Y ENVÍO ---
-    const pdfBlob = doc.output('blob');
-    const file = new File([pdfBlob], `Pedido_${Date.now()}.pdf`, { type: 'application/pdf' });
+    // --- GENERACIÓN Y COMPARTIR ---
+    try {
+        const pdfBlob = doc.output('blob');
+        const fileName = `Nota_CEDIS_${Date.now()}.pdf`;
+        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
                 files: [file],
-                title: 'Pedido CEDIS Morelia',
-                text: `Hola, adjunto la nota de venta por $${total.toFixed(2)}.`
+                title: 'Nota de Venta CEDIS',
+                text: `Adjunto nota de venta por $${total.toFixed(2)}`
             });
-        } catch (err) {
-            console.error("Error al compartir:", err);
-            doc.save(`Pedido_${Date.now()}.pdf`);
+        } else {
+            // Si el navegador no permite compartir archivos (como Chrome en algunos Android)
+            doc.save(fileName);
+            alert("PDF generado. Revisa tus descargas para enviarlo por WhatsApp.");
         }
-    } else {
-        alert("Tu navegador no soporta envío directo de archivos. Se descargará el PDF.");
-        doc.save(`Pedido_${Date.now()}.pdf`);
+    } catch (err) {
+        console.error("Error al procesar PDF:", err);
+        doc.save(`Pedido_Respaldo.pdf`);
     }
 }
-
     renderPedido();
   </script>
 </body>
