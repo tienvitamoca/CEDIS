@@ -277,19 +277,21 @@
         }
 
         function seleccionar(p) {
+            // 1. Limpiamos antes de cargar el nuevo para evitar datos residuales
+            limpiarProducto();
+
+            // 2. Cargamos el nuevo producto
             productoActual = p;
-            document.getElementById('sugerencias').style.display = 'none';
             document.getElementById('prod-seleccionado').style.display = 'block';
             document.getElementById('panel-calculos').style.display = 'block';
             document.getElementById('resultados').style.display = 'block';
+
             document.getElementById('prod-nombre-sel').textContent = p.nombre;
             document.getElementById('prod-codigo-sel').textContent = `Categoría: ${p.tipos_producto?.nombre || 'General'} | Código: ${p.codigo}`;
 
-            // CARGA AUTOMÁTICA DESDE DB (Cambio que pediste)
-            if (p.tipos_producto) {
-                document.getElementById('m-tuyo').value = p.tipos_producto.margen_tuyo || 0.12;
-                document.getElementById('m-clie').value = p.tipos_producto.margen_cliente || 0.22;
-            }
+            // Carga de márgenes
+            document.getElementById('m-tuyo').value = p.tipos_producto?.margen_tuyo || 0.12;
+            document.getElementById('m-clie').value = p.tipos_producto?.margen_cliente || 0.22;
 
             document.getElementById('in-precio').value = 10;
             dispararCalculo('precio');
@@ -297,6 +299,14 @@
 
         function dispararCalculo(origen) {
             if (!productoActual) return;
+
+            // NUEVA VALIDACIÓN: Si no hay costo, no calculamos y avisamos
+            if (!productoActual.costo_kg || parseFloat(productoActual.costo_kg) <= 0) {
+                alert("⚠️ ATENCIÓN: Este producto no tiene registrado un 'Costo por Kilo'. No se puede calcular.");
+                limpiarResultados(); // Función que creamos arriba
+                return;
+            }
+
             if (origen !== 'margen') ultimaEntrada = origen;
 
             const precio = parseFloat(document.getElementById('in-precio').value) || 0;
@@ -358,7 +368,18 @@
             document.getElementById('panel-calculos').style.display = 'none';
             document.getElementById('resultados').style.display = 'none';
             document.getElementById('busqueda').value = '';
+
+            // NUEVO: Limpieza de inputs y resultados
+            document.getElementById('in-precio').value = '';
+            document.getElementById('in-gramos').value = '';
+
+            ['r-gramos', 'r-utilidad', 'r-costo-mp', 'r-insumos', 'r-costo-total', 'r-precio-venta', 'r-precio-tienda']
+                .forEach(id => document.getElementById(id).textContent = '—');
+
+            document.getElementById('card-codigo').style.display = 'none';
+            document.getElementById('card-no-codigo').style.display = 'none';
         }
+
         init();
     </script>
 </body>
