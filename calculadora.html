@@ -277,19 +277,30 @@
         }
 
         function seleccionar(p) {
-            // 1. Limpiamos antes de cargar el nuevo para evitar datos residuales
+            // 1. Limpiamos cualquier rastro anterior
             limpiarProducto();
 
             // 2. Cargamos el nuevo producto
             productoActual = p;
+
+            // 3. Actualizamos el buscador con el nombre seleccionado
+            const inputBusqueda = document.getElementById('busqueda');
+            inputBusqueda.value = p.nombre; // Para que se quede el nombre seleccionado
+
+            // 4. Ocultamos y limpiamos las sugerencias
+            const divSugerencias = document.getElementById('sugerencias');
+            divSugerencias.innerHTML = '';
+            divSugerencias.style.display = 'none';
+
+            // 5. Mostramos el panel del producto
             document.getElementById('prod-seleccionado').style.display = 'block';
             document.getElementById('panel-calculos').style.display = 'block';
             document.getElementById('resultados').style.display = 'block';
 
+            // Llenado de datos
             document.getElementById('prod-nombre-sel').textContent = p.nombre;
             document.getElementById('prod-codigo-sel').textContent = `Categoría: ${p.tipos_producto?.nombre || 'General'} | Código: ${p.codigo}`;
 
-            // Carga de márgenes
             document.getElementById('m-tuyo').value = p.tipos_producto?.margen_tuyo || 0.12;
             document.getElementById('m-clie').value = p.tipos_producto?.margen_cliente || 0.22;
 
