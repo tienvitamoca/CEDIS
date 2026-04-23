@@ -6,13 +6,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora — CEDIS</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        // Verificación agresiva: forzamos que jspdf esté disponible
+        window.addEventListener('load', () => {
+            if (typeof jspdf !== 'undefined') {
+                console.log("Librería PDF cargada correctamente.");
+            }
+        });
+    </script>
 </head>
 
 <body>
     <nav class="navbar">
         <a href="index.html">←</a>
-        <h1>⚖️ Calculadora Maestra</h1>
-        <span></span>
+        <h1>⚖️ Calculador</h1>
+        <button onclick="abrirCarrito()" style="background:transparent; border:none; font-size:1.5rem; cursor:pointer;">
+            🛒
+        </button>
     </nav>
 
     <div class="container has-bottom-nav">
@@ -157,7 +168,20 @@
                 </div>
             </div>
 
+            <div id="panel-acciones" style="margin-top: 1rem; display: flex; gap: 10px; align-items: center;">
+                <div style="flex: 1;">
+                    <input type="number" id="in-cantidad" value="1" min="1"
+                        style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid #ccc; text-align: center; font-size: 1rem;">
+                </div>
+
+                <button onclick="agregarAlCarrito()"
+                    style="flex: 2; padding: 1rem; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                    ➕ Agregar al Ticket
+                </button>
+            </div>
+
         </div>
+
     </div>
 
     <nav class="bottom-nav">
@@ -167,20 +191,147 @@
         <a href="cotizador.html"> <span class="icon">🧾</span> Cotizador </a>
 
     </nav>
+
+
+    <div id="modal-carrito"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; padding:20px; overflow-y:auto;">
+        <h2>🛒 Tu Ticket</h2>
+        <input type="text" id="nombre-cliente" placeholder="Nombre de la tienda/cliente"
+            style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #ccc; border-radius:8px;">
+
+        <div id="lista-carrito" style="margin-bottom: 20px;"></div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <button class="btn-ticket" onclick="imprimirTicket('share')">Compartir por WhatsApp</button>
+            <button onclick="imprimirTicket('download')" class="btn-ticket">Descargar PDF</button>
+
+            <button onclick="document.getElementById('modal-carrito').style.display='none'"
+                style="background:#6b7280; color:white; padding:15px; border:none; border-radius:8px;">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="supabase.js"></script>
     <script src="supabase.js"></script>
     <script>
         let productoActual = null;
         let presentaciones = [];
         let ultimaEntrada = 'precio';
         let html5QrCode = null;
+        let carrito = []; // Aquí guardaremos los productos agregados
 
         async function init() {
             presentaciones = await dbGet('presentaciones', 'order=codigo_bb.asc');
         }
 
 
+        function agregarAlCarrito() {
+            if (!productoActual) return;
+
+            const cantidadInput = document.getElementById('in-cantidad');
+            const cantidad = parseInt(cantidadInput.value) || 1;
+            // Captura el valor del campo donde se muestra el precio
+            const precioVenta = parseFloat(document.getElementById('r-precio-venta').textContent.replace('$', ''));
+
+            const item = {
+                producto: productoActual,
+                precio: precioVenta,
+                cantidad: cantidad,
+                costo: parseFloat(productoActual.costo_kg),
+                precioObjetivo: parseFloat(document.getElementById('in-precio').value) || 0
+            };
+
+            carrito.push(item);
+            alert(`${cantidad} x ${productoActual.nombre} agregado.`);
+
+            cantidadInput.value = 1;
+            limpiarProducto();
+        }
+
+       
+        async function imprimirTicket(modo) {
+    if (carrito.length === 0) return alert("El carrito está vacío.");
+    if (!window.jspdf || !window.jspdf.jsPDF) return alert("Error: Librería PDF no cargada.");
+
+    const { jsPDF } = window.jspdf;
+    const nombreCliente = document.getElementById('nombre-cliente').value.trim() || "Ticket";
+    const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
+
+    // Logo y Encabezado
+    try {
+        doc.addImage("LogoMoca.png", 'PNG', 25, 5, 30, 15);
+    } catch(e) { console.warn("Logo no encontrado"); }
+
+    doc.setFontSize(10);
+    doc.text(`Cliente: ${nombreCliente}`, 10, 25);
+    doc.text(`Fecha: ${new Date().toLocaleString('es-MX')}`, 10, 30);
+    doc.text("-----------------------------------", 10, 34);
+
+    let y = 40;
+    let totalGeneral = 0;
+
+    carrito.forEach(item => {
+        const subtotal = item.cantidad * item.precio;
+        totalGeneral += subtotal;
+
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text(item.producto.nombre, 10, y);
+        y += 5;
+        
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        // Aquí muestra el precio de venta y el costo total calculado
+        doc.text(`${item.cantidad} pzas x $${item.precio.toFixed(2)}`, 10, y);
+        doc.text(`$${subtotal.toFixed(2)}`, 70, y, { align: "right" });
+        y += 4;
+        doc.text(`Obj sugerido: $${item.precioObjetivo.toFixed(2)}`, 10, y);
+        y += 7;
+        
+        if (y > 130) { doc.addPage(); y = 10; }
+    });
+
+    doc.text("-----------------------------------", 10, y);
+    y += 5;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(`TOTAL: $${totalGeneral.toFixed(2)}`, 70, y, { align: "right" });
+
+    // Generación y envío
+    const pdfBlob = doc.output('blob');
+    const nombreArchivo = `${nombreCliente}-${Date.now()}.pdf`;
+    const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+
+    if (modo === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Nota CEDIS' });
+    } else {
+        doc.save(nombreArchivo);
+    }
+}
+
+        // Abrir vista previa
+        // Agrega esto a tu script para abrir el modal de forma segura
+        function abrirCarrito() {
+            const modal = document.getElementById('modal-carrito');
+            const lista = document.getElementById('lista-carrito');
+            lista.innerHTML = '';
+
+            carrito.forEach((item, index) => {
+                lista.innerHTML += `
+            <div style="border-bottom:1px solid #eee; padding:10px 0;">
+                <strong>${item.producto.nombre}</strong><br>
+                <small>Precio Venta: $${item.precio.toFixed(2)} | Obj: $${item.precioObjetivo.toFixed(2)}</small><br>
+                <span>${item.cantidad} pzas</span>
+            </div>
+        `;
+            });
+            modal.style.display = 'block';
+        }
+
+        // Modificación al botón de la navbar
+        // <button onclick="abrirCarrito()" ...> 🛒 </button>
         // --- FUNCIÓN PARA ENCENDER CÁMARA ---
         async function encenderEscanner() {
             document.getElementById('scanner-container').style.display = 'block';
@@ -374,6 +525,7 @@
         }
 
         function limpiarProducto() {
+
             productoActual = null;
             document.getElementById('prod-seleccionado').style.display = 'none';
             document.getElementById('panel-calculos').style.display = 'none';
@@ -389,6 +541,8 @@
 
             document.getElementById('card-codigo').style.display = 'none';
             document.getElementById('card-no-codigo').style.display = 'none';
+
+            document.querySelectorAll('.value').forEach(el => el.textContent = '—');
         }
 
         init();
