@@ -207,6 +207,13 @@
 
             <button onclick="document.getElementById('modal-carrito').style.display='none'"
                 style="background:#6b7280; color:white; padding:15px; border:none; border-radius:8px;">Cerrar</button>
+
+            <div style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
+                <button onclick="iniciarNuevoTicket()"
+                    style="background:#ef4444; color:white; padding:10px; border:none; border-radius:8px; width:100%;">
+                    🗑️ Iniciar Nuevo Ticket
+                </button>
+            </div>
         </div>
     </div>
 
@@ -250,66 +257,85 @@
             limpiarProducto();
         }
 
-       
+
         async function imprimirTicket(modo) {
-    if (carrito.length === 0) return alert("El carrito está vacío.");
-    if (!window.jspdf || !window.jspdf.jsPDF) return alert("Error: Librería PDF no cargada.");
+            if (carrito.length === 0) return alert("El carrito está vacío.");
+            if (!window.jspdf || !window.jspdf.jsPDF) return alert("Error: Librería PDF no cargada.");
 
-    const { jsPDF } = window.jspdf;
-    const nombreCliente = document.getElementById('nombre-cliente').value.trim() || "Ticket";
-    const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
+            const { jsPDF } = window.jspdf;
+            const nombreCliente = document.getElementById('nombre-cliente').value.trim() || "Ticket";
+            const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
 
-    // Logo y Encabezado
-    try {
-        doc.addImage("LogoMoca.png", 'PNG', 25, 5, 30, 15);
-    } catch(e) { console.warn("Logo no encontrado"); }
+            // Logo y Encabezado
+            try {
+                doc.addImage("LogoMoca.png", 'PNG', 25, 5, 30, 15);
+            } catch (e) { console.warn("Logo no encontrado"); }
 
-    doc.setFontSize(10);
-    doc.text(`Cliente: ${nombreCliente}`, 10, 25);
-    doc.text(`Fecha: ${new Date().toLocaleString('es-MX')}`, 10, 30);
-    doc.text("-----------------------------------", 10, 34);
+            doc.setFontSize(10);
+            doc.text(`Cliente: ${nombreCliente}`, 10, 25);
+            doc.text(`Fecha: ${new Date().toLocaleString('es-MX')}`, 10, 30);
+            doc.text("-----------------------------------", 10, 34);
 
-    let y = 40;
-    let totalGeneral = 0;
+            let y = 40;
+            let totalGeneral = 0;
 
-    carrito.forEach(item => {
-        const subtotal = item.cantidad * item.precio;
-        totalGeneral += subtotal;
+            carrito.forEach(item => {
+                const subtotal = item.cantidad * item.precio;
+                totalGeneral += subtotal;
 
-        doc.setFontSize(9);
-        doc.setFont("helvetica", "bold");
-        doc.text(item.producto.nombre, 10, y);
-        y += 5;
-        
-        doc.setFontSize(7);
-        doc.setFont("helvetica", "normal");
-        // Aquí muestra el precio de venta y el costo total calculado
-        doc.text(`${item.cantidad} pzas x $${item.precio.toFixed(2)}`, 10, y);
-        doc.text(`$${subtotal.toFixed(2)}`, 70, y, { align: "right" });
-        y += 4;
-        doc.text(`Obj sugerido: $${item.precioObjetivo.toFixed(2)}`, 10, y);
-        y += 7;
-        
-        if (y > 130) { doc.addPage(); y = 10; }
-    });
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "bold");
+                doc.text(item.producto.nombre, 10, y);
+                y += 5;
 
-    doc.text("-----------------------------------", 10, y);
-    y += 5;
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text(`TOTAL: $${totalGeneral.toFixed(2)}`, 70, y, { align: "right" });
+                doc.setFontSize(7);
+                doc.setFont("helvetica", "normal");
+                // Aquí muestra el precio de venta y el costo total calculado
+                doc.text(`${item.cantidad} pzas x $${item.precio.toFixed(2)}`, 10, y);
+                doc.text(`$${subtotal.toFixed(2)}`, 70, y, { align: "right" });
+                y += 4;
+                doc.text(`Obj sugerido: $${item.precioObjetivo.toFixed(2)}`, 10, y);
+                y += 7;
 
-    // Generación y envío
-    const pdfBlob = doc.output('blob');
-    const nombreArchivo = `${nombreCliente}-${Date.now()}.pdf`;
-    const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+                if (y > 130) { doc.addPage(); y = 10; }
+            });
 
-    if (modo === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Nota CEDIS' });
-    } else {
-        doc.save(nombreArchivo);
-    }
-}
+            doc.text("-----------------------------------", 10, y);
+            y += 5;
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "bold");
+            doc.text(`TOTAL: $${totalGeneral.toFixed(2)}`, 70, y, { align: "right" });
+
+            // Generación y envío
+            const pdfBlob = doc.output('blob');
+            const nombreArchivo = `${nombreCliente}-${Date.now()}.pdf`;
+            const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+
+            if (modo === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], title: 'Nota CEDIS' });
+            } else {
+                doc.save(nombreArchivo);
+            }
+        }
+
+        function iniciarNuevoTicket() {
+            // 1. Preguntar por confirmación para evitar borrados accidentales
+            if (confirm("¿Estás seguro de que quieres borrar el ticket actual y empezar uno nuevo?")) {
+                // 2. Vaciar el arreglo global del carrito
+                carrito = [];
+
+                // 3. Limpiar el campo de nombre del cliente en el modal
+                document.getElementById('nombre-cliente').value = '';
+
+                // 4. Limpiar la lista visual dentro del modal
+                document.getElementById('lista-carrito').innerHTML = '<p>Carrito vacío</p>';
+
+                // 5. Cerrar el modal para que el usuario siga trabajando
+                document.getElementById('modal-carrito').style.display = 'none';
+
+                alert("Ticket nuevo iniciado.");
+            }
+        }
 
         // Abrir vista previa
         // Agrega esto a tu script para abrir el modal de forma segura
@@ -465,7 +491,7 @@
             // NUEVA VALIDACIÓN: Si no hay costo, no calculamos y avisamos
             if (!productoActual.costo_kg || parseFloat(productoActual.costo_kg) <= 0) {
                 alert("⚠️ ATENCIÓN: Este producto no tiene registrado un 'Costo por Kilo'. No se puede calcular.");
-                limpiarResultados(); // Función que creamos arriba
+                limpiarProducto(); // Función que creamos arriba
                 return;
             }
 
