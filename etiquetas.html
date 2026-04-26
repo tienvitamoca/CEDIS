@@ -241,46 +241,59 @@
 async function abrirVistaPrevia() {
     if (!productoActual) return alert("Selecciona un producto primero");
     
-    // Crear el modal de vista previa
-    const modal = document.createElement('div');
-    modal.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; padding:20px; overflow-y:auto;";
-    
+    // --- 1. SPINNER DE CARGA INICIAL ---
+    const loader = document.createElement('div');
+    loader.innerHTML = `<div style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.9); z-index:10000; display:flex; justify-content:center; align-items:center; flex-direction:column;">
+        <div style="border:5px solid #f3f3f3; border-top:5px solid #22c55e; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite;"></div>
+        <p>Preparando etiquetas...</p>
+    </div><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>`;
+    document.body.appendChild(loader);
+
     const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value) || 1;
     const bbCode = document.getElementById('presentacion-bb').value;
+    const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
     const cod = generarCodigoBarras(productoActual, bbCode);
+    const fechaHoy = new Date().toLocaleDateString('es-MX');
+
+    const modal = document.createElement('div');
+    modal.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; padding:10px; overflow-y:auto;";
     
     modal.innerHTML = `
-        <div style="text-align:center; margin-bottom:15px;">
+        <div style="text-align:center; margin-bottom:15px; position:sticky; top:0; background:white; padding:10px; border-bottom:1px solid #eee;">
             <button onclick="this.parentElement.parentElement.remove()" style="padding:10px; background:#ef4444; color:white; border:none; border-radius:5px;">Cerrar</button>
             <button id="btn-enviar" style="padding:10px; background:#22c55e; color:white; border:none; border-radius:5px;">Enviar PDF por WhatsApp</button>
         </div>
-        <div id="contenedor-pdf" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:5px; width:100%; box-sizing:border-box;">
+        <div id="contenedor-pdf" style="display:grid; grid-template-columns: repeat(6, 1fr); gap:2px; width:100%;">
             ${Array(cantidad).fill(0).map(() => `
-                <div style="border:1px solid #000; padding:4px; text-align:center; height:22mm; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
-                    <div style="font-size:8pt; font-weight:bold; line-height:1.1; text-transform:uppercase;">${productoActual.nombre}</div>
-                    <div style="font-size:7pt; font-weight:bold;">${pres ? pres.nombre : ''}</div>
-                    <div style="font-size:5pt; color:#333;">Emp: ${fechaHoy}</div>
-                    <svg class="barcode-svg" data-value="${cod.num}" style="width:100%; height:20px;"></svg>
-                    <div style="font-size:7pt; font-family:monospace; font-weight:bold;">${cod.num}</div>
+                <div style="border:0.5px solid #000; padding:2px; text-align:center; height:18mm; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;">
+                    <div style="font-size:5pt; font-weight:bold; line-height:1;">${productoActual.nombre}</div>
+                    <div style="font-size:5pt;">${pres ? pres.nombre : ''}</div>
+                    <svg class="barcode-svg" data-value="${cod.num}" style="width:100%; height:15px;"></svg>
+                    <div style="font-size:5pt; font-family:monospace;">${cod.num}</div>
                 </div>
             `).join('')}
         </div>
     `;
+    
     document.body.appendChild(modal);
 
-    // Dibujar códigos de barras inmediatamente
+    // Dibujar códigos
     modal.querySelectorAll(".barcode-svg").forEach(s => {
-        JsBarcode(s, s.getAttribute("data-value"), { format: "CODE128", width: 2, height: 40, displayValue: false, margin: 0 });
+        JsBarcode(s, s.getAttribute("data-value"), { format: "CODE128", width: 1.5, height: 30, displayValue: false, margin: 0 });
     });
+
+    // Remover loader después de renderizar
+    loader.remove();
 
     // Acción de enviar
     document.getElementById('btn-enviar').onclick = async () => {
         const btn = document.getElementById('btn-enviar');
-        btn.innerText = "Generando...";
+        btn.innerText = "Generando PDF...";
         btn.disabled = true;
 
         const elemento = document.getElementById('contenedor-pdf');
-        const pdfBlob = await html2pdf().from(elemento).set({ margin: 5, filename: 'Etiquetas.pdf' }).output('blob');
+        // Margen pequeño para aprovechar la hoja
+        const pdfBlob = await html2pdf().from(elemento).set({ margin: 2, filename: 'Etiquetas.pdf', jsPDF: { format: 'letter' } }).output('blob');
         
         const archivo = new File([pdfBlob], "Etiquetas.pdf", { type: 'application/pdf' });
         if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
@@ -292,7 +305,6 @@ async function abrirVistaPrevia() {
         btn.disabled = false;
     };
 }
-    
     
     init();
   </script>
