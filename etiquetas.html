@@ -14,27 +14,24 @@
     rel="stylesheet">
   <style>
     .etiqueta {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      border: 0.1mm solid #ccc;
-      overflow: hidden;
-      /* Evita que el código se desborde */
-    }
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 0.1mm solid #ccc;
+    overflow: hidden; /* Evita que el código se desborde */
+  }
 
-    .barcode-svg {
-      max-width: 90%;
-      /* Ajusta el ancho para que no pegue en los bordes */
-    }
+  .barcode-svg {
+    max-width: 90%; /* Ajusta el ancho para que no pegue en los bordes */
+  }
 
-    .numero-legible {
-      font-family: 'Courier New', monospace;
-      font-size: 7pt;
-      margin-top: 1px;
-      letter-spacing: 1px;
-    }
-
+  .numero-legible {
+    font-family: 'Courier New', monospace;
+    font-size: 7pt;
+    margin-top: 1px;
+    letter-spacing: 1px;
+  }
     /* Estilo para la vista previa en pantalla */
     .preview-grid {
       display: grid;
@@ -241,79 +238,78 @@
     }
 
 
-    async function enviarPDFporWhatsApp() {
-      if (!productoActual) return alert("Selecciona un producto primero");
+async function enviarPDFporWhatsApp() {
+    const btn = event.target;
+    if (!productoActual) return alert("Selecciona un producto primero");
+    
+    // 1. Deshabilitar botón para evitar clics múltiples
+    btn.disabled = true;
+    const textoOriginal = btn.innerText;
+    btn.innerText = "⏳ Generando PDF...";
 
-      // 1. Bloqueo de botón para evitar clics múltiples
-      const btn = event.target;
-      const textoOriginal = btn.innerText;
-      btn.innerText = "⏳ Generando...";
-      btn.disabled = true;
+    try {
+        // 2. Crear contenedor temporal VISIBLE pero fuera de la vista principal
+        // Usamos una clase para identificarlo y borrarlo fácil después
+        const contenedor = document.createElement('div');
+        contenedor.id = 'temp-pdf-container';
+        contenedor.style.position = 'fixed';
+        contenedor.style.top = '0';
+        contenedor.style.left = '-2000px'; 
+        document.body.appendChild(contenedor);
+        
+        const bbCode = document.getElementById('presentacion-bb').value;
+        const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value) || 1;
+        const cod = generarCodigoBarras(productoActual, bbCode);
+        const fechaHoy = new Date().toLocaleDateString('es-MX');
+        
+        contenedor.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(6, 31mm); gap: 1mm; width: 190mm;">
+                ${Array(cantidad).fill(0).map(() => `
+                    <div style="border: 0.1mm solid #000; height: 20mm; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box;">
+                        <div style="font-size: 7pt; font-weight: bold;">${productoActual.nombre}</div>
+                        <div style="font-size: 6pt;">${document.getElementById('presentacion-bb').options[document.getElementById('presentacion-bb').selectedIndex].text}</div>
+                        <svg class="barcode-svg" data-value="${cod.num}" style="width: 25mm; height: 12mm;"></svg>
+                        <div style="font-size: 6pt; font-family: monospace;">${cod.num}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
 
-      // 2. Crear contenedor oculto
-      const contenedor = document.createElement('div');
-      contenedor.style.position = 'absolute';
-      contenedor.style.left = '-9999px';
-      contenedor.style.width = '190mm'; // Forzamos un ancho fijo para el PDF
-      document.body.appendChild(contenedor);
-
-      const bbCode = document.getElementById('presentacion-bb').value;
-      const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value) || 1;
-      const cod = generarCodigoBarras(productoActual, bbCode);
-      const fechaHoy = new Date().toLocaleDateString('es-MX');
-
-      contenedor.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(6, 31mm); gap: 1mm;">
-            ${Array(cantidad).fill(0).map(() => `
-                <div style="border: 0.1mm solid #000; height: 20mm; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box;">
-                    <div style="font-size: 7pt; font-weight: bold;">${productoActual.nombre}</div>
-                    <div style="font-size: 6pt;">${document.getElementById('presentacion-bb').options[document.getElementById('presentacion-bb').selectedIndex].text}</div>
-                    <svg class="barcode-svg" data-value="${cod.num}" style="width: 25mm; height: 12mm;"></svg>
-                    <div style="font-size: 6pt; font-family: monospace;">${cod.num}</div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-
-      // 3. DIBUJAR Y ESPERAR: JsBarcode es asíncrono en esencia
-      const svgs = contenedor.querySelectorAll(".barcode-svg");
-      svgs.forEach(s => {
-        JsBarcode(s, s.getAttribute("data-value"), {
-          format: "CODE128", width: 2, height: 40, displayValue: false, margin: 0
+        // 3. Dibujar códigos y esperar a que el navegador termine de renderizar el SVG
+        contenedor.querySelectorAll(".barcode-svg").forEach(s => {
+            JsBarcode(s, s.getAttribute("data-value"), { 
+                format: "CODE128", width: 2, height: 40, displayValue: false, margin: 0 
+            });
         });
-      });
 
-      // ¡IMPORTANTE! Damos un pequeño respiro para que el DOM procese los SVGs
-      await new Promise(r => setTimeout(r, 500));
+        await new Promise(resolve => setTimeout(resolve, 800));
 
-      // 4. Generar PDF
-      const opciones = {
-        margin: 5,
-        filename: 'Etiquetas.pdf',
-        html2canvas: { scale: 2, useCORS: true } // Escala 2 para buena calidad sin ser pesado
-      };
-
-      try {
+        // 4. Generar PDF
+        const opciones = { margin: 5, filename: 'Etiquetas.pdf' };
         const pdfBlob = await html2pdf().set(opciones).from(contenedor).output('blob');
-
+        
         // 5. Compartir
         const archivo = new File([pdfBlob], "Etiquetas.pdf", { type: 'application/pdf' });
         if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-          await navigator.share({ files: [archivo] });
+            await navigator.share({ files: [archivo] });
         } else {
-          saveAs(pdfBlob, "Etiquetas.pdf");
+            saveAs(pdfBlob, "Etiquetas.pdf");
         }
-      } catch (e) {
-        alert("Error al generar PDF");
-      } finally {
-        // 6. Limpiar
+
+        // Limpieza
         document.body.removeChild(contenedor);
-        btn.innerText = textoOriginal;
+
+    } catch (e) {
+        console.error(e);
+        alert("Error al generar el PDF. Verifica que tengas conexión.");
+    } finally {
+        // Habilitar botón nuevamente
         btn.disabled = false;
-      }
+        btn.innerText = textoOriginal;
     }
-
-
+}
+    
+    
     init();
   </script>
 </body>
