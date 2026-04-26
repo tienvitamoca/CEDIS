@@ -233,31 +233,6 @@
             presentaciones = await dbGet('presentaciones', 'order=codigo_bb.asc');
         }
 
-
-        function agregarAlCarrito() {
-            if (!productoActual) return;
-
-            const cantidadInput = document.getElementById('in-cantidad');
-            const cantidad = parseInt(cantidadInput.value) || 1;
-            // Captura el valor del campo donde se muestra el precio
-            const precioVenta = parseFloat(document.getElementById('r-precio-venta').textContent.replace('$', ''));
-
-            const item = {
-                producto: productoActual,
-                precio: precioVenta,
-                cantidad: cantidad,
-                costo: parseFloat(productoActual.costo_kg),
-                precioObjetivo: parseFloat(document.getElementById('in-precio').value) || 0
-            };
-
-            carrito.push(item);
-            alert(`${cantidad} x ${productoActual.nombre} agregado.`);
-
-            cantidadInput.value = 1;
-            limpiarProducto();
-        }
-
-
         async function imprimirTicket(modo) {
             if (carrito.length === 0) return alert("El carrito está vacío.");
             if (!window.jspdf || !window.jspdf.jsPDF) return alert("Error: Librería PDF no cargada.");
@@ -337,27 +312,61 @@
             }
         }
 
-        // Abrir vista previa
-        // Agrega esto a tu script para abrir el modal de forma segura
+        function agregarAlCarrito() {
+            if (!productoActual) return;
+
+            const cantidadInput = document.getElementById('in-cantidad');
+            const cantidad = parseInt(cantidadInput.value) || 1;
+            // Captura el valor del campo donde se muestra el precio
+            const precioVenta = parseFloat(document.getElementById('r-precio-venta').textContent.replace('$', ''));
+            const presText = document.getElementById('r-presentacion-nombre').textContent || "Estándar";
+
+
+            const item = {
+                producto: productoActual,
+                precio: precioVenta,
+                cantidad: cantidad,
+                costo: parseFloat(productoActual.costo_kg),
+                precioObjetivo: parseFloat(document.getElementById('in-precio').value) || 0,
+                presentacion: presText,
+            };
+
+            carrito.push(item);
+            alert(`${cantidad} x ${productoActual.nombre} agregado.`);
+
+            cantidadInput.value = 1;
+            limpiarProducto();
+        }
+
+
         function abrirCarrito() {
             const modal = document.getElementById('modal-carrito');
             const lista = document.getElementById('lista-carrito');
             lista.innerHTML = '';
+            
 
             carrito.forEach((item, index) => {
+                const subtotal = item.cantidad * item.precio;
                 lista.innerHTML += `
-            <div style="border-bottom:1px solid #eee; padding:10px 0;">
-                <strong>${item.producto.nombre}</strong><br>
-                <small>Precio Venta: $${item.precio.toFixed(2)} | Obj: $${item.precioObjetivo.toFixed(2)}</small><br>
-                <span>${item.cantidad} pzas</span>
+           <div style="border-bottom:1px solid #eee; padding:10px 0; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                   <strong>${item.producto.nombre}</strong><br>
+                    <small>Costo: $${item.precio.toFixed(2)} -> Sugerido: $${item.precioObjetivo.toFixed(2)} | Presentación: ${item.presentacion} </small><br> 
+                    <span>${item.cantidad} pzas</span> <strong> $${subtotal.toFixed(2)}</strong>
+                </div>
+                <button onclick="quitarDelCarrito(${index})" style="background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">X</button>
             </div>
+
         `;
             });
             modal.style.display = 'block';
         }
 
-        // Modificación al botón de la navbar
-        // <button onclick="abrirCarrito()" ...> 🛒 </button>
+        function quitarDelCarrito(index) {
+            carrito.splice(index, 1); // Elimina el producto de la lista
+            abrirCarrito(); // Refresca el modal para ver el cambio
+        }
+
         // --- FUNCIÓN PARA ENCENDER CÁMARA ---
         async function encenderEscanner() {
             document.getElementById('scanner-container').style.display = 'block';
