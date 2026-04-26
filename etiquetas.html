@@ -241,13 +241,22 @@
 async function abrirVistaPrevia() {
     if (!productoActual) return alert("Selecciona un producto primero");
 
+    // 1. Mostrar Spinner de carga profesional
+    const loader = document.createElement('div');
+    loader.id = "mi-loader";
+    loader.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:10000; display:flex; justify-content:center; align-items:center; flex-direction:column; font-family:sans-serif;";
+    loader.innerHTML = `<div style="border:6px solid #f3f3f3; border-top:6px solid #22c55e; border-radius:50%; width:50px; height:50px; animation:spin 1s linear infinite;"></div><p style="margin-top:15px; color:#333; font-weight:bold;">Generando etiquetas...</p><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>`;
+    document.body.appendChild(loader);
+
+    // Damos un pequeño retraso para que el loader se renderice
+    await new Promise(r => setTimeout(r, 200));
+
     const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value) || 1;
     const bbCode = document.getElementById('presentacion-bb').value;
     const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
     const cod = generarCodigoBarras(productoActual, bbCode);
     const fechaHoy = new Date().toLocaleDateString('es-MX');
 
-    // Crear el contenedor de vista previa
     const modal = document.createElement('div');
     modal.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; padding:10px; overflow-y:auto; font-family: sans-serif;";
     
@@ -256,55 +265,47 @@ async function abrirVistaPrevia() {
             <button onclick="this.parentElement.parentElement.remove()" style="padding:10px 20px; background:#ef4444; color:white; border:none; border-radius:5px; margin-right:10px;">Cerrar</button>
             <button id="btn-enviar" style="padding:10px 20px; background:#22c55e; color:white; border:none; border-radius:5px;">Enviar PDF por WhatsApp</button>
         </div>
-        
         <div id="contenedor-pdf" style="display:grid; grid-template-columns: repeat(6, 1fr); gap:2px; max-width: 190mm; margin: 0 auto;">
             ${Array(cantidad).fill(0).map(() => `
-                <div style=" padding: 2px; text-align: center; height: 18mm; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; background: white;">
-                    <div style="font-size: 5pt; font-weight: bold; line-height: 1; text-transform: uppercase; margin-bottom: 1px;">${productoActual.nombre}</div>
-                    <div style="font-size: 5pt; font-weight: bold; margin-bottom: 1px;">${pres ? pres.nombre : ''}</div>
-                    <div style="font-size: 4pt; color: #333; margin-bottom: 1px;">Emp: ${fechaHoy}</div>
-                    <svg class="barcode-svg" data-value="${cod.num}" style="width: 25mm; height: 10mm;"></svg>
-                    <div style="font-size: 5pt; font-family: monospace; font-weight: bold; margin-top: 1px;">${cod.num}</div>
+                <div style="border: 0.5px solid #000; padding: 2px; text-align: center; height: 22mm; display: flex; flex-direction: column; align-items: center; justify-content: space-between; overflow: hidden; background: white;">
+                    <div style="font-size: 5.5pt; font-weight: bold; line-height: 1; text-transform: uppercase;">${productoActual.nombre}</div>
+                    <div style="font-size: 5pt; font-weight: bold; line-height: 1;">${pres ? pres.nombre : ''}</div>
+                    <div style="font-size: 4pt; color: #333;">Emp: ${fechaHoy}</div>
+                    <svg class="barcode-svg" data-value="${cod.num}" style="width: 100%; height: 25px;"></svg>
+                    <div style="font-size: 5pt; font-family: monospace; font-weight: bold;">${cod.num}</div>
                 </div>
             `).join('')}
         </div>
     `;
     document.body.appendChild(modal);
 
-    // Dibujar códigos de barras
+    // Dibujar códigos con altura aumentada (height: 45)
     modal.querySelectorAll(".barcode-svg").forEach(s => {
-        JsBarcode(s, s.getAttribute("data-value"), { format: "CODE128", width: 1.5, height: 30, displayValue: false, margin: 0 });
+        JsBarcode(s, s.getAttribute("data-value"), { format: "CODE128", width: 1.5, height: 45, displayValue: false, margin: 0 });
     });
 
-    // Acción de enviar con Spinner
+    loader.remove(); // Quitar spinner
+
     document.getElementById('btn-enviar').onclick = async (e) => {
         const btn = e.target;
-        const originalText = btn.innerText;
-        
-        // Bloqueo y Spinner
         btn.disabled = true;
-        btn.innerHTML = `<span style="display:inline-block; animation:spin 1s linear infinite; border:2px solid white; border-top:2px solid transparent; border-radius:50%; width:10px; height:10px; margin-right:5px;"></span> Generando...`;
+        btn.innerText = "Preparando archivo...";
         
-        try {
-            const elemento = document.getElementById('contenedor-pdf');
-            const pdfBlob = await html2pdf().from(elemento).set({ 
-                margin: 2, 
-                filename: 'Etiquetas.pdf',
-                jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-            }).output('blob');
-            
-            const archivo = new File([pdfBlob], "Etiquetas.pdf", { type: 'application/pdf' });
-            if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-                await navigator.share({ files: [archivo] });
-            } else {
-                saveAs(pdfBlob, "Etiquetas.pdf");
-            }
-        } catch (error) {
-            alert("Ocurrió un error al generar el PDF.");
-        } finally {
-            btn.disabled = false;
-            btn.innerText = originalText;
+        const elemento = document.getElementById('contenedor-pdf');
+        const pdfBlob = await html2pdf().from(elemento).set({ 
+            margin: 2, 
+            filename: 'Etiquetas.pdf',
+            jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+        }).output('blob');
+        
+        const archivo = new File([pdfBlob], "Etiquetas.pdf", { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+            await navigator.share({ files: [archivo] });
+        } else {
+            saveAs(pdfBlob, "Etiquetas.pdf");
         }
+        btn.disabled = false;
+        btn.innerText = "Enviar PDF por WhatsApp";
     };
 }
 
