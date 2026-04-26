@@ -7,10 +7,34 @@
   <title>Imprimir Etiquetas — CEDIS</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
   <link
     href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&family=Libre+Barcode+128+Text&family=Libre+Barcode+39&display=swap"
     rel="stylesheet">
   <style>
+    .etiqueta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 0.1mm solid #ccc;
+      overflow: hidden;
+      /* Evita que el código se desborde */
+    }
+
+    .barcode-svg {
+      max-width: 90%;
+      /* Ajusta el ancho para que no pegue en los bordes */
+    }
+
+    .numero-legible {
+      font-family: 'Courier New', monospace;
+      font-size: 7pt;
+      margin-top: 1px;
+      letter-spacing: 1px;
+    }
+
     /* Estilo para la vista previa en pantalla */
     .preview-grid {
       display: grid;
@@ -78,9 +102,7 @@
           </div>
 
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 1rem;">
-            <button class="btn btn-primary" onclick="imprimirPDF()">
-              🖨️ Imprimir
-            </button>
+
             <button class="btn" style="background:#22c55e; color:white;" onclick="compartirPDF()">
               💬 WhatsApp
             </button>
@@ -220,216 +242,55 @@
 
 
     async function compartirPDF() {
-      if (!productoActual) return;
+      if (!productoActual) return alert("Selecciona un producto primero");
+
+      // 1. Crear contenedor oculto
+      const contenedor = document.createElement('div');
+      contenedor.style.position = 'absolute';
+      contenedor.style.left = '-9999px';
+      document.body.appendChild(contenedor);
+
       const bbCode = document.getElementById('presentacion-bb').value;
-      if (!bbCode) { alert('Selecciona una presentación'); return; }
+      const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value) || 1;
+      const cod = generarCodigoBarras(productoActual, bbCode);
+      const fechaHoy = new Date().toLocaleDateString('es-MX');
 
-      const cant = document.getElementById('cantidad-etiquetas').value;
-      const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
-      const nombreArchivo = `Etiquetas_${productoActual.nombre.replace(/ /g, '_')}.pdf`;
+      // 2. Dibujar las etiquetas (con todos tus datos)
+      contenedor.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(4, 30mm); gap: 5px;">
+            ${Array(cantidad).fill(0).map(() => `
+                <div style="border: 1px solid #000; padding: 5px; text-align: center; height: 20mm; display: flex; flex-direction: column; align-items: center; justify-content: space-between;">
+                    <div style="font-size: 7pt; font-weight: bold;">${productoActual.nombre}</div>
+                    <div style="font-size: 6pt;">${document.getElementById('presentacion-bb').options[document.getElementById('presentacion-bb').selectedIndex].text}</div>
+                    <div style="font-size: 4pt;">Emp: ${fechaHoy}</div>
+                    <svg class="barcode-svg" data-value="${cod.num}" style="width: 100%; height: 25px;"></svg>
+                    <div style="font-size: 7pt; font-family: monospace; font-weight: bold;">${cod.num}</div>
+                </div>
+            `).join('')}
+        </div>
+    `;
 
-      // 1. Creamos el diseño oculto que se convertirá en PDF
-      const elemento = document.createElement('div');
-      elemento.style.width = '190mm';
-      elemento.innerHTML = `
-    <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
-    <div style="display: grid; grid-template-columns: repeat(6, 31mm); grid-auto-rows: 20mm; gap: 0.5mm; background: white; padding: 5mm;">
-        ${Array(parseInt(cant)).fill(0).map(() => {
-        const cod = generarCodigoBarras(productoActual, bbCode);
-        return `
-            <div style="border: 0.1mm solid #eee; height: 20mm; display: flex; flex-direction: column; align-items: center; text-align: center; overflow: hidden; padding: 0.8mm 0.5mm; box-sizing: border-box; font-family: sans-serif;">
-                <div style="font-size: 7pt; font-weight: bold; line-height: 0.85; text-transform: uppercase;">${productoActual.nombre}</div>
-                <div style="font-size: 6pt; font-weight: bold;">${pres.nombre}</div>
-                <div style="font-size: 4.5pt; color: #555;">Emp: ${new Date().toLocaleDateString('es-MX')}</div>
-                <div style="font-family: 'Libre Barcode 39'; font-size: 18pt; transform: scaleY(1.6); transform-origin: top; height: 20pt; margin-bottom: 1.5mm; color: #000;">${cod.textoParaFuente}</div>
-                <div style="font-size: 7.5pt; font-weight: bold; font-family: monospace; margin-top: -1.5mm;">${cod.num}</div>
-            </div>
-          `;
-      }).join('')}
-    </div>
-  `;
-
-      const opt = {
-        margin: 0,
-        filename: nombreArchivo,
-        image: { type: 'jpeg', quality: 1 },
-        html2canvas: { scale: 3, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
-      };
-
-      try {
-        // 2. Generar el archivo binario (Blob)
-        const worker = html2pdf().set(opt).from(elemento);
-        const pdfBlob = await worker.output('blob');
-        const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
-
-        // 3. Usar el menú de compartir del celular
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Etiquetas CEDIS',
-            text: `🏷️ *ETIQUETAS: ${productoActual.nombre}*\nCant: ${cant}\nFecha: ${new Date().toLocaleDateString()}`
-          });
-        } else {
-          // Si el cel es muy viejo o no soporta compartir archivos, lo descarga
-          await worker.save();
-          alert("Tu celular no permite enviar archivos directo. El PDF se descargó a tu carpeta de Descargas.");
-        }
-      } catch (error) {
-        console.error("Error:", error);
-        alert("Error al generar el PDF. Verifica que tengas internet.");
-      }
-    }
-
-
-
-
-
-
-    function imprimirPDF() {
-      if (!productoActual) return;
-      const bbCode = document.getElementById('presentacion-bb').value;
-      if (!bbCode) { alert('Selecciona una presentación'); return; }
-
-      const pres = todasPresentaciones.find(p => p.codigo_bb === bbCode);
-      const codigoObj = generarCodigoBarras(productoActual, bbCode);
-      const cantidad = parseInt(document.getElementById('cantidad-etiquetas').value);
-
-      const fechaHoy = new Date().toLocaleDateString('es-MX', {
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit'
+      // 3. Generar códigos de barras
+      contenedor.querySelectorAll(".barcode-svg").forEach(s => {
+        JsBarcode(s, s.getAttribute("data-value"), { format: "CODE128", width: 2, height: 40, displayValue: false, margin: 0 });
       });
 
-      const win = window.open('', '_blank');
-      win.document.write(`
-<html>
-<head>
-  <title>Etiquetas - ${productoActual.nombre}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
-  <style>
-    @page { margin: 0.3cm; size: letter; }
+      // 4. Crear PDF y compartir inmediatamente
+      const opciones = { margin: 2, filename: 'Etiquetas.pdf' };
+      const pdfBlob = await html2pdf().set(opciones).from(contenedor).output('blob');
 
-    body { 
-      font-family: -apple-system, sans-serif; 
-      margin: 0; padding: 0; 
-      display: flex; flex-direction: column; align-items: center; 
-      background: #f4f4f7; 
-    }
+      // 5. Limpiar y compartir
+      document.body.removeChild(contenedor);
 
-    .no-print { 
-      padding: 15px; background: white; width: 100%; 
-      text-align: center; border-bottom: 1px solid #ddd; margin-bottom: 10px;
-      position: sticky; top: 0; z-index: 100;
-    }
-
-    .hoja {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(45%, 1fr)); 
-      grid-auto-rows: 20mm; /* REDUCIDO A 20mm */
-      gap: 1mm;
-      width: 100%;
-      background: white;
-      padding: 10px;
-      box-sizing: border-box;
-    }
-
-    .etiqueta {
-      border: 0.1mm solid #eee;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: center;
-      text-align: center;
-      padding: 0.8mm 0.5mm; /* Padding más ajustado */
-      box-sizing: border-box;
-      overflow: hidden;
-      height: 20mm; /* ETIQUETA MÁS COMPACTA */
-      background: white;
-    }
-
-    .nombre { 
-      font-size: 7pt; font-weight: bold; text-transform: uppercase; 
-      margin-bottom: 0.1mm; width: 100%; white-space: normal; 
-      line-height: 0.85; color: #000;
-    }
-
-    .presentacion { font-size: 6pt; color: #000; font-weight: bold; line-height: 1; margin-bottom: 0.1mm; }
-    .fecha-empaque { font-size: 4.5pt; color: #555; margin-bottom: 0.5mm; line-height: 1; }
-
-    .barras-visuales {
-      font-family: 'Libre Barcode 39', cursive !important;
-      font-size: 18pt; 
-      display: block;
-      text-align: center;
-      color: #000 !important;
-      letter-spacing: 0 !important;
-      white-space: nowrap;
-      image-rendering: pixelated;
-      transform: scaleY(1.6); /* Reducido ligeramente para ganar espacio vertical */
-      transform-origin: top;
-      height: 20pt; /* Contenedor más bajo */
-      margin-bottom: 1.5mm; /* PEGADO AL NÚMERO */
-    } 
-
-    .numero-legible {
-      font-family: 'Courier New', monospace;
-      font-size: 7.5pt;
-      font-weight: bold;
-      margin-top: -1.5mm; /* SUCCIÓN PARA ELIMINAR ESPACIO BLANCO */
-      text-align: center;
-      letter-spacing: 1.5px;
-      line-height: 1;
-    }
-
-    @media print { 
-      body { background: white; padding: 0; }
-      .no-print { display: none; }
-      .hoja { 
-        display: grid !important;
-        grid-template-columns: repeat(6, 31mm) !important;
-        grid-auto-rows: 20mm !important; /* FORZAR 20mm EN IMPRESIÓN */
-        padding: 0 !important; gap: 0.5mm !important;
-        width: 190mm !important;
-      }
-      .etiqueta { 
-        border: 0.1mm solid #eee !important; 
-        height: 20mm !important; 
-      }
-      .numero-legible { 
-        margin-top: -1.5mm !important; 
-      }
-      .barras-visuales {
-        height: 20pt !important;
-        margin-bottom: 1.5mm !important;
+      const archivo = new File([pdfBlob], "Etiquetas.pdf", { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+        await navigator.share({ files: [archivo] });
+      } else {
+        alert("Generado. Guardando archivo...");
+        saveAs(pdfBlob, "Etiquetas.pdf");
       }
     }
-  </style>
-</head>
-<body>
-  <div class="no-print">
-    <button onclick="window.print()" style="padding: 12px 24px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px;">
-      🖨️ IMPRIMIR AHORA
-    </button>
-  </div>
-  
-  <div class="hoja">
-    ${Array(cantidad).fill(0).map(() => `
-      <div class="etiqueta">
-        <div class="nombre">${productoActual.nombre}</div>
-        <div class="presentacion">${pres.nombre}</div>
-        <div class="fecha-empaque">Emp: ${fechaHoy}</div>
-        <div class="barras-visuales">${codigoObj.textoParaFuente}</div>
-        <div class="numero-legible">${codigoObj.num}</div>
-      </div>
-    `).join('')}
-  </div>
-</body>
-</html>
-`);
-      win.document.close();
-    }
+
 
 
     init();
