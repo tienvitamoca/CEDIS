@@ -293,7 +293,7 @@
         //     }
         // }
 
-     async function imprimirTicket(modo) {
+async function imprimirTicket(modo) {
   if (carrito.length === 0) return alert("El carrito está vacío.");
   if (!window.jspdf || !window.jspdf.jsPDF) return alert("Error: Librería PDF no cargada.");
 
@@ -302,9 +302,9 @@
 
   const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
 
-  // Logo y Encabezado
+  // Logo Cuadrado y de tamaño fijo (15x15 mm centrado horizontalmente a x=32.5)
   try {
-    doc.addImage("LogoMoca.png", 'PNG', 25, 5, 30, 15);
+    doc.addImage("LogoMoca.png", 'PNG', 32.5, 5, 15, 15);
   } catch (e) { 
     console.warn("Logo no encontrado"); 
   }
@@ -322,32 +322,34 @@
     const subtotal = item.cantidad * item.precio;
     totalGeneral += subtotal;
 
-    // 1. Nombre del Producto
+    // 1. Título: Nombre + Presentación (ej. "Arroz 500gr" o "Arroz (500gr)")
+    const presentacionTexto = item.presentacion ? ` (${item.presentacion})` : '';
+    const tituloProducto = `${item.producto.nombre}${presentacionTexto}`;
+
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.text(item.producto.nombre, 10, y);
+    doc.text(tituloProducto, 10, y);
     y += 4;
 
-    // 2. Costo, Sugerido y Presentación (Misma línea que el modal)
+    // 2. Precios: Costo y Sugerido
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
-    const presentacionTexto = item.presentacion ? item.presentacion : 'N/A';
-    doc.text(`Costo: $${item.precio.toFixed(2)} -> Sugerido: $${item.precioObjetivo.toFixed(2)} | Pres: ${presentacionTexto}`, 10, y);
+    doc.text(`Costo: $${item.precio.toFixed(2)} -> Sugerido: $${item.precioObjetivo.toFixed(2)}`, 10, y);
     y += 4;
 
-    // 3. Cantidad y Subtotal (Subtotal alineado a la derecha)
+    // 3. Cantidad y Subtotal alineado a la derecha
     doc.text(`${item.cantidad} pzas x $${item.precio.toFixed(2)}`, 10, y);
     doc.text(`$${subtotal.toFixed(2)}`, 70, y, { align: "right" });
-    y += 6; // Espacio vertical entre productos
+    y += 6;
 
-    // Control de salto de página si excede la altura del ticket
+    // Salto de página si excede el largo del ticket
     if (y > 130) { 
       doc.addPage(); 
       y = 10; 
     }
   });
 
-  // Línea final y Total
+  // Total final
   doc.setFontSize(8);
   doc.text("-----------------------------------", 10, y);
   y += 5;
@@ -366,6 +368,7 @@
     doc.save(nombreArchivo);
   }
 }
+
 
 
         function iniciarNuevoTicket() {
