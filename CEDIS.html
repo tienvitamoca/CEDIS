@@ -293,85 +293,83 @@
         //     }
         // }
 
-async function imprimirTicket(modo) {
-  if (carrito.length === 0) return alert("El carrito está vacío.");
-  if (!window.jspdf || !window.jspdf.jsPDF) return alert("Error: Librería PDF no cargada.");
+        async function imprimirTicket(modo) {
+            if (carrito.length === 0) return alert("El carrito está vacío.");
+            if (!window.jspdf || !window.jspdf.jsPDF) return alert("Error: Librería PDF no cargada.");
 
-  const { jsPDF } = window.jspdf;
-  const nombreCliente = document.getElementById('nombre-cliente').value.trim() || "Ticket";
+            const { jsPDF } = window.jspdf;
+            const nombreCliente = document.getElementById('nombre-cliente').value.trim() || "Ticket";
 
-  const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
+            const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
 
-  // Logo Cuadrado y de tamaño fijo (15x15 mm centrado horizontalmente a x=32.5)
-  try {
-    doc.addImage(".png", 'PNG', 32.5, 5, 15, 15);
-  } catch (e) { 
-    console.warn("Logo no encontrado"); 
-  }
+            // Logo Cuadrado y de tamaño fijo (15x15 mm centrado horizontalmente a x=32.5)
+             try {
+                doc.addImage("Logo.png", 'PNG', 25, 5, 30, 15);
+            } catch (e) { console.warn("Logo no encontrado"); }
 
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Cliente: ${nombreCliente}`, 10, 25);
-  doc.text(`Fecha: ${new Date().toLocaleString('es-MX')}`, 10, 30);
-  doc.text("-----------------------------------", 10, 34);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Cliente: ${nombreCliente}`, 10, 25);
+            doc.text(`Fecha: ${new Date().toLocaleString('es-MX')}`, 10, 30);
+            doc.text("-----------------------------------", 10, 34);
 
-  let y = 40;
-  let totalGeneral = 0;
+            let y = 40;
+            let totalGeneral = 0;
 
-  carrito.forEach(item => {
-    const subtotal = item.cantidad * item.precio;
-    totalGeneral += subtotal;
+            carrito.forEach(item => {
+                const subtotal = item.cantidad * item.precio;
+                totalGeneral += subtotal;
 
-    // 1. Título: Nombre + Presentación (ej. "Arroz 500gr" o "Arroz (500gr)")
-    const presentacionTexto = item.presentacion ? ` (${item.presentacion})` : '';
-    const tituloProducto = `${item.producto.nombre}${presentacionTexto}`;
+                // 1. Título: Nombre + Presentación (ej. "Arroz 500gr" o "Arroz (500gr)")
+                const presentacionTexto = item.presentacion ? ` (${item.presentacion})` : '';
+                const tituloProducto = `${item.producto.nombre}${presentacionTexto}`;
 
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text(tituloProducto, 10, y);
-    y += 4;
+                doc.setFontSize(9);
+                doc.setFont("helvetica", "bold");
+                doc.text(tituloProducto, 10, y);
+                y += 4;
 
-    // 2. Precios: Costo y Sugerido
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Costo: $${item.precio.toFixed(2)} -> Sugerido: $${item.precioObjetivo.toFixed(2)}`, 10, y);
-    y += 4;
+                // 2. Precios: Costo y Sugerido
+                doc.setFontSize(7);
+                doc.setFont("helvetica", "normal");
+                doc.text(`Costo: $${item.precio.toFixed(2)} -> Sugerido: $${item.precioObjetivo.toFixed(2)}`, 10, y);
+                y += 4;
 
-    // 3. Cantidad y Subtotal alineado a la derecha
-    doc.text(`${item.cantidad} pzas x $${item.precio.toFixed(2)}`, 10, y);
-    doc.text(`$${subtotal.toFixed(2)}`, 70, y, { align: "right" });
-    y += 6;
+                // 3. Cantidad y Subtotal alineado a la derecha
+                doc.text(`${item.cantidad} pzas x $${item.precio.toFixed(2)}`, 10, y);
+                doc.text(`$${subtotal.toFixed(2)}`, 70, y, { align: "right" });
+                y += 6;
 
-    // Salto de página si excede el largo del ticket
-    if (y > 130) { 
-      doc.addPage(); 
-      y = 10; 
-    }
-  });
+                // Salto de página si excede el largo del ticket
+                if (y > 130) {
+                    doc.addPage();
+                    y = 10;
+                }
+            });
 
- // Total final con redondeo al 0.50 superior
-  doc.setFontSize(8);
-  doc.text("-----------------------------------", 10, y);
-  y += 5;
+            // Total final con redondeo al 0.50 superior
+            doc.setFontSize(8);
+            doc.text("-----------------------------------", 10, y);
+            y += 5;
 
-  // Redondeo hacia el entero o .50 más cercano hacia arriba
-  const totalRedondeado = Math.ceil(totalGeneral * 2) / 2;
+            // Redondeo hacia el entero o .50 más cercano hacia arriba
+            const totalRedondeado = Math.ceil(totalGeneral * 2) / 2;
 
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL: $${totalRedondeado.toFixed(2)}`, 70, y, { align: "right" });
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "bold");
+            doc.text(`TOTAL: $${totalRedondeado.toFixed(2)}`, 70, y, { align: "right" });
 
-  // Generación y envío
-  const pdfBlob = doc.output('blob');
-  const nombreArchivo = `${nombreCliente}-${Date.now()}.pdf`;
-  const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+            // Generación y envío
+            const pdfBlob = doc.output('blob');
+            const nombreArchivo = `${nombreCliente}-${Date.now()}.pdf`;
+            const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
 
-  if (modo === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
-    await navigator.share({ files: [file], title: 'Nota CEDIS' });
-  } else {
-    doc.save(nombreArchivo);
-  }
-}
+            if (modo === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({ files: [file], title: 'Nota CEDIS' });
+            } else {
+                doc.save(nombreArchivo);
+            }
+        }
 
 
 
@@ -425,7 +423,7 @@ async function imprimirTicket(modo) {
             const modal = document.getElementById('modal-carrito');
             const lista = document.getElementById('lista-carrito');
             lista.innerHTML = '';
-            
+
 
             carrito.forEach((item, index) => {
                 const subtotal = item.cantidad * item.precio;
