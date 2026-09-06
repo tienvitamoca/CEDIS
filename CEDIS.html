@@ -304,7 +304,7 @@ async function imprimirTicket(modo) {
 
   // Logo Cuadrado y de tamaño fijo (15x15 mm centrado horizontalmente a x=32.5)
   try {
-    doc.addImage("LogoMoca.png", 'PNG', 32.5, 5, 15, 15);
+    doc.addImage(".png", 'PNG', 32.5, 5, 15, 15);
   } catch (e) { 
     console.warn("Logo no encontrado"); 
   }
@@ -349,13 +349,17 @@ async function imprimirTicket(modo) {
     }
   });
 
-  // Total final
+ // Total final con redondeo al 0.50 superior
   doc.setFontSize(8);
   doc.text("-----------------------------------", 10, y);
   y += 5;
+
+  // Redondeo hacia el entero o .50 más cercano hacia arriba
+  const totalRedondeado = Math.ceil(totalGeneral * 2) / 2;
+
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text(`TOTAL: $${totalGeneral.toFixed(2)}`, 70, y, { align: "right" });
+  doc.text(`TOTAL: $${totalRedondeado.toFixed(2)}`, 70, y, { align: "right" });
 
   // Generación y envío
   const pdfBlob = doc.output('blob');
