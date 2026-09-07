@@ -283,6 +283,21 @@
                 <button class="btn btn-primary" style="flex:1.5" onclick="guardarAjusteStock()">💾 Guardar
                     Stock</button>
             </div>
+
+            <div class="field"
+                style="margin-bottom:1.25rem; background:var(--bg); padding:0.6rem; border-radius:8px; border:1px solid var(--border)">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem">
+                    <label style="margin:0; font-weight:700">Stock Mínimo de Alerta</label>
+                    <span style="font-size:0.72rem; color:var(--text-muted)">Avísame cuando baje de:</span>
+                </div>
+                <div style="display:flex; gap:0.5rem">
+                    <input type="number" id="in-stock-minimo" step="any" placeholder="Ej: 500" style="flex:2">
+                    <select id="in-stock-minimo-unidad" style="flex:1">
+                        <option value="g" selected>g</option>
+                        <option value="kg">kg</option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -375,16 +390,17 @@
                 const coincideCat = !catId || p.tipo_id == catId;
 
                 const stockG = parseFloat(p.stock_gramos) || 0;
+                const minG = parseFloat(p.stock_minimo_g) || 1000; // Umbral personalizado
                 let coincideEstado = true;
 
                 if (estado === 'negativo') {
                     coincideEstado = stockG < 0;
                 } else if (estado === 'bajo') {
-                    coincideEstado = stockG > 0 && stockG < 1000;
+                    coincideEstado = stockG > 0 && stockG <= minG; // Evalúa contra su propio mínimo
                 } else if (estado === 'cero') {
                     coincideEstado = stockG === 0;
                 } else if (estado === 'ok') {
-                    coincideEstado = stockG >= 1000;
+                    coincideEstado = stockG > minG;
                 }
 
                 return coincideTexto && coincideCat && coincideEstado;
@@ -403,7 +419,8 @@
 
             tbody.innerHTML = lista.map(p => {
                 const stockG = parseFloat(p.stock_gramos) || 0;
-                const cpg = costoPorGramo(p);
+                const minG = parseFloat(p.stock_minimo_g) || 1000;
+                const cpg = costoPorGramo(p); //[cite: 7]
                 const valorTotal = cpg ? (stockG * cpg) : 0;
 
                 let claseStock = 'stock-ok';
@@ -415,14 +432,13 @@
                 } else if (stockG === 0) {
                     claseStock = 'stock-empty';
                     textoStock = '0 g';
-                } else if (stockG < 1000) {
-                    claseStock = 'stock-warn';
-                    textoStock = `${stockG} g`;
+                } else if (stockG <= minG) {
+                    claseStock = 'stock-warn'; // Stock bajo personalizado
+                    textoStock = stockG >= 1000 ? `${(stockG / 1000).toFixed(2)} kg` : `${stockG} g`;
                 } else {
                     claseStock = 'stock-ok';
                     textoStock = `${(stockG / 1000).toFixed(2)} kg`;
                 }
-
                 return `
           <tr onclick="abrirModal(${p.id})" style="cursor:pointer">
             <td>
@@ -456,6 +472,18 @@
 
             document.getElementById('ed-nombre').textContent = p.nombre;
             document.getElementById('ed-sub').textContent = `Código: ${p.codigo} | Categoría: ${p.tipos_producto?.nombre || 'General'}`;
+
+
+            // Cargar stock mínimo actual del producto (o 1000g por defecto)
+            const minActual = parseFloat(p.stock_minimo_g) || 1000;
+            if (minActual >= 1000 && minActual % 1000 === 0) {
+                document.getElementById('in-stock-minimo').value = minActual / 1000;
+                document.getElementById('in-stock-minimo-unidad').value = 'kg';
+            } else {
+                document.getElementById('in-stock-minimo').value = minActual;
+                document.getElementById('in-stock-minimo-unidad').value = 'g';
+            }
+
 
             const stockActual = parseFloat(p.stock_gramos) || 0;
             const formatActual = stockActual >= 1000
@@ -506,6 +534,30 @@
                 await dbPatch('productos', productoSeleccionado.id, { stock_gramos: stockFinal });
 
                 productoSeleccionado.stock_gramos = stockFinal;
+                actualizarMetricasFinancieras();
+                filtrarLista();
+
+                cerrarModal();
+            } catch (e) {
+                alert("Error al actualizar inventario: " + e.message);
+            }
+
+            // Convertir el stock mínimo a gramos
+            const rawMin = parseFloat(document.getElementById('in-stock-minimo').value);
+            const unidadMin = document.getElementById('in-stock-minimo-unidad').value;
+            const nuevoMinimoG = (!isNaN(rawMin) && rawMin >= 0)
+                ? (unidadMin === 'kg' ? rawMin * 1000 : rawMin)
+                : 1000;
+
+            try {
+                await dbPatch('productos', productoSeleccionado.id, {
+                    stock_gramos: stockFinal,
+                    stock_minimo_g: nuevoMinimoG
+                });
+
+                productoSeleccionado.stock_gramos = stockFinal;
+                productoSeleccionado.stock_minimo_g = nuevoMinimoG;
+
                 actualizarMetricasFinancieras();
                 filtrarLista();
 
