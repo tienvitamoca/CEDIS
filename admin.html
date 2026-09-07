@@ -351,6 +351,37 @@
           </button>
           <div id="msg-margenes" style="display:none;margin-top:0.75rem"></div>
         </div>
+
+        <!-- NUEVA TABLA: Márgenes Individuales por Producto -->
+        <div class="card" id="card-margenes-individuales" style="display:none; padding: 1rem 0 0 0; overflow:hidden">
+          <div style="padding: 0 1rem 0.5rem 1rem;">
+            <div class="card-title" style="margin:0">Márgenes Individuales por Producto</div>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.25rem;">
+              Si dejas un margen vacío, tomará el margen general de su categoría.
+            </p>
+          </div>
+
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th style="width:90px">M. Tuyo</th>
+                  <th style="width:90px">M. Tienda</th>
+                  <th style="width:45px"></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-margenes-prods">
+                <tr>
+                  <td colspan="4" style="text-align:center; padding:1.5rem">
+                    <div class="spinner"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
 
       <!-- <div id="tab-categorias" class="section">
@@ -570,6 +601,8 @@
     let logActividad = [];
     let modalGenCallback = null;
     let presFiltro = 'gramos';
+    let prodsCategoriaActual = [];
+
 
     async function init() {
       tipos = await getTipos();
@@ -910,17 +943,21 @@
     // Cambia el nombre a cargarMargenesActuales para que coincida con el HTML
     async function cargarMargenesActuales() {
       const select = document.getElementById('m-tipo');
-      if (!select || !select.value) return;
+      if (!select || !select.value) {
+        document.getElementById('card-margenes-individuales').style.display = 'none';
+        return;
+      }
 
       const tipoId = select.value;
       try {
-        // Buscamos directamente en el array 'tipos' que ya cargaste en el init
         const cat = tipos.find(t => t.id == tipoId);
-
         if (cat) {
           document.getElementById('m-tuyo').value = cat.margen_tuyo || 0.12;
           document.getElementById('m-clie').value = cat.margen_cliente || 0.22;
         }
+
+        // Cargar y mostrar la tabla de productos individuales
+        await cargarProductosMargenes(tipoId);
       } catch (e) {
         console.error("Error al mostrar márgenes:", e);
       }
@@ -929,7 +966,7 @@
     // Función para el botón masivo
     async function actualizarMargenesMasivo() {
       const select = document.getElementById('m-tipo');
-      const id = select.value; // El ID 261
+      const id = select.value;
 
       const mt = parseFloat(document.getElementById('m-tuyo').value);
       const mc = parseFloat(document.getElementById('m-clie').value);
@@ -937,33 +974,28 @@
       if (!id) return alert("Selecciona una categoría");
 
       try {
-        const data = {
-          margen_tuyo: mt,
-          margen_cliente: mc
-        };
+        const data = { margen_tuyo: mt, margen_cliente: mc };
 
-        // 1. LLAMADA ÚNICA A DBPATCH (Borra los otros intentos de tu código)
+        // Actualizar categoría
         await dbPatch('tipos_producto', id, data);
 
-        // 2. ACTUALIZAR VARIABLE LOCAL (Para que la calculadora lo vea)
+        // Actualizar local
         const idx = tipos.findIndex(t => t.id == id);
         if (idx !== -1) {
           tipos[idx].margen_tuyo = mt;
           tipos[idx].margen_cliente = mc;
         }
 
-        // 3. MENSAJE DE ÉXITO
-        alert("¡ÉXITO! Se envió la actualización para el ID: " + id);
-        mostrarToast('✅ Base de datos actualizada');
-
-        // Opcional: registrar en el log
+        mostrarToast('✅ Categoría actualizada');
         registrarLog(`Categoría ${id} actualizada a ${mt}/${mc}`);
 
+        // Recargar la tabla inferior con los nuevos placeholders
+        await cargarProductosMargenes(id);
+
       } catch (e) {
-        alert("Error real de la base de datos: " + e.message);
+        alert("Error de base de datos: " + e.message);
       }
     }
-
 
     function mostrarError(msg) {
       const el = document.getElementById('modal-error');
@@ -1229,6 +1261,79 @@
       if (!sel) return;
       sel.innerHTML = '<option value="">Selecciona categoría...</option>' +
         tipos.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
+    }
+
+
+    async function cargarProductosMargenes(tipoId) {
+      const card = document.getElementById('card-margenes-individuales');
+      const tbody = document.getElementById('tbody-margenes-prods');
+
+      card.style.display = 'block';
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center"><div class="spinner"></div></td></tr>`;
+
+      try {
+        prodsCategoriaActual = await dbGet('productos', `select=id,codigo,nombre,margen_tuyo,margen_cliente&tipo_id=eq.${tipoId}&order=codigo.asc`);
+
+        if (!prodsCategoriaActual.length) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1rem; color:var(--text-muted)">No hay productos registrados en esta categoría.</td></tr>`;
+          return;
+        }
+
+        const cat = tipos.find(t => t.id == tipoId);
+        const defTuyo = cat?.margen_tuyo || 0.12;
+        const defClie = cat?.margen_cliente || 0.22;
+
+        tbody.innerHTML = prodsCategoriaActual.map(p => `
+          <tr>
+            <td>
+              <div style="font-weight:600; font-size:0.85rem">${p.nombre}</div>
+              <div style="font-size:0.7rem; color:var(--text-muted)">${p.codigo}</div>
+            </td>
+            <td>
+              <input class="inline-input" type="number" step="0.01" 
+                     id="mp-tuyo-${p.id}" 
+                     value="${p.margen_tuyo !== null && p.margen_tuyo !== undefined ? p.margen_tuyo : ''}" 
+                     placeholder="${defTuyo}" 
+                     style="width:75px">
+            </td>
+            <td>
+              <input class="inline-input" type="number" step="0.01" 
+                     id="mp-clie-${p.id}" 
+                     value="${p.margen_cliente !== null && p.margen_cliente !== undefined ? p.margen_cliente : ''}" 
+                     placeholder="${defClie}" 
+                     style="width:75px">
+            </td>
+            <td style="text-align:center">
+              <button class="btn-icon btn-save" onclick="guardarMargenIndividual(${p.id})">💾</button>
+            </td>
+          </tr>
+        `).join('');
+
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="alert alert-error">${e.message}</div></td></tr>`;
+      }
+    }
+
+    async function guardarMargenIndividual(id) {
+      try {
+        const valTuyo = document.getElementById(`mp-tuyo-${id}`).value;
+        const valClie = document.getElementById(`mp-clie-${id}`).value;
+
+        const data = {
+          margen_tuyo: valTuyo !== '' ? parseFloat(valTuyo) : null,
+          margen_cliente: valClie !== '' ? parseFloat(valClie) : null
+        };
+
+        await dbPatch('productos', id, data);
+
+        const prod = prodsCategoriaActual.find(x => x.id === id);
+        if (prod) Object.assign(prod, data);
+
+        mostrarToast('✅ Margen de producto actualizado');
+        registrarLog(`Margen individual: ${prod?.nombre || id}`);
+      } catch (e) {
+        mostrarToast('❌ Error: ' + e.message, true);
+      }
     }
 
     init();

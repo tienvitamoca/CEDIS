@@ -303,7 +303,7 @@
             const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
 
             // Logo Cuadrado y de tamaño fijo (15x15 mm centrado horizontalmente a x=32.5)
-             try {
+            try {
                 doc.addImage("Logo.png", 'PNG', 25, 5, 30, 15);
             } catch (e) { console.warn("Logo no encontrado"); }
 
@@ -567,8 +567,19 @@
             document.getElementById('prod-nombre-sel').textContent = p.nombre;
             document.getElementById('prod-codigo-sel').textContent = `Categoría: ${p.tipos_producto?.nombre || 'General'} | Código: ${p.codigo}`;
 
-            document.getElementById('m-tuyo').value = p.tipos_producto?.margen_tuyo || 0.12;
-            document.getElementById('m-clie').value = p.tipos_producto?.margen_cliente || 0.22;
+            // document.getElementById('m-tuyo').value = p.tipos_producto?.margen_tuyo || 0.12;
+            // document.getElementById('m-clie').value = p.tipos_producto?.margen_cliente || 0.22;
+            // NUEVO (Prioridad: Producto -> Categoría -> Default):
+            const mt = p.margen_tuyo !== null && p.margen_tuyo !== undefined
+                ? p.margen_tuyo
+                : (p.tipos_producto?.margen_tuyo || 0.12);
+
+            const mc = p.margen_cliente !== null && p.margen_cliente !== undefined
+                ? p.margen_cliente
+                : (p.tipos_producto?.margen_cliente || 0.22);
+
+            document.getElementById('m-tuyo').value = mt;
+            document.getElementById('m-clie').value = mc;
 
             document.getElementById('in-precio').value = 10;
             dispararCalculo('precio');
