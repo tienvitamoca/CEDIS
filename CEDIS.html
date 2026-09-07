@@ -202,18 +202,39 @@
         <div id="lista-carrito" style="margin-bottom: 20px;"></div>
 
         <div style="display:flex; flex-direction:column; gap:10px;">
-            <button class="btn-ticket" onclick="imprimirTicket('share')">Compartir por WhatsApp</button>
-            <button onclick="imprimirTicket('download')" class="btn-ticket">Descargar PDF</button>
+            <!-- BOTÓN PRINCIPAL DE VENTA -->
+            <button id="btn-procesar-venta" class="btn-ticket" style="background:#16a34a; font-size:1.1rem; font-weight:bold;" onclick="procesarVenta()">
+                💳 Cobrar y Generar Ticket
+            </button>
+
+            <!-- HISTORIAL DE TICKETS RECIENTES -->
+            <button onclick="abrirHistorialVentas()" class="btn btn-outline" style="padding:12px; border-radius:8px;">
+                📜 Ver / Cancelar Tickets Recientes
+            </button>
 
             <button onclick="document.getElementById('modal-carrito').style.display='none'"
-                style="background:#6b7280; color:white; padding:15px; border:none; border-radius:8px;">Cerrar</button>
+                style="background:#6b7280; color:white; padding:15px; border:none; border-radius:8px; cursor:pointer;">Cerrar</button>
 
             <div style="margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px;">
                 <button onclick="iniciarNuevoTicket()"
-                    style="background:#ef4444; color:white; padding:10px; border:none; border-radius:8px; width:100%;">
-                    🗑️ Iniciar Nuevo Ticket
+                    style="background:#ef4444; color:white; padding:10px; border:none; border-radius:8px; width:100%; cursor:pointer;">
+                    🗑️ Vaciar Ticket Actual
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CANCELACIÓN / REVERSIÓN DE VENTAS -->
+    <div id="modal-historial" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:10000; padding:20px; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
+            <h2>📜 Tickets Recientes</h2>
+            <button onclick="document.getElementById('modal-historial').style.display='none'" style="background:none; border:none; font-size:1.5rem; cursor:pointer">✕</button>
+        </div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px">
+            Si cancelas un ticket, los gramos vendidos regresan automáticamente al stock de tu inventario.
+        </p>
+        <div id="lista-historial-ventas">
+            <div class="spinner"></div>
         </div>
     </div>
 
@@ -392,32 +413,32 @@
             }
         }
 
-        function agregarAlCarrito() {
+       function agregarAlCarrito() {
             if (!productoActual) return;
 
             const cantidadInput = document.getElementById('in-cantidad');
             const cantidad = parseInt(cantidadInput.value) || 1;
-            // Captura el valor del campo donde se muestra el precio
             const precioVenta = parseFloat(document.getElementById('r-precio-venta').textContent.replace('$', ''));
             const presText = document.getElementById('r-presentacion-nombre').textContent || "Estándar";
-
+            const gramosPorBolsa = parseFloat(document.getElementById('in-gramos').value) || 0;
 
             const item = {
                 producto: productoActual,
                 precio: precioVenta,
                 cantidad: cantidad,
+                gramosUnitarios: gramosPorBolsa,
+                gramosTotales: gramosPorBolsa * cantidad,
                 costo: parseFloat(productoActual.costo_kg),
                 precioObjetivo: parseFloat(document.getElementById('in-precio').value) || 0,
                 presentacion: presText,
             };
 
             carrito.push(item);
-            alert(`${cantidad} x ${productoActual.nombre} agregado.`);
+            alert(`${cantidad} x ${productoActual.nombre} (${gramosPorBolsa}g) agregado.`);
 
             cantidadInput.value = 1;
             limpiarProducto();
         }
-
 
         function abrirCarrito() {
             const modal = document.getElementById('modal-carrito');
@@ -671,6 +692,164 @@
             document.querySelectorAll('.value').forEach(el => el.textContent = '—');
         }
 
+
+        // ─── PROCESAR VENTA Y DESCONTAR INVENTARIO ──────────────────
+        async function procesarVenta() {
+            if (carrito.length === 0) return alert("El carrito está vacío.");
+
+            const btn = document.getElementById('btn-procesar-venta');
+            btn.disabled = true;
+            btn.textContent = "⏳ Registrando venta...";
+
+            const nombreCliente = document.getElementById('nombre-cliente').value.trim() || "Venta de Mostrador";
+            let totalGeneral = 0;
+            let totalPiezas = 0;
+
+            carrito.forEach(item => {
+                totalGeneral += (item.cantidad * item.precio);
+                totalPiezas += item.cantidad;
+            });
+
+            // Redondeo comercial al 0.50 superior
+            const totalFinal = Math.ceil(totalGeneral * 2) / 2;
+
+            try {
+                // 1. Guardar encabezado de la venta en Supabase
+                const resVenta = await dbPost('ventas', {
+                    cliente: nombreCliente,
+                    total: totalFinal,
+                    total_piezas: totalPiezas,
+                    estado: 'COMPLETADA'
+                });
+
+                const ventaId = resVenta[0].id;
+
+                // 2. Guardar detalles y descontar stock de cada producto
+                for (const item of carrito) {
+                    // Registrar renglón de detalle
+                    await dbPost('detalle_ventas', {
+                        venta_id: ventaId,
+                        producto_id: item.producto.id,
+                        presentacion: item.presentacion,
+                        precio_unitario: item.precio,
+                        cantidad_piezas: item.cantidad,
+                        gramos_totales: item.gramosTotales,
+                        subtotal: redondear(item.cantidad * item.precio)
+                    });
+
+                    // Descontar inventario en productos
+                    const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${item.producto.id}`);
+                    if (prodsDb && prodsDb.length) {
+                        const stockActual = parseFloat(prodsDb[0].stock_gramos) || 0;
+                        const nuevoStock = Math.max(0, stockActual - item.gramosTotales);
+                        await dbPatch('productos', item.producto.id, { stock_gramos: nuevoStock });
+                    }
+                }
+
+                alert(`✅ Venta #${ventaId} registrada con éxito. Inventario actualizado.`);
+
+                // 3. Generar Ticket en PDF / WhatsApp
+                await imprimirTicket('share');
+
+                // 4. Limpiar ticket
+                carrito = [];
+                document.getElementById('nombre-cliente').value = '';
+                document.getElementById('modal-carrito').style.display = 'none';
+
+            } catch (err) {
+                console.error("Error al registrar venta:", err);
+                alert("Error al registrar la venta: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "💳 Cobrar y Generar Ticket";
+            }
+        }
+
+        // ─── CONSULTAR HISTORIAL Y CANCELAR VENTA ─────────────────
+        async function abrirHistorialVentas() {
+            const modal = document.getElementById('modal-historial');
+            const cont = document.getElementById('lista-historial-ventas');
+            modal.style.display = 'block';
+            cont.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                const ventas = await dbGet('ventas', 'select=*,detalle_ventas(*,productos(nombre))&order=id.desc&limit=15');
+
+                if (!ventas.length) {
+                    cont.innerHTML = '<p style="text-align:center; color:var(--text-muted)">No hay ventas registradas.</p>';
+                    return;
+                }
+
+                cont.innerHTML = ventas.map(v => {
+                    const esCancelada = v.estado === 'CANCELADA';
+                    const fecha = new Date(v.fecha).toLocaleString('es-MX');
+
+                    const itemsHtml = (v.detalle_ventas || []).map(d => 
+                        `<div style="font-size:0.75rem; color:var(--text-muted)">
+                            · ${d.cantidad_piezas}x ${d.productos?.nombre || 'Prod'} (${d.presentacion || ''}) - ${d.gramos_totales}g
+                        </div>`
+                    ).join('');
+
+                    return `
+                        <div style="border:1.5px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px; background:${esCancelada ? '#fef2f2' : 'white'}">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <strong>Venta #${v.id} — ${v.cliente}</strong>
+                                    <div style="font-size:0.75rem; color:var(--text-muted)">${fecha}</div>
+                                </div>
+                                <span class="badge ${esCancelada ? 'badge-red' : 'badge-green'}">${v.estado}</span>
+                            </div>
+
+                            <div style="margin:8px 0; border-top:1px dashed #eee; padding-top:6px">
+                                ${itemsHtml}
+                            </div>
+
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px">
+                                <strong style="font-size:1.1rem; color:var(--primary)">$${parseFloat(v.total).toFixed(2)}</strong>
+                                ${!esCancelada ? `
+                                    <button onclick="cancelarVenta(${v.id})" style="background:#dc2626; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:0.8rem; cursor:pointer">
+                                        ↩️ Cancelar y Devolver Stock
+                                    </button>
+                                ` : '<span style="font-size:0.75rem; color:#dc2626; font-weight:bold">Stock devuelto</span>'}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (e) {
+                cont.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+            }
+        }
+
+        async function cancelarVenta(ventaId) {
+            if (!confirm(`¿Estás seguro de cancelar la Venta #${ventaId}? Se regresará el producto al stock.`)) return;
+
+            try {
+                // Obtener detalles de la venta
+                const detalles = await dbGet('detalle_ventas', `venta_id=eq.${ventaId}`);
+
+                // Reintegrar gramos a cada producto
+                for (const d of detalles) {
+                    const prodDb = await dbGet('productos', `select=stock_gramos&id=eq.${d.producto_id}`);
+                    if (prodDb && prodDb.length) {
+                        const stockActual = parseFloat(prodDb[0].stock_gramos) || 0;
+                        const nuevoStock = stockActual + parseFloat(d.gramos_totales);
+                        await dbPatch('productos', d.producto_id, { stock_gramos: nuevoStock });
+                    }
+                }
+
+                // Cambiar estado a CANCELADA
+                await dbPatch('ventas', ventaId, { estado: 'CANCELADA' });
+
+                alert(`✅ Venta #${ventaId} cancelada. Los gramos regresaron al inventario.`);
+                abrirHistorialVentas(); // Recargar vista
+
+            } catch (e) {
+                alert("Error al cancelar la venta: " + e.message);
+            }
+        }
+
+        
         init();
     </script>
 </body>
