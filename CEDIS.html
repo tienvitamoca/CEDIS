@@ -203,7 +203,8 @@
 
         <div style="display:flex; flex-direction:column; gap:10px;">
             <!-- BOTÓN PRINCIPAL DE VENTA -->
-            <button id="btn-procesar-venta" class="btn-ticket" style="background:#16a34a; font-size:1.1rem; font-weight:bold;" onclick="procesarVenta()">
+            <button id="btn-procesar-venta" class="btn-ticket"
+                style="background:#16a34a; font-size:1.1rem; font-weight:bold;" onclick="procesarVenta()">
                 💳 Cobrar y Generar Ticket
             </button>
 
@@ -225,10 +226,12 @@
     </div>
 
     <!-- MODAL DE CANCELACIÓN / REVERSIÓN DE VENTAS -->
-    <div id="modal-historial" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:10000; padding:20px; overflow-y:auto;">
+    <div id="modal-historial"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:10000; padding:20px; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
             <h2>📜 Tickets Recientes</h2>
-            <button onclick="document.getElementById('modal-historial').style.display='none'" style="background:none; border:none; font-size:1.5rem; cursor:pointer">✕</button>
+            <button onclick="document.getElementById('modal-historial').style.display='none'"
+                style="background:none; border:none; font-size:1.5rem; cursor:pointer">✕</button>
         </div>
         <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px">
             Si cancelas un ticket, los gramos vendidos regresan automáticamente al stock de tu inventario.
@@ -413,7 +416,7 @@
             }
         }
 
-       function agregarAlCarrito() {
+        function agregarAlCarrito() {
             if (!productoActual) return;
 
             const cantidadInput = document.getElementById('in-cantidad');
@@ -740,8 +743,9 @@
                     // Descontar inventario en productos
                     const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${item.producto.id}`);
                     if (prodsDb && prodsDb.length) {
+                        // NUEVO: Permite números negativos
                         const stockActual = parseFloat(prodsDb[0].stock_gramos) || 0;
-                        const nuevoStock = Math.max(0, stockActual - item.gramosTotales);
+                        const nuevoStock = redondear(stockActual - item.gramosTotales, 1);
                         await dbPatch('productos', item.producto.id, { stock_gramos: nuevoStock });
                     }
                 }
@@ -784,7 +788,7 @@
                     const esCancelada = v.estado === 'CANCELADA';
                     const fecha = new Date(v.fecha).toLocaleString('es-MX');
 
-                    const itemsHtml = (v.detalle_ventas || []).map(d => 
+                    const itemsHtml = (v.detalle_ventas || []).map(d =>
                         `<div style="font-size:0.75rem; color:var(--text-muted)">
                             · ${d.cantidad_piezas}x ${d.productos?.nombre || 'Prod'} (${d.presentacion || ''}) - ${d.gramos_totales}g
                         </div>`
@@ -849,7 +853,7 @@
             }
         }
 
-        
+
         init();
     </script>
 </body>
