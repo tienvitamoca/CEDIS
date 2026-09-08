@@ -390,8 +390,8 @@
 
         function renderTablaInventario(lista) {
             const tbody = document.getElementById('tbody-inventario');
-            if (!lista.length) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted)">Sin resultados que coincidan con los filtros.</td></tr>`;
+            if (!lista || !lista.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted)">Sin resultados que coincidan con los filtros.</td></tr>';
                 return;
             }
 
@@ -403,7 +403,6 @@
 
                 let claseStock = 'stock-ok';
 
-                // 1. Determinar color/estado de la etiqueta
                 if (stockG < 0) {
                     claseStock = 'stock-empty';
                 } else if (stockG === 0) {
@@ -414,7 +413,6 @@
                     claseStock = 'stock-ok';
                 }
 
-                // 2. Formato: en gramos si es < 1000g, en kg con 2 decimales si >= 1000g
                 let textoStock = '';
                 const valorAbsoluto = Math.abs(stockG);
 
@@ -424,16 +422,17 @@
                     textoStock = `${stockG} g`;
                 }
 
-                // Agregar icono de alerta si es negativo
                 if (stockG < 0) {
                     textoStock = `⚠️ ${textoStock}`;
                 }
+
+                const nombreCategoria = (p.tipos_producto && p.tipos_producto.nombre) ? p.tipos_producto.nombre : '';
 
                 return `
           <tr onclick="abrirModal(${p.id})" style="cursor:pointer">
             <td>
               <div style="font-weight:600; font-size:0.85rem">${p.nombre}</div>
-              <div style="font-size:0.7rem; color:var(--text-muted)">Cod: ${p.codigo} · ${p.tipos_producto?.nombre || ''}</div>
+              <div style="font-size:0.7rem; color:var(--text-muted)">Cod: ${p.codigo} · ${nombreCategoria}</div>
             </td>
             <td>
               <span class="badge-stock ${claseStock}">${textoStock}</span>
@@ -446,7 +445,6 @@
         `;
             }).join('');
         }
-        
         // ─── ABRIR Y CERRAR MODAL ──────────────────────────────────────
         function abrirModal(id) {
             productoSeleccionado = productos.find(x => x.id == id);
