@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analítica de Ventas — CEDIS</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      text-align: center;
+      border-top: 4px solid var(--primary);
+    }
+
+    .kpi-card .num {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .kpi-card .lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-top: 0.25rem;
+    }
+
+    /* Cuadrante de 4 Apartados POS */
+    .pos-quadrant-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .quadrant-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      border: 1px solid var(--border);
+    }
+
+    .quadrant-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 0.5rem;
+    }
+
+    .quadrant-header h3 {
+      font-size: 0.88rem;
+      margin: 0;
+      font-weight: 700;
+    }
+
+    .quadrant-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.45rem 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: 0.82rem;
+    }
+
+    .quadrant-item:last-child {
+      border-bottom: none;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .btn-chip {
+      background: white;
+      border: 1.5px solid var(--border);
+      padding: 0.4rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .btn-chip.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 10000;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .modal-dialog {
+      background: white;
+      border-radius: var(--radius);
+      max-width: 480px;
+      margin: 2rem auto;
+      padding: 1.25rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <a href="index.html">←</a>
+    <h1>📊 Analítica y Ventas</h1>
+    <span></span>
+  </nav>
+
+  <div class="container has-bottom-nav">
+
+    <!-- SELECTOR DE PERIODOS RÁPIDOS -->
+    <div class="filter-bar">
+      <button class="btn-chip" onclick="seleccionarPeriodo('hoy', this)">Hoy</button>
+      <button class="btn-chip active" onclick="seleccionarPeriodo('7d', this)">Últimos 7 días</button>
+      <button class="btn-chip" onclick="seleccionarPeriodo('mes', this)">Este Mes</button>
+      <button class="btn-chip" onclick="seleccionarPeriodo('mes-anterior', this)">Mes Anterior</button>
+      <button class="btn-chip" onclick="seleccionarPeriodo('todo', this)">Todo</button>
+    </div>
+
+    <!-- TARJETAS EJECUTIVAS KPI -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-top-color: #16a34a;">
+        <div class="num" id="kpi-ingresos" style="color:#16a34a">$0.00</div>
+        <div class="lbl">Ingresos Netos</div>
+      </div>
+      <div class="kpi-card" style="border-top-color: #2563eb;">
+        <div class="num" id="kpi-ganancias" style="color:#2563eb">$0.00</div>
+        <div class="lbl">Ganancia Bruta</div>
+      </div>
+      <div class="kpi-card" style="border-top-color: #f59e0b;">
+        <div class="num" id="kpi-kilos">0.0 kg</div>
+        <div class="lbl">Volumen Despachado</div>
+      </div>
+      <div class="kpi-card" style="border-top-color: #64748b;">
+        <div class="num" id="kpi-tickets">0 / 0</div>
+        <div class="lbl">Tickets Cobrados / Canc.</div>
+      </div>
+    </div>
+
+    <!-- CUADRANTE POS: ROTACIÓN Y APORTE DE MARGEN -->
+    <div class="pos-quadrant-grid">
+      <!-- 1. MÁS ROTAN -->
+      <div class="quadrant-card">
+        <div class="quadrant-header">
+          <h3 style="color:#16a34a">🚀 Más Rotación (Volumen)</h3>
+          <small style="color:var(--text-muted); font-size:0.7rem">Por Piezas</small>
+        </div>
+        <div id="top-rotan">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- 2. MENOS ROTAN -->
+      <div class="quadrant-card">
+        <div class="quadrant-header">
+          <h3 style="color:#dc2626">🐢 Menos Rotación (Lentos)</h3>
+          <small style="color:var(--text-muted); font-size:0.7rem">Riesgo Estancamiento</small>
+        </div>
+        <div id="peor-rotan">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- 3. MÁS DEJAN -->
+      <div class="quadrant-card">
+        <div class="quadrant-header">
+          <h3 style="color:#2563eb">💰 Más Dejan ($ Utilidad)</h3>
+          <small style="color:var(--text-muted); font-size:0.7rem">Rentabilidad Total</small>
+        </div>
+        <div id="top-ganancias">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <!-- 4. MENOS DEJAN -->
+      <div class="quadrant-card">
+        <div class="quadrant-header">
+          <h3 style="color:#d97706">📉 Menos Dejan ($ Utilidad)</h3>
+          <small style="color:var(--text-muted); font-size:0.7rem">Bajo Rendimiento</small>
+        </div>
+        <div id="peor-ganancias">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRÁFICA DE VENTAS POR FAMILIA DE PRODUCTO -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Participación de Ventas por Categoría</div>
+      <div style="position:relative; height:240px; width:100%">
+        <canvas id="chart-categorias"></canvas>
+      </div>
+    </div>
+
+    <!-- BITÁCORA Y FILTROS DE TICKETS -->
+    <div class="card">
+      <div class="card-title">Registro Detallado de Ventas</div>
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem">
+        <input type="text" id="busqueda-venta" placeholder="Buscar por cliente o folio..." 
+               style="flex:2; min-width:180px; padding:0.45rem 0.75rem; border-radius:8px; border:1px solid var(--border);" 
+               oninput="renderizarBitacora()">
+        <select id="filtro-estado-venta" 
+                style="flex:1; min-width:140px; padding:0.45rem 0.75rem; border-radius:8px; border:1px solid var(--border);" 
+                onchange="renderizarBitacora()">
+          <option value="TODOS">Todos los estados</option>
+          <option value="COMPLETADA" selected>Solo Completadas</option>
+          <option value="CANCELADA">Solo Canceladas</option>
+        </select>
+      </div>
+
+      <div id="bitacora-ventas-dias">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL DE DETALLE Y GESTIÓN DE TICKET -->
+  <div id="modal-detalle-venta" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem">
+        <div>
+          <h3 id="det-titulo" style="color:var(--primary); font-size:1.15rem; margin:0"></h3>
+          <div id="det-fecha" style="font-size:0.75rem; color:var(--text-muted)"></div>
+        </div>
+        <button onclick="cerrarDetalle()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
+      </div>
+
+      <div id="det-estado-badge" style="margin-bottom:1rem"></div>
+
+      <div class="card-title" style="margin-bottom:0.5rem">Artículos Registrados</div>
+      <div id="det-items-lista" style="margin-bottom:1rem"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:1.1rem; font-weight:700; border-top:2px solid var(--border); padding-top:0.75rem; margin-bottom:1.25rem;">
+        <span>Total Venta:</span>
+        <span id="det-total" style="color:var(--primary)">$0.00</span>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn btn-primary btn-block" style="background:#22c55e;" onclick="compartirTicketPdf()">
+          💬 Enviar / Compartir Ticket (WhatsApp)
+        </button>
+        <button id="btn-cancelar-todo" class="btn btn-danger btn-block" onclick="cancelarVentaCompleta()">
+          ↩️ Cancelar Toda la Venta (Devolver Stock)
+        </button>
+        <button class="btn btn-outline btn-block" onclick="cerrarDetalle()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAVEGACIÓN INFERIOR -->
+  <nav class="bottom-nav">
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="inventario.html"><span class="icon">📦</span> Stock</a>
+    <a href="CEDIS.html"><span class="icon">🧮</span> CEDIS</a>
+    <a href="ventas.html" class="active"><span class="icon">📊</span> Ventas</a>
+    <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
+  </nav>
+
+  <script src="supabase.js"></script>
+  <script>
+    let todasLasVentas = [];
+    let ventasFiltradas = [];
+    let ventaSeleccionada = null;
+    let catalogoProductos = [];
+    let graficoCategorias = null;
+    let periodoActual = '7d';
+
+    async function init() {
+      await cargarCatalogo();
+      await cargarHistoricoVentas();
+    }
+
+    async function cargarCatalogo() {
+      try {
+        catalogoProductos = await dbGet('productos', 'select=id,nombre,costo_kg,tipo_id,tipos_producto(nombre)');
+      } catch (e) {
+        console.error("Error al cargar productos:", e);
+      }
+    }
+
+    async function cargarHistoricoVentas() {
+      try {
+        todasLasVentas = await dbGet('ventas', 'select=*,detalle_ventas(*,productos(id,nombre,costo_kg,tipo_id,tipos_producto(nombre)))&order=id.desc');
+        aplicarFiltroPeriodo(periodoActual);
+      } catch (e) {
+        document.getElementById('bitacora-ventas-dias').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      }
+    }
+
+    function seleccionarPeriodo(periodo, btn) {
+      document.querySelectorAll('.filter-bar .btn-chip').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      periodoActual = periodo;
+      aplicarFiltroPeriodo(periodo);
+    }
+
+    function aplicarFiltroPeriodo(periodo) {
+      const ahora = new Date();
+      let inicio = new Date(0); // Epoch
+
+      if (periodo === 'hoy') {
+        inicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+      } else if (periodo === '7d') {
+        inicio = new Date(ahora.getTime() - (7 * 24 * 60 * 60 * 1000));
+      } else if (periodo === 'mes') {
+        inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+      } else if (periodo === 'mes-anterior') {
+        inicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+        const fin = new Date(ahora.getFullYear(), ahora.getMonth(), 0, 23, 59, 59);
+        ventasFiltradas = todasLasVentas.filter(v => {
+          const f = new Date(v.fecha);
+          return f >= inicio && f <= fin;
+        });
+        procesarAnaliticaCompleta();
+        return;
+      }
+
+      ventasFiltradas = todasLasVentas.filter(v => new Date(v.fecha) >= inicio);
+      procesarAnaliticaCompleta();
+    }
+
+    function procesarAnaliticaCompleta() {
+      actualizarKpis();
+      calcularCuadrantesPos();
+      dibujarGraficoCategorias();
+      renderizarBitacora();
+    }
+
+    // ─── 1. TARJETAS KPI ──────────────────────────────────────────
+    function actualizarKpis() {
+      let totalIngresos = 0;
+      let totalGanancia = 0;
+      let totalGramos = 0;
+      let completadas = 0;
+      let canceladas = 0;
+
+      ventasFiltradas.forEach(v => {
+        if (v.estado === 'COMPLETADA') {
+          completadas++;
+          totalIngresos += parseFloat(v.total) || 0;
+
+          (v.detalle_ventas || []).forEach(d => {
+            const pzas = parseInt(d.cantidad_piezas) || 1;
+            const gramos = parseFloat(d.gramos_totales) || 0;
+            totalGramos += gramos;
+
+            // Estimación de Costo de Materia Prima + Insumos de Empaque
+            const costoKg = parseFloat(d.productos?.costo_kg) || 0;
+            const costoMP = (gramos / 1000) * costoKg;
+            const costoInsumos = pzas * 0.85; // Bolsa, etiqueta, grapas aproximado
+            const subtotal = parseFloat(d.subtotal) || 0;
+
+            const gananciaRenglon = subtotal - (costoMP + costoInsumos);
+            totalGanancia += gananciaRenglon;
+          });
+        } else if (v.estado === 'CANCELADA') {
+          canceladas++;
+        }
+      });
+
+      document.getElementById('kpi-ingresos').textContent = formatPeso(totalIngresos);
+      document.getElementById('kpi-ganancias').textContent = formatPeso(totalGanancia);
+      document.getElementById('kpi-kilos').textContent = `${(totalGramos / 1000).toFixed(1)} kg / ${totalGramos.toLocaleString('es-MX')} g`;
+      document.getElementById('kpi-tickets').textContent = `${completadas} / ${canceladas}`;
+    }
+
+    // ─── 2. CUADRANTE POS (ROTACIÓN Y APORTE) ──────────────────────
+    function calcularCuadrantesPos() {
+      const mapa = {};
+
+      // Inicializar todos los productos del catálogo en 0 para identificar productos fríos (0 ventas)
+      catalogoProductos.forEach(p => {
+        mapa[p.id] = {
+          id: p.id,
+          nombre: p.nombre,
+          piezas: 0,
+          gramos: 0,
+          ganancia: 0,
+          ingreso: 0
+        };
+      });
+
+      // Acumular ventas completadas del periodo
+      ventasFiltradas.filter(v => v.estado === 'COMPLETADA').forEach(v => {
+        (v.detalle_ventas || []).forEach(d => {
+          const id = d.producto_id;
+          if (!mapa[id]) {
+            mapa[id] = {
+              id: id,
+              nombre: d.productos?.nombre || 'Producto',
+              piezas: 0,
+              gramos: 0,
+              ganancia: 0,
+              ingreso: 0
+            };
+          }
+
+          const pzas = parseInt(d.cantidad_piezas) || 1;
+          const gTotales = parseFloat(d.gramos_totales) || 0;
+          const subt = parseFloat(d.subtotal) || 0;
+          const cKg = parseFloat(d.productos?.costo_kg) || 0;
+          const costoMP = (gTotales / 1000) * cKg;
+          const costoIns = pzas * 0.85;
+
+          mapa[id].piezas += pzas;
+          mapa[id].gramos += gTotales;
+          mapa[id].ingreso += subt;
+          mapa[id].ganancia += (subt - (costoMP + costoIns));
+        });
+      });
+
+      const lista = Object.values(mapa);
+
+      // A) Más Rotan (Por piezas despachadas)
+      const topRotacion = [...lista].sort((a, b) => b.piezas - a.piezas).slice(0, 5);
+      renderListaCuadrante('top-rotan', topRotacion, p => `<strong>${p.piezas} pzas</strong> (${(p.gramos/1000).toFixed(1)}kg)`);
+
+      // B) Menos Rotan (Menor cantidad de piezas vendidas)
+      const peorRotacion = [...lista].sort((a, b) => a.piezas - b.piezas).slice(0, 5);
+      renderListaCuadrante('peor-rotan', peorRotacion, p => `<span style="color:#dc2626">${p.piezas} pzas</span>`);
+
+      // C) Más Dejan (Mayor ganancia en pesos)
+      const topGanancia = [...lista].sort((a, b) => b.ganancia - a.ganancia).slice(0, 5);
+      renderListaCuadrante('top-ganancias', topGanancia, p => `<strong style="color:#16a34a">${formatPeso(p.ganancia)}</strong>`);
+
+      // D) Menos Dejan (Menor ganancia generada en pesos)
+      const peorGanancia = [...lista].sort((a, b) => a.ganancia - b.ganancia).slice(0, 5);
+      renderListaCuadrante('peor-ganancias', peorGanancia, p => `<span style="color:#d97706">${formatPeso(p.ganancia)}</span>`);
+    }
+
+    function renderListaCuadrante(elemId, productos, formateadorValor) {
+      const el = document.getElementById(elemId);
+      if (!productos.length) {
+        el.innerHTML = '<div style="color:var(--text-muted); font-size:0.75rem; padding:0.5rem">Sin datos.</div>';
+        return;
+      }
+
+      el.innerHTML = productos.map(p => `
+        <div class="quadrant-item">
+          <span style="font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:140px;">${p.nombre}</span>
+          <span>${formateadorValor(p)}</span>
+        </div>
+      `).join('');
+    }
+
+    // ─── 3. GRÁFICA DE CATEGORÍAS ────────────────────────────────
+    function dibujarGraficoCategorias() {
+      const categorias = {};
+
+      ventasFiltradas.filter(v => v.estado === 'COMPLETADA').forEach(v => {
+        (v.detalle_ventas || []).forEach(d => {
+          const cat = d.productos?.tipos_producto?.nombre || 'Otras';
+          categorias[cat] = (categorias[cat] || 0) + (parseFloat(d.subtotal) || 0);
+        });
+      });
+
+      const labels = Object.keys(categorias);
+      const data = Object.values(categorias);
+
+      const ctx = document.getElementById('chart-categorias').getContext('2d');
+      if (graficoCategorias) graficoCategorias.destroy();
+
+      graficoCategorias = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Ingresos ($)',
+            data: data,
+            backgroundColor: '#2563eb',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { callback: v => '$' + v }
+            }
+          }
+        }
+      });
+    }
+
+    // ─── 4. BITÁCORA Y HISTORIAL POR DÍAS ─────────────────────────
+    function renderizarBitacora() {
+      const q = (document.getElementById('busqueda-venta').value || '').trim().toLowerCase();
+      const estado = document.getElementById('filtro-estado-venta').value;
+      const cont = document.getElementById('bitacora-ventas-dias');
+
+      let list = ventasFiltradas.filter(v => {
+        const matchQ = !q || (v.cliente && v.cliente.toLowerCase().includes(q)) || String(v.id).includes(q);
+        const matchEstado = estado === 'TODOS' || v.estado === estado;
+        return matchQ && matchEstado;
+      });
+
+      if (!list.length) {
+        cont.innerHTML = '<p style="text-align:center; padding:1.5rem; color:var(--text-muted)">No hay ventas para este filtro.</p>';
+        return;
+      }
+
+      // Agrupación por día
+      const grupos = {};
+      list.forEach(v => {
+        const dia = new Date(v.fecha).toLocaleDateString('es-MX', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        if (!grupos[dia]) grupos[dia] = [];
+        grupos[dia].push(v);
+      });
+
+      let html = '';
+      for (const dia in grupos) {
+        html += `
+          <div style="background:var(--bg); padding:6px 12px; border-radius:6px; font-weight:700; font-size:0.8rem; text-transform:capitalize; margin:14px 0 8px; color:var(--primary);">
+            📅 ${dia}
+          </div>
+        `;
+
+        html += grupos[dia].map(v => {
+          const cancelada = v.estado === 'CANCELADA';
+          const hora = new Date(v.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+          return `
+            <div onclick='abrirDetalle(${JSON.stringify(v)})' 
+                 style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:8px; background:${cancelada ? '#fef2f2' : 'white'}; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-weight:700; font-size:0.92rem">
+                  Venta #${v.id} · ${v.cliente}
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted)">
+                  🕒 ${hora} · ${v.detalle_ventas ? v.detalle_ventas.length : 0} artículos · ${v.total_piezas || 0} pzas
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-weight:800; font-size:1.05rem; color:${cancelada ? '#b91c1c' : 'var(--primary)'}">
+                  ${formatPeso(v.total)}
+                </div>
+                <span class="badge ${cancelada ? 'badge-red' : 'badge-green'}" style="font-size:0.65rem">
+                  ${v.estado}
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      cont.innerHTML = html;
+    }
+
+    // ─── 5. DETALLE DE VENTA Y CANCELACIONES ───────────────────────
+    function abrirDetalle(v) {
+      ventaSeleccionada = v;
+      const cancelada = v.estado === 'CANCELADA';
+
+      document.getElementById('det-titulo').textContent = `Venta #${v.id} — ${v.cliente}`;
+      document.getElementById('det-fecha').textContent = new Date(v.fecha).toLocaleString('es-MX');
+      document.getElementById('det-total').textContent = formatPeso(v.total);
+
+      document.getElementById('det-estado-badge').innerHTML = `
+        <span class="badge ${cancelada ? 'badge-red' : 'badge-green'}">${v.estado}</span>
+      `;
+
+      document.getElementById('btn-cancelar-todo').style.display = cancelada ? 'none' : 'block';
+
+      const itemsCont = document.getElementById('det-items-lista');
+      itemsCont.innerHTML = (v.detalle_ventas || []).map(d => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
+          <div>
+            <strong>${d.productos?.nombre || 'Producto'}</strong> <small style="color:var(--text-muted)">(${d.presentacion || 'Estándar'})</small>
+            <div style="font-size:0.75rem; color:var(--text-muted)">
+              ${d.cantidad_piezas} pzas · ${d.gramos_totales}g · ${formatPeso(d.precio_unitario)} c/u
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700">${formatPeso(d.subtotal)}</div>
+            ${(!cancelada && v.detalle_ventas.length > 1) ? `
+              <button onclick="devolverArticulo(${d.id})" style="background:#fee2e2; color:#b91c1c; border:none; padding:3px 6px; border-radius:4px; font-size:0.7rem; cursor:pointer; margin-top:2px;">
+                ↩️ Regresar
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('modal-detalle-venta').style.display = 'block';
+    }
+
+    function cerrarDetalle() {
+      document.getElementById('modal-detalle-venta').style.display = 'none';
+      ventaSeleccionada = null;
+    }
+
+    async function devolverArticulo(detalleId) {
+      if (!confirm("¿Regresar este producto al stock físico y actualizar el ticket?")) return;
+
+      try {
+        const item = ventaSeleccionada.detalle_ventas.find(d => d.id === detalleId);
+        if (!item) return;
+
+        // 1. Devolver gramos con redondeo
+        const prodDb = await dbGet('productos', `select=stock_gramos&id=eq.${item.producto_id}`);
+        if (prodDb && prodDb.length) {
+          const stockActual = parseFloat(prodDb[0].stock_gramos) || 0;
+          const nuevoStock = redondear(stockActual + parseFloat(item.gramos_totales), 1);
+          await dbPatch('productos', item.producto_id, { stock_gramos: nuevoStock });
+        }
+
+        // 2. Eliminar renglón
+        await fetch(`${SUPABASE_URL}/rest/v1/detalle_ventas?id=eq.${detalleId}`, {
+          method: 'DELETE', headers: { ...headers }
+        });
+
+        // 3. Recalcular total de la venta
+        const nuevosDetalles = ventaSeleccionada.detalle_ventas.filter(d => d.id !== detalleId);
+        let nuevoTotal = 0;
+        let nuevasPzas = 0;
+        nuevosDetalles.forEach(d => {
+          nuevoTotal += parseFloat(d.subtotal);
+          nuevasPzas += parseInt(d.cantidad_piezas);
+        });
+        nuevoTotal = Math.ceil(nuevoTotal * 2) / 2;
+
+        await dbPatch('ventas', ventaSeleccionada.id, {
+          total: nuevoTotal,
+          total_piezas: nuevasPzas
+        });
+
+        alert("✅ Producto reingresado a bodega.");
+        await cargarHistoricoVentas();
+        cerrarDetalle();
+      } catch (e) {
+        alert("Error al devolver artículo: " + e.message);
+      }
+    }
+
+    async function cancelarVentaCompleta() {
+      if (!confirm(`¿Cancelar venta #${ventaSeleccionada.id}? Todos los productos regresarán a bodega.`)) return;
+
+      try {
+        for (const d of (ventaSeleccionada.detalle_ventas || [])) {
+          const prodDb = await dbGet('productos', `select=stock_gramos&id=eq.${d.producto_id}`);
+          if (prodDb && prodDb.length) {
+            const stockActual = parseFloat(prodDb[0].stock_gramos) || 0;
+            const nuevoStock = redondear(stockActual + parseFloat(d.gramos_totales), 1);
+            await dbPatch('productos', d.producto_id, { stock_gramos: nuevoStock });
+          }
+        }
+
+        await dbPatch('ventas', ventaSeleccionada.id, { estado: 'CANCELADA' });
+        alert(`✅ Venta #${ventaSeleccionada.id} cancelada e inventario restaurado.`);
+        await cargarHistoricoVentas();
+        cerrarDetalle();
+      } catch (e) {
+        alert("Error al cancelar venta: " + e.message);
+      }
+    }
+
+    async function compartirTicketPdf() {
+      if (!ventaSeleccionada) return;
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
+
+      try { doc.addImage("Logo.png", 'PNG', 25, 5, 30, 15); } catch (e) {}
+
+      doc.setFontSize(10);
+      doc.text(`Cliente: ${ventaSeleccionada.cliente}`, 10, 25);
+      doc.text(`Fecha: ${new Date(ventaSeleccionada.fecha).toLocaleString('es-MX')}`, 10, 30);
+      doc.text("-----------------------------------", 10, 34);
+
+      let y = 40;
+      (ventaSeleccionada.detalle_ventas || []).forEach(item => {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${item.productos?.nombre || 'Prod'} (${item.presentacion || ''})`, 10, y);
+        y += 4;
+
+        doc.setFontSize(7);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${item.cantidad_piezas} pzas x $${parseFloat(item.precio_unitario).toFixed(2)}`, 10, y);
+        doc.text(`$${parseFloat(item.subtotal).toFixed(2)}`, 70, y, { align: "right" });
+        y += 6;
+
+        if (y > 130) { doc.addPage(); y = 10; }
+      });
+
+      doc.setFontSize(8);
+      doc.text("-----------------------------------", 10, y);
+      y += 5;
+
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(`TOTAL: $${parseFloat(ventaSeleccionada.total).toFixed(2)}`, 70, y, { align: "right" });
+
+      if (ventaSeleccionada.estado === 'CANCELADA') {
+        y += 6;
+        doc.setTextColor(220, 38, 38);
+        doc.text("*** TICKET CANCELADO ***", 40, y, { align: "center" });
+      }
+
+      const clienteLimpio = (ventaSeleccionada.cliente || "Cliente").trim().replace(/\s+/g, '_');
+      const nombreArchivo = `${clienteLimpio}_Ticket_${ventaSeleccionada.id}.pdf`;
+      const pdfBlob = doc.output('blob');
+      const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Nota CEDIS' });
+        } catch (e) {
+          console.warn("Share descartado");
+        }
+      } else {
+        doc.save(nombreArchivo);
+      }
+    }
+
+    init();
+  </script>
+</body>
+
+</html>
