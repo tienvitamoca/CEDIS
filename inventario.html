@@ -396,7 +396,7 @@
             }
 
             tbody.innerHTML = lista.map(p => {
-                const stockG = parseFloat(p.stock_gramos) || 0;
+                const stockG = redondear(parseFloat(p.stock_gramos) || 0, 1);
                 const minG = parseFloat(p.stock_minimo_g) || 1000;
                 const cpg = costoPorGramo(p);
                 const valorTotal = cpg ? (stockG * cpg) : 0;
@@ -445,6 +445,7 @@
         `;
             }).join('');
         }
+
         // ─── ABRIR Y CERRAR MODAL ──────────────────────────────────────
         function abrirModal(id) {
             productoSeleccionado = productos.find(x => x.id == id);

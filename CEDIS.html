@@ -197,15 +197,19 @@
         <div id="lista-carrito" style="margin-bottom: 20px;"></div>
 
         <div style="display:flex; flex-direction:column; gap:10px;">
-            <button id="btn-procesar-venta" class="btn-ticket" style="background:#16a34a; font-size:1.1rem; font-weight:bold; padding:15px;" onclick="procesarVentaSolo()">
+            <button id="btn-procesar-venta" class="btn-ticket"
+                style="background:#16a34a; font-size:1.1rem; font-weight:bold; padding:15px;"
+                onclick="procesarVentaSolo()">
                 💳 Cobrar y Registrar Venta
             </button>
 
-            <button class="btn-ticket" style="background:#2563eb; padding:14px; font-weight:600;" onclick="imprimirTicketDirecto()">
+            <button class="btn-ticket" style="background:#2563eb; padding:14px; font-weight:600;"
+                onclick="imprimirTicketDirecto()">
                 💬 Solo Generar Ticket / WhatsApp
             </button>
 
-            <button onclick="abrirHistorialVentas()" class="btn btn-outline" style="padding:12px; border-radius:8px; font-weight:600;">
+            <button onclick="abrirHistorialVentas()" class="btn btn-outline"
+                style="padding:12px; border-radius:8px; font-weight:600;">
                 📜 Ver / Cancelar Tickets Recientes
             </button>
 
@@ -222,10 +226,12 @@
     </div>
 
     <!-- MODAL DE LISTA DE VENTAS AGRUPADAS POR DÍA -->
-    <div id="modal-historial" style="display:none; position:fixed; inset:0; background:white; z-index:10000; padding:20px; overflow-y:auto;">
+    <div id="modal-historial"
+        style="display:none; position:fixed; inset:0; background:white; z-index:10000; padding:20px; overflow-y:auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
             <h2>📜 Historial de Ventas</h2>
-            <button onclick="document.getElementById('modal-historial').style.display='none'" style="background:none; border:none; font-size:1.5rem; cursor:pointer">✕</button>
+            <button onclick="document.getElementById('modal-historial').style.display='none'"
+                style="background:none; border:none; font-size:1.5rem; cursor:pointer">✕</button>
         </div>
         <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:15px">
             Toca una venta para ver sus artículos, cancelarla o enviarla por WhatsApp.
@@ -236,14 +242,17 @@
     </div>
 
     <!-- MODAL DE DETALLE DE VENTA SELECCIONADA -->
-    <div id="modal-detalle-venta" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10001; padding:15px; overflow-y:auto;">
-        <div style="background:white; border-radius:12px; max-width:480px; margin:2rem auto; padding:1.25rem; box-shadow:0 10px 25px rgba(0,0,0,0.3);">
+    <div id="modal-detalle-venta"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10001; padding:15px; overflow-y:auto;">
+        <div
+            style="background:white; border-radius:12px; max-width:480px; margin:2rem auto; padding:1.25rem; box-shadow:0 10px 25px rgba(0,0,0,0.3);">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem">
                 <div>
                     <h3 id="det-titulo" style="color:var(--primary); font-size:1.15rem"></h3>
                     <div id="det-fecha" style="font-size:0.75rem; color:var(--text-muted)"></div>
                 </div>
-                <button onclick="cerrarDetalleVenta()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
+                <button onclick="cerrarDetalleVenta()"
+                    style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
             </div>
 
             <div id="det-estado-badge" style="margin-bottom:1rem"></div>
@@ -251,13 +260,15 @@
             <div class="card-title" style="margin-bottom:0.5rem">Productos Vendidos</div>
             <div id="det-items-lista" style="margin-bottom:1rem"></div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:1.1rem; font-weight:700; border-top:2px solid var(--border); padding-top:0.75rem; margin-bottom:1.25rem;">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; font-size:1.1rem; font-weight:700; border-top:2px solid var(--border); padding-top:0.75rem; margin-bottom:1.25rem;">
                 <span>Total de la Venta:</span>
                 <span id="det-total" style="color:var(--primary)">$0.00</span>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:8px;">
-                <button class="btn btn-primary btn-block" style="background:#22c55e;" onclick="compartirTicketDesdeDetalle()">
+                <button class="btn btn-primary btn-block" style="background:#22c55e;"
+                    onclick="compartirTicketDesdeDetalle()">
                     💬 Compartir Ticket por WhatsApp
                 </button>
                 <button id="btn-cancelar-todo" class="btn btn-danger btn-block" onclick="cancelarVentaCompleta()">
@@ -271,9 +282,11 @@
     </div>
 
     <!-- OVERLAY DE CARGA -->
-    <div id="loading-overlay" style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.75); z-index:99999; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(3px);">
+    <div id="loading-overlay"
+        style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.75); z-index:99999; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(3px);">
         <div class="spinner" style="width:45px; height:45px; border-width:4px; border-top-color:#22c55e;"></div>
-        <p style="color:white; font-weight:700; margin-top:1rem; font-size:1rem; letter-spacing:0.5px;">Registrando venta y actualizando stock...</p>
+        <p style="color:white; font-weight:700; margin-top:1rem; font-size:1rem; letter-spacing:0.5px;">Registrando
+            venta y actualizando stock...</p>
     </div>
 
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -639,7 +652,8 @@
 
                 const prodDb = await dbGet('productos', `select=stock_gramos&id=eq.${item.producto_id}`);
                 if (prodDb && prodDb.length) {
-                    const nuevoStock = (parseFloat(prodDb[0].stock_gramos) || 0) + parseFloat(item.gramos_totales);
+                    const stockActual = parseFloat(prodDb[0].stock_gramos) || 0;
+                    const nuevoStock = redondear(stockActual + parseFloat(item.gramos_totales), 1);
                     await dbPatch('productos', item.producto_id, { stock_gramos: nuevoStock });
                 }
 
@@ -681,7 +695,8 @@
                 for (const d of (ventaSeleccionada.detalle_ventas || [])) {
                     const prodDb = await dbGet('productos', `select=stock_gramos&id=eq.${d.producto_id}`);
                     if (prodDb && prodDb.length) {
-                        const nuevoStock = (parseFloat(prodDb[0].stock_gramos) || 0) + parseFloat(d.gramos_totales);
+                        const stockActual = parseFloat(prodDb[0].stock_gramos) || 0;
+                        const nuevoStock = redondear(stockActual + parseFloat(d.gramos_totales), 1);
                         await dbPatch('productos', d.producto_id, { stock_gramos: nuevoStock });
                     }
                 }
@@ -704,7 +719,7 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
 
-            try { doc.addImage("Logo.png", 'PNG', 25, 5, 30, 15); } catch (e) {}
+            try { doc.addImage("Logo.png", 'PNG', 25, 5, 30, 15); } catch (e) { }
 
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
