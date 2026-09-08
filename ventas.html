@@ -11,7 +11,7 @@
   <style>
     .kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 0.75rem;
       margin-bottom: 1rem;
     }
@@ -88,7 +88,7 @@
       gap: 0.5rem;
       flex-wrap: wrap;
       align-items: center;
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem;
     }
 
     .btn-chip {
@@ -138,13 +138,30 @@
 
   <div class="container has-bottom-nav">
 
-    <!-- SELECTOR DE PERIODOS RÁPIDOS -->
+    <!-- SELECTOR DE PERIODOS Y RANGO PERSONALIZADO -->
     <div class="filter-bar">
       <button class="btn-chip" onclick="seleccionarPeriodo('hoy', this)">Hoy</button>
       <button class="btn-chip active" onclick="seleccionarPeriodo('7d', this)">Últimos 7 días</button>
       <button class="btn-chip" onclick="seleccionarPeriodo('mes', this)">Este Mes</button>
       <button class="btn-chip" onclick="seleccionarPeriodo('mes-anterior', this)">Mes Anterior</button>
       <button class="btn-chip" onclick="seleccionarPeriodo('todo', this)">Todo</button>
+      <button class="btn-chip" id="btn-chip-custom" onclick="toggleRangoPersonalizado(this)">📅 Personalizado</button>
+      <button class="btn-chip" style="margin-left:auto; background:var(--bg); border-color:#cbd5e1;" onclick="exportarCsvVentas()">📥 Exportar CSV</button>
+    </div>
+
+    <!-- PANEL DESPLEGABLE DE FECHAS PERSONALIZADAS -->
+    <div id="panel-rango-fechas" style="display:none; background:white; border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem 1rem; margin-bottom:1rem; box-shadow:var(--shadow);">
+      <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end;">
+        <div class="field" style="margin:0; flex:1; min-width:130px;">
+          <label style="font-size:0.72rem; font-weight:700;">Fecha Desde:</label>
+          <input type="date" id="fecha-inicio" onchange="aplicarRangoManual()">
+        </div>
+        <div class="field" style="margin:0; flex:1; min-width:130px;">
+          <label style="font-size:0.72rem; font-weight:700;">Fecha Hasta:</label>
+          <input type="date" id="fecha-fin" onchange="aplicarRangoManual()">
+        </div>
+        <button class="btn btn-primary" style="padding:0.45rem 1rem; font-size:0.85rem;" onclick="aplicarRangoManual()">Filtrar</button>
+      </div>
     </div>
 
     <!-- TARJETAS EJECUTIVAS KPI -->
@@ -155,7 +172,11 @@
       </div>
       <div class="kpi-card" style="border-top-color: #2563eb;">
         <div class="num" id="kpi-ganancias" style="color:#2563eb">$0.00</div>
-        <div class="lbl">Ganancia Bruta</div>
+        <div class="lbl">Ganancia (<span id="kpi-margen-pct">0%</span>)</div>
+      </div>
+      <div class="kpi-card" style="border-top-color: #0d9488;">
+        <div class="num" id="kpi-ticket-promedio">$0.00</div>
+        <div class="lbl">Ticket Promedio</div>
       </div>
       <div class="kpi-card" style="border-top-color: #f59e0b;">
         <div class="num" id="kpi-kilos">0.0 kg</div>
@@ -163,13 +184,12 @@
       </div>
       <div class="kpi-card" style="border-top-color: #64748b;">
         <div class="num" id="kpi-tickets">0 / 0</div>
-        <div class="lbl">Tickets Cobrados / Canc.</div>
+        <div class="lbl">Cobrados / Canc.</div>
       </div>
     </div>
 
     <!-- CUADRANTE POS: ROTACIÓN Y APORTE DE MARGEN -->
     <div class="pos-quadrant-grid">
-      <!-- 1. MÁS ROTAN -->
       <div class="quadrant-card">
         <div class="quadrant-header">
           <h3 style="color:#16a34a">🚀 Más Rotación (Volumen)</h3>
@@ -180,7 +200,6 @@
         </div>
       </div>
 
-      <!-- 2. MENOS ROTAN -->
       <div class="quadrant-card">
         <div class="quadrant-header">
           <h3 style="color:#dc2626">🐢 Menos Rotación (Lentos)</h3>
@@ -191,7 +210,6 @@
         </div>
       </div>
 
-      <!-- 3. MÁS DEJAN -->
       <div class="quadrant-card">
         <div class="quadrant-header">
           <h3 style="color:#2563eb">💰 Más Dejan ($ Utilidad)</h3>
@@ -202,7 +220,6 @@
         </div>
       </div>
 
-      <!-- 4. MENOS DEJAN -->
       <div class="quadrant-card">
         <div class="quadrant-header">
           <h3 style="color:#d97706">📉 Menos Dejan ($ Utilidad)</h3>
@@ -278,12 +295,10 @@
     </div>
   </div>
 
-  <!-- NAVEGACIÓN INFERIOR -->
   <nav class="bottom-nav">
     <a href="index.html"><span class="icon">🏠</span> Inicio</a>
     <a href="inventario.html"><span class="icon">📦</span> Stock</a>
     <a href="CEDIS.html"><span class="icon">🧮</span> CEDIS</a>
-    <a href="ventas.html" class="active"><span class="icon">📊</span> Ventas</a>
     <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
   </nav>
 
@@ -305,7 +320,7 @@
       try {
         catalogoProductos = await dbGet('productos', 'select=id,nombre,costo_kg,tipo_id,tipos_producto(nombre)');
       } catch (e) {
-        console.error("Error al cargar productos:", e);
+        console.error("Error al cargar catálogo:", e);
       }
     }
 
@@ -318,16 +333,51 @@
       }
     }
 
+    function toggleRangoPersonalizado(btn) {
+      document.querySelectorAll('.filter-bar .btn-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      periodoActual = 'custom';
+
+      const panel = document.getElementById('panel-rango-fechas');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+
+      if (!document.getElementById('fecha-inicio').value) {
+        const ahora = new Date();
+        const hace7d = new Date(ahora.getTime() - (7 * 24 * 60 * 60 * 1000));
+        document.getElementById('fecha-inicio').value = hace7d.toISOString().split('T')[0];
+        document.getElementById('fecha-fin').value = ahora.toISOString().split('T')[0];
+      }
+      aplicarRangoManual();
+    }
+
     function seleccionarPeriodo(periodo, btn) {
+      document.getElementById('panel-rango-fechas').style.display = 'none';
       document.querySelectorAll('.filter-bar .btn-chip').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
       periodoActual = periodo;
       aplicarFiltroPeriodo(periodo);
     }
 
+    function aplicarRangoManual() {
+      const fi = document.getElementById('fecha-inicio').value;
+      const ff = document.getElementById('fecha-fin').value;
+
+      if (!fi || !ff) return;
+
+      const inicio = new Date(`${fi}T00:00:00`);
+      const fin = new Date(`${ff}T23:59:59`);
+
+      ventasFiltradas = todasLasVentas.filter(v => {
+        const f = new Date(v.fecha);
+        return f >= inicio && f <= fin;
+      });
+
+      procesarAnaliticaCompleta();
+    }
+
     function aplicarFiltroPeriodo(periodo) {
       const ahora = new Date();
-      let inicio = new Date(0); // Epoch
+      let inicio = new Date(0);
 
       if (periodo === 'hoy') {
         inicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
@@ -357,7 +407,6 @@
       renderizarBitacora();
     }
 
-    // ─── 1. TARJETAS KPI ──────────────────────────────────────────
     function actualizarKpis() {
       let totalIngresos = 0;
       let totalGanancia = 0;
@@ -375,31 +424,32 @@
             const gramos = parseFloat(d.gramos_totales) || 0;
             totalGramos += gramos;
 
-            // Estimación de Costo de Materia Prima + Insumos de Empaque
             const costoKg = parseFloat(d.productos?.costo_kg) || 0;
             const costoMP = (gramos / 1000) * costoKg;
-            const costoInsumos = pzas * 0.85; // Bolsa, etiqueta, grapas aproximado
+            const costoInsumos = pzas * 0.85;
             const subtotal = parseFloat(d.subtotal) || 0;
 
-            const gananciaRenglon = subtotal - (costoMP + costoInsumos);
-            totalGanancia += gananciaRenglon;
+            totalGanancia += (subtotal - (costoMP + costoInsumos));
           });
         } else if (v.estado === 'CANCELADA') {
           canceladas++;
         }
       });
 
+      const margenPct = totalIngresos > 0 ? ((totalGanancia / totalIngresos) * 100).toFixed(1) : 0;
+      const ticketPromedio = completadas > 0 ? (totalIngresos / completadas) : 0;
+
       document.getElementById('kpi-ingresos').textContent = formatPeso(totalIngresos);
       document.getElementById('kpi-ganancias').textContent = formatPeso(totalGanancia);
+      document.getElementById('kpi-margen-pct').textContent = `${margenPct}%`;
+      document.getElementById('kpi-ticket-promedio').textContent = formatPeso(ticketPromedio);
       document.getElementById('kpi-kilos').textContent = `${(totalGramos / 1000).toFixed(1)} kg / ${totalGramos.toLocaleString('es-MX')} g`;
       document.getElementById('kpi-tickets').textContent = `${completadas} / ${canceladas}`;
     }
 
-    // ─── 2. CUADRANTE POS (ROTACIÓN Y APORTE) ──────────────────────
     function calcularCuadrantesPos() {
       const mapa = {};
 
-      // Inicializar todos los productos del catálogo en 0 para identificar productos fríos (0 ventas)
       catalogoProductos.forEach(p => {
         mapa[p.id] = {
           id: p.id,
@@ -411,7 +461,6 @@
         };
       });
 
-      // Acumular ventas completadas del periodo
       ventasFiltradas.filter(v => v.estado === 'COMPLETADA').forEach(v => {
         (v.detalle_ventas || []).forEach(d => {
           const id = d.producto_id;
@@ -442,19 +491,15 @@
 
       const lista = Object.values(mapa);
 
-      // A) Más Rotan (Por piezas despachadas)
       const topRotacion = [...lista].sort((a, b) => b.piezas - a.piezas).slice(0, 5);
       renderListaCuadrante('top-rotan', topRotacion, p => `<strong>${p.piezas} pzas</strong> (${(p.gramos/1000).toFixed(1)}kg)`);
 
-      // B) Menos Rotan (Menor cantidad de piezas vendidas)
       const peorRotacion = [...lista].sort((a, b) => a.piezas - b.piezas).slice(0, 5);
       renderListaCuadrante('peor-rotan', peorRotacion, p => `<span style="color:#dc2626">${p.piezas} pzas</span>`);
 
-      // C) Más Dejan (Mayor ganancia en pesos)
       const topGanancia = [...lista].sort((a, b) => b.ganancia - a.ganancia).slice(0, 5);
       renderListaCuadrante('top-ganancias', topGanancia, p => `<strong style="color:#16a34a">${formatPeso(p.ganancia)}</strong>`);
 
-      // D) Menos Dejan (Menor ganancia generada en pesos)
       const peorGanancia = [...lista].sort((a, b) => a.ganancia - b.ganancia).slice(0, 5);
       renderListaCuadrante('peor-ganancias', peorGanancia, p => `<span style="color:#d97706">${formatPeso(p.ganancia)}</span>`);
     }
@@ -474,7 +519,6 @@
       `).join('');
     }
 
-    // ─── 3. GRÁFICA DE CATEGORÍAS ────────────────────────────────
     function dibujarGraficoCategorias() {
       const categorias = {};
 
@@ -518,7 +562,6 @@
       });
     }
 
-    // ─── 4. BITÁCORA Y HISTORIAL POR DÍAS ─────────────────────────
     function renderizarBitacora() {
       const q = (document.getElementById('busqueda-venta').value || '').trim().toLowerCase();
       const estado = document.getElementById('filtro-estado-venta').value;
@@ -535,7 +578,6 @@
         return;
       }
 
-      // Agrupación por día
       const grupos = {};
       list.forEach(v => {
         const dia = new Date(v.fecha).toLocaleDateString('es-MX', {
@@ -584,7 +626,6 @@
       cont.innerHTML = html;
     }
 
-    // ─── 5. DETALLE DE VENTA Y CANCELACIONES ───────────────────────
     function abrirDetalle(v) {
       ventaSeleccionada = v;
       const cancelada = v.estado === 'CANCELADA';
@@ -634,7 +675,6 @@
         const item = ventaSeleccionada.detalle_ventas.find(d => d.id === detalleId);
         if (!item) return;
 
-        // 1. Devolver gramos con redondeo
         const prodDb = await dbGet('productos', `select=stock_gramos&id=eq.${item.producto_id}`);
         if (prodDb && prodDb.length) {
           const stockActual = parseFloat(prodDb[0].stock_gramos) || 0;
@@ -642,12 +682,10 @@
           await dbPatch('productos', item.producto_id, { stock_gramos: nuevoStock });
         }
 
-        // 2. Eliminar renglón
         await fetch(`${SUPABASE_URL}/rest/v1/detalle_ventas?id=eq.${detalleId}`, {
           method: 'DELETE', headers: { ...headers }
         });
 
-        // 3. Recalcular total de la venta
         const nuevosDetalles = ventaSeleccionada.detalle_ventas.filter(d => d.id !== detalleId);
         let nuevoTotal = 0;
         let nuevasPzas = 0;
@@ -744,11 +782,35 @@
         try {
           await navigator.share({ files: [file], title: 'Nota CEDIS' });
         } catch (e) {
-          console.warn("Share descartado");
+          console.warn("Share cancelado", e);
         }
       } else {
         doc.save(nombreArchivo);
       }
+    }
+
+    function exportarCsvVentas() {
+      if (!ventasFiltradas.length) return alert("No hay ventas en este periodo para exportar.");
+
+      let csv = "\uFEFF";
+      csv += "Folio,Cliente,Fecha,Hora,Articulos,Total,Estado\n";
+
+      ventasFiltradas.forEach(v => {
+        const fechaObj = new Date(v.fecha);
+        const fecha = fechaObj.toLocaleDateString('es-MX');
+        const hora = fechaObj.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        const arts = v.detalle_ventas ? v.detalle_ventas.length : 0;
+        const total = parseFloat(v.total).toFixed(2);
+        const cliente = `"${(v.cliente || '').replace(/"/g, '""')}"`;
+
+        csv += `${v.id},${cliente},${fecha},${hora},${arts},${total},${v.estado}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `Ventas_CEDIS_${periodoActual}_${Date.now()}.csv`;
+      link.click();
     }
 
     init();
