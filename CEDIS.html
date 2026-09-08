@@ -760,8 +760,8 @@
             }
 
             const pdfBlob = doc.output('blob');
-            const nombreArchivo = `Ticket_${ventaSeleccionada.id}_${Date.now()}.pdf`;
-            const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+            const clienteLimpio = (ventaSeleccionada.cliente || "Cliente").trim().replace(/\s+/g, '_');
+            const nombreArchivo = `${clienteLimpio}_Ticket_${ventaSeleccionada.id}.pdf`; const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
 
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
