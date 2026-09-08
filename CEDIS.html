@@ -241,6 +241,15 @@
         </div>
     </div>
 
+    <!-- OVERLAY DE BLOQUEO / CARGA -->
+    <div id="loading-overlay"
+        style="display:none; position:fixed; inset:0; background:rgba(15, 23, 42, 0.75); z-index:99999; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(3px);">
+        <div class="spinner" style="width:45px; height:45px; border-width:4px; border-top-color:#22c55e;"></div>
+        <p style="color:white; font-weight:700; margin-top:1rem; font-size:1rem; letter-spacing:0.5px;">Registrando
+            venta y preparando ticket...</p>
+    </div>
+
+
     <!-- /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////// -->
@@ -252,70 +261,12 @@
         let ultimaEntrada = 'precio';
         let html5QrCode = null;
         let carrito = []; // Aquí guardaremos los productos agregados
+        let toastTimer;
+
 
         async function init() {
             presentaciones = await dbGet('presentaciones', 'order=codigo_bb.asc');
         }
-
-        // async function imprimirTicket(modo) {
-        //     if (carrito.length === 0) return alert("El carrito está vacío.");
-        //     if (!window.jspdf || !window.jspdf.jsPDF) return alert("Error: Librería PDF no cargada.");
-
-        //     const { jsPDF } = window.jspdf;
-        //     const nombreCliente = document.getElementById('nombre-cliente').value.trim() || "Ticket";
-        //     const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
-
-        //     // Logo y Encabezado
-        //     try {
-        //         doc.addImage("LogoMoca.png", 'PNG', 25, 5, 30, 15);
-        //     } catch (e) { console.warn("Logo no encontrado"); }
-
-        //     doc.setFontSize(10);
-        //     doc.text(`Cliente: ${nombreCliente}`, 10, 25);
-        //     doc.text(`Fecha: ${new Date().toLocaleString('es-MX')}`, 10, 30);
-        //     doc.text("-----------------------------------", 10, 34);
-
-        //     let y = 40;
-        //     let totalGeneral = 0;
-
-        //     carrito.forEach(item => {
-        //         const subtotal = item.cantidad * item.precio;
-        //         totalGeneral += subtotal;
-
-        //         doc.setFontSize(9);
-        //         doc.setFont("helvetica", "bold");
-        //         doc.text(item.producto.nombre, 10, y);
-        //         y += 5;
-
-        //         doc.setFontSize(7);
-        //         doc.setFont("helvetica", "normal");
-        //         // Aquí muestra el precio de venta y el costo total calculado
-        //         doc.text(`${item.cantidad} pzas x $${item.precio.toFixed(2)}`, 10, y);
-        //         doc.text(`$${subtotal.toFixed(2)}`, 70, y, { align: "right" });
-        //         y += 4;
-        //         doc.text(`Obj sugerido: $${item.precioObjetivo.toFixed(2)}`, 10, y);
-        //         y += 7;
-
-        //         if (y > 130) { doc.addPage(); y = 10; }
-        //     });
-
-        //     doc.text("-----------------------------------", 10, y);
-        //     y += 5;
-        //     doc.setFontSize(12);
-        //     doc.setFont("helvetica", "bold");
-        //     doc.text(`TOTAL: $${totalGeneral.toFixed(2)}`, 70, y, { align: "right" });
-
-        //     // Generación y envío
-        //     const pdfBlob = doc.output('blob');
-        //     const nombreArchivo = `${nombreCliente}-${Date.now()}.pdf`;
-        //     const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
-
-        //     if (modo === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
-        //         await navigator.share({ files: [file], title: 'Nota CEDIS' });
-        //     } else {
-        //         doc.save(nombreArchivo);
-        //     }
-        // }
 
         async function imprimirTicket(modo) {
             if (carrito.length === 0) return alert("El carrito está vacío.");
@@ -394,7 +345,6 @@
                 doc.save(nombreArchivo);
             }
         }
-
 
 
         function iniciarNuevoTicket() {
@@ -695,14 +645,28 @@
             document.querySelectorAll('.value').forEach(el => el.textContent = '—');
         }
 
+        function mostrarToast(msg, esError = false) {
+            let t = document.getElementById('_toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = '_toast';
+                t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:0.6rem 1.2rem;border-radius:20px;font-size:0.88rem;font-weight:600;z-index:999999;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:opacity 0.3s;pointer-events:none;';
+                document.body.appendChild(t);
+            }
+            t.textContent = msg;
+            t.style.background = esError ? '#fee2e2' : '#dcfce7';
+            t.style.color = esError ? '#b91c1c' : '#15803d';
+            t.style.opacity = '1';
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.style.opacity = '0', 2500);
+        }
 
         // ─── PROCESAR VENTA Y DESCONTAR INVENTARIO ──────────────────
         async function procesarVenta() {
-            if (carrito.length === 0) return alert("El carrito está vacío.");
+            if (!carrito || carrito.length === 0) return alert("El carrito está vacío.");
 
-            const btn = document.getElementById('btn-procesar-venta');
-            btn.disabled = true;
-            btn.textContent = "⏳ Registrando venta...";
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.style.display = 'flex';
 
             const nombreCliente = document.getElementById('nombre-cliente').value.trim() || "Venta de Mostrador";
             let totalGeneral = 0;
@@ -713,59 +677,64 @@
                 totalPiezas += item.cantidad;
             });
 
-            // Redondeo comercial al 0.50 superior
             const totalFinal = Math.ceil(totalGeneral * 2) / 2;
 
             try {
                 // 1. Guardar encabezado de la venta en Supabase
-                const resVenta = await dbPost('ventas', {
+                const payloadVenta = {
                     cliente: nombreCliente,
                     total: totalFinal,
                     total_piezas: totalPiezas,
                     estado: 'COMPLETADA'
-                });
+                };
 
+                const resVenta = await dbPost('ventas', payloadVenta);
+                if (!resVenta || !resVenta.length) {
+                    throw new Error("No se pudo generar el registro de venta en la base de datos.");
+                }
                 const ventaId = resVenta[0].id;
 
-                // 2. Guardar detalles y descontar stock de cada producto
+                // 2. Guardar detalles y descontar gramos de inventario
                 for (const item of carrito) {
-                    // Registrar renglón de detalle
+                    const gTotales = parseFloat(item.gramosTotales) || (parseFloat(item.gramosUnitarios || 0) * item.cantidad) || 0;
+
                     await dbPost('detalle_ventas', {
                         venta_id: ventaId,
                         producto_id: item.producto.id,
-                        presentacion: item.presentacion,
-                        precio_unitario: item.precio,
-                        cantidad_piezas: item.cantidad,
-                        gramos_totales: item.gramosTotales,
+                        presentacion: item.presentacion || 'Estándar',
+                        precio_unitario: parseFloat(item.precio) || 0,
+                        cantidad_piezas: parseInt(item.cantidad) || 1,
+                        gramos_totales: gTotales,
                         subtotal: redondear(item.cantidad * item.precio)
                     });
 
-                    // Descontar inventario en productos
+                    // Descontar inventario en productos si el producto tiene stock registrado
                     const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${item.producto.id}`);
                     if (prodsDb && prodsDb.length) {
-                        // NUEVO: Permite números negativos
                         const stockActual = parseFloat(prodsDb[0].stock_gramos) || 0;
-                        const nuevoStock = redondear(stockActual - item.gramosTotales, 1);
+                        const nuevoStock = redondear(stockActual - gTotales, 1);
                         await dbPatch('productos', item.producto.id, { stock_gramos: nuevoStock });
                     }
                 }
 
-                alert(`✅ Venta #${ventaId} registrada con éxito. Inventario actualizado.`);
+                // 3. Notificación de éxito
+                if (typeof mostrarToast === 'function') {
+                    mostrarToast(`✅ Venta #${ventaId} registrada con éxito`);
+                }
 
-                // 3. Generar Ticket en PDF / WhatsApp
+                // 4. Compartir / Descargar Ticket
                 await imprimirTicket('share');
 
-                // 4. Limpiar ticket
+                // 5. Limpieza del carrito
                 carrito = [];
                 document.getElementById('nombre-cliente').value = '';
                 document.getElementById('modal-carrito').style.display = 'none';
 
             } catch (err) {
-                console.error("Error al registrar venta:", err);
-                alert("Error al registrar la venta: " + err.message);
+                console.error("Detalle completo del error en venta:", err);
+                alert("Error al procesar la venta: " + err.message);
             } finally {
-                btn.disabled = false;
-                btn.textContent = "💳 Cobrar y Generar Ticket";
+                if (overlay) overlay.style.display = 'none';
             }
         }
 
