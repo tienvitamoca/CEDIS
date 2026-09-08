@@ -2,444 +2,386 @@
 <html lang="es">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario — CEDIS</title>
-    <link rel="stylesheet" href="style.css">
-    <style>
-        .stats-grid-inv {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario — CEDIS</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .stats-grid-inv {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
 
-        .stat-card-inv {
-            background: white;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            padding: 1rem;
-            text-align: center;
-        }
+    .stat-card-inv {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      text-align: center;
+    }
 
-        .stat-card-inv .num {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
+    .stat-card-inv .num {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
 
-        .stat-card-inv .lbl {
-            font-size: 0.72rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-top: 0.2rem;
-        }
+    .stat-card-inv .lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-top: 0.2rem;
+    }
 
-        .inv-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.88rem;
-        }
+    .inv-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
 
-        .inv-table th {
-            text-align: left;
-            padding: 0.6rem;
-            font-size: 0.72rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            background: var(--bg);
-            border-bottom: 2px solid var(--border);
-        }
+    .inv-table th {
+      text-align: left;
+      padding: 0.6rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 2px solid var(--border);
+    }
 
-        .inv-table td {
-            padding: 0.6rem;
-            border-bottom: 1px solid var(--border);
-            vertical-align: middle;
-        }
+    .inv-table td {
+      padding: 0.6rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
 
-        .badge-stock {
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 0.2rem 0.5rem;
-            border-radius: 6px;
-            display: inline-block;
-        }
+    .badge-stock {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      display: inline-block;
+    }
 
-        .stock-ok {
-            background: #dcfce7;
-            color: #15803d;
-        }
+    .stock-ok { background: #dcfce7; color: #15803d; }
+    .stock-warn { background: #fef9c3; color: #854d0e; }
+    .stock-empty { background: #fee2e2; color: #b91c1c; }
 
-        .stock-warn {
-            background: #fef9c3;
-            color: #854d0e;
-        }
+    /* Modal emergente */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 500;
+      backdrop-filter: blur(2px);
+      overflow-y: auto;
+      padding: 1rem;
+    }
 
-        .stock-empty {
-            background: #fee2e2;
-            color: #b91c1c;
-        }
+    .modal-dialog {
+      background: white;
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      max-width: 480px;
+      margin: 2.5rem auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      animation: modalFadeIn 0.2s ease-out;
+    }
 
-        .filtro-chip {
-            padding: 0.35rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            border: 1.5px solid var(--border);
-            background: white;
-            color: var(--text-muted);
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.3rem;
-            transition: all 0.15s;
-        }
-
-        .filtro-chip.active {
-            background: #fee2e2;
-            color: #b91c1c;
-            border-color: #fca5a5;
-        }
-
-        /* Modal emergente */
-        .modal-backdrop {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.55);
-            z-index: 500;
-            backdrop-filter: blur(2px);
-            overflow-y: auto;
-            padding: 1rem;
-        }
-
-        .modal-dialog {
-            background: white;
-            border-radius: var(--radius);
-            padding: 1.25rem;
-            max-width: 480px;
-            margin: 3rem auto;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            animation: modalFadeIn 0.2s ease-out;
-        }
-
-        @keyframes modalFadeIn {
-            from {
-                transform: translateY(15px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-    </style>
+    @keyframes modalFadeIn {
+      from { transform: translateY(15px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
 </head>
 
 <body>
-    <nav class="navbar">
-        <a href="index.html">←</a>
-        <h1>📦 Inventario Físico</h1>
-        <span></span>
-    </nav>
+  <nav class="navbar">
+    <a href="index.html">←</a>
+    <h1>📦 Inventario Físico</h1>
+    <span></span>
+  </nav>
 
-    <div class="container has-bottom-nav">
+  <div class="container has-bottom-nav">
 
-        <!-- RESUMEN FINANCIERO -->
-        <div class="stats-grid-inv">
-            <div class="stat-card-inv" style="border-top: 4px solid var(--success);">
-                <div class="num" id="total-dinero-inv" style="color:var(--success)">$0.00</div>
-                <div class="lbl">Capital en Stock</div>
-            </div>
-            <div class="stat-card-inv" style="border-top: 4px solid var(--primary);">
-                <div class="num" id="total-kg-inv">0 kg</div>
-                <div class="lbl">Kilos Totales</div>
-            </div>
-            <div class="stat-card-inv">
-                <div class="num" id="total-prods-inv">0</div>
-                <div class="lbl">Total Productos</div>
-            </div>
-            <div class="stat-card-inv" onclick="toggleFiltroCero()"
-                style="cursor:pointer; border-top: 4px solid var(--danger);">
-                <div class="num" id="total-criticos-inv" style="color:var(--danger)">0</div>
-                <div class="lbl">Sin Stock (Ver)</div>
-            </div>
-        </div>
-
-        <!-- BUSCADOR, ESCÁNER Y FILTROS -->
-        <div class="card" style="padding:1rem">
-            <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem">
-                <div class="search-wrap" style="flex:1; margin:0">
-                    <span class="icon">🔍</span>
-                    <input type="text" id="busqueda-prod" placeholder="Buscar por nombre o código..."
-                        oninput="filtrarLista()" autocomplete="off">
-                </div>
-                <button class="btn btn-primary" onclick="encenderEscanner()"
-                    style="padding:0 1rem; border-radius:8px">📷</button>
-            </div>
-
-            <!-- ESCÁNER DE CÁMARA -->
-            <div id="scanner-container" style="display:none; margin-bottom:0.75rem;">
-                <div id="reader"
-                    style="width:100%; border-radius:12px; overflow:hidden; border:2px solid var(--primary);"></div>
-                <button class="btn btn-outline" onclick="apagarEscanner()"
-                    style="width:100%; margin-top:0.5rem">Cancelar Escaneo</button>
-            </div>
-
-            <!-- FILTROS ADICIONALES -->
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
-                <select id="filtro-categoria" onchange="filtrarLista()"
-                    style="flex:1; min-width:140px; padding:0.45rem 0.75rem; font-size:0.85rem">
-                    <option value="">Todas las categorías</option>
-                </select>
-
-                <select id="filtro-estado-stock" onchange="filtrarLista()"
-                    style="flex:1; min-width:160px; padding:0.45rem 0.75rem; font-size:0.85rem; font-weight:600;">
-                    <option value="todos">Todos los estados</option>
-                    <option value="negativo">⚠️ Negativos (&lt; 0g)</option>
-                    <option value="bajo">📉 Stock bajo (&lt; 1kg)</option>
-                    <option value="cero">🛑 Agotados (0g)</option>
-                    <option value="ok">✅ Stock normal (≥ 1kg)</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- LISTA GENERAL DE STOCK -->
-        <div class="card" style="padding:0; overflow:hidden">
-            <div
-                style="padding:0.85rem 1rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                <div class="card-title" style="margin:0">Existencias en Bodega</div>
-                <div style="font-size:0.75rem; color:var(--text-muted)" id="conteo-filtrados"></div>
-            </div>
-
-            <div style="overflow-x:auto">
-                <table class="inv-table">
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th>Stock</th>
-                            <th>Valor ($)</th>
-                            <th style="width:30px"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbody-inventario">
-                        <tr>
-                            <td colspan="4" style="text-align:center; padding:1.5rem">
-                                <div class="spinner"></div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
+    <!-- RESUMEN FINANCIERO -->
+    <div class="stats-grid-inv">
+      <div class="stat-card-inv" style="border-top: 4px solid var(--success);">
+        <div class="num" id="total-dinero-inv" style="color:var(--success)">$0.00</div>
+        <div class="lbl">Capital en Stock</div>
+      </div>
+      <div class="stat-card-inv" style="border-top: 4px solid var(--primary);">
+        <div class="num" id="total-kg-inv">0 kg</div>
+        <div class="lbl">Kilos Totales</div>
+      </div>
+      <div class="stat-card-inv">
+        <div class="num" id="total-prods-inv">0</div>
+        <div class="lbl">Total Productos</div>
+      </div>
+      <div class="stat-card-inv" onclick="toggleFiltroCero()" style="cursor:pointer; border-top: 4px solid var(--danger);">
+        <div class="num" id="total-criticos-inv" style="color:var(--danger)">0</div>
+        <div class="lbl">Sin Stock (Ver)</div>
+      </div>
     </div>
 
-    <!-- MODAL FLOTANTE DE EDICIÓN / CONTEO -->
-    <div id="modal-stock" class="modal-backdrop">
-        <div class="modal-dialog">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem">
-                <div>
-                    <h3 id="ed-nombre" style="color:var(--primary); font-size:1.1rem; margin-bottom:0.2rem"></h3>
-                    <div id="ed-sub" style="font-size:0.75rem; color:var(--text-muted)"></div>
-                </div>
-                <button onclick="cerrarModal()"
-                    style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted); line-height:1">✕</button>
-            </div>
-
-            <div
-                style="background:var(--bg); border-radius:8px; padding:0.75rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600">Stock Actual Registrado:</span>
-                <strong id="ed-stock-actual" style="font-size:1.05rem; color:var(--text)">0g</strong>
-            </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom:0.75rem">
-                <div class="field" style="margin:0">
-                    <label>Cantidad</label>
-                    <input type="number" id="in-cantidad" step="any" placeholder="Ej: 500" autofocus>
-                </div>
-                <div class="field" style="margin:0">
-                    <label>Unidad</label>
-                    <select id="in-unidad">
-                        <option value="g" selected>Gramos (g)</option>
-                        <option value="kg">Kilos (kg)</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="field" style="margin-bottom:1.25rem">
-                <label>Modo de Conteo</label>
-                <select id="in-modo">
-                    <option value="add" selected>➕ Sumar a lo existente (Entrada / Nuevo)</option>
-                    <option value="set">🔄 Reemplazar inventario (Conteo físico total)</option>
-                </select>
-            </div>
-
-            <div style="display:flex; gap:0.5rem">
-                <button class="btn btn-outline" style="flex:1" onclick="cerrarModal()">Cancelar</button>
-                <button class="btn btn-primary" style="flex:1.5" onclick="guardarAjusteStock()">💾 Guardar
-                    Stock</button>
-            </div>
-
-            <div class="field"
-                style="margin-bottom:1.25rem; background:var(--bg); padding:0.6rem; border-radius:8px; border:1px solid var(--border)">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem">
-                    <label style="margin:0; font-weight:700">Stock Mínimo de Alerta</label>
-                    <span style="font-size:0.72rem; color:var(--text-muted)">Avísame cuando baje de:</span>
-                </div>
-                <div style="display:flex; gap:0.5rem">
-                    <input type="number" id="in-stock-minimo" step="any" placeholder="Ej: 500" style="flex:2">
-                    <select id="in-stock-minimo-unidad" style="flex:1">
-                        <option value="g" selected>g</option>
-                        <option value="kg">kg</option>
-                    </select>
-                </div>
-            </div>
+    <!-- BUSCADOR, ESCÁNER Y FILTROS -->
+    <div class="card" style="padding:1rem">
+      <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem">
+        <div class="search-wrap" style="flex:1; margin:0">
+          <span class="icon">🔍</span>
+          <input type="text" id="busqueda-prod" placeholder="Buscar por nombre o código..." oninput="filtrarLista()" autocomplete="off">
         </div>
+        <button class="btn btn-primary" onclick="encenderEscanner()" style="padding:0 1rem; border-radius:8px">📷</button>
+      </div>
+
+      <!-- ESCÁNER DE CÁMARA -->
+      <div id="scanner-container" style="display:none; margin-bottom:0.75rem;">
+        <div id="reader" style="width:100%; border-radius:12px; overflow:hidden; border:2px solid var(--primary);"></div>
+        <button class="btn btn-outline" onclick="apagarEscanner()" style="width:100%; margin-top:0.5rem">Cancelar Escaneo</button>
+      </div>
+
+      <!-- FILTROS SELECTORES -->
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+        <select id="filtro-categoria" onchange="filtrarLista()" style="flex:1; min-width:140px; padding:0.45rem 0.75rem; font-size:0.85rem">
+          <option value="">Todas las categorías</option>
+        </select>
+
+        <select id="filtro-estado-stock" onchange="filtrarLista()" style="flex:1; min-width:160px; padding:0.45rem 0.75rem; font-size:0.85rem; font-weight:600;">
+          <option value="todos">Todos los estados</option>
+          <option value="negativo">⚠️ Negativos (&lt; 0g)</option>
+          <option value="bajo">📉 Stock bajo (≤ Mínimo)</option>
+          <option value="cero">🛑 Agotados (0g)</option>
+          <option value="ok">✅ Stock normal (&gt; Mínimo)</option>
+        </select>
+      </div>
     </div>
 
-    <nav class="bottom-nav">
-        <a href="index.html"><span class="icon">🏠</span> Inicio</a>
-        <a href="inventario.html" class="active"><span class="icon">📦</span> Stock</a>
-        <a href="CEDIS.html"><span class="icon">🧮</span> CEDIS</a>
-        <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
-        <a href="etiquetas.html"><span class="icon">🏷️</span> Etiquetas</a>
-    </nav>
+    <!-- LISTA GENERAL DE STOCK -->
+    <div class="card" style="padding:0; overflow:hidden">
+      <div style="padding:0.85rem 1rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+        <div class="card-title" style="margin:0">Existencias en Bodega</div>
+        <div style="font-size:0.75rem; color:var(--text-muted)" id="conteo-filtrados"></div>
+      </div>
+      
+      <div style="overflow-x:auto">
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Stock</th>
+              <th>Valor ($)</th>
+              <th style="width:30px"></th>
+            </tr>
+          </thead>
+          <tbody id="tbody-inventario">
+            <tr><td colspan="4" style="text-align:center; padding:1.5rem"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-    <script src="supabase.js"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script>
-        let productos = [];
-        let tipos = [];
-        let productoSeleccionado = null;
-        let html5QrCode = null;
-        let filtroSoloCero = false;
+  </div>
 
-        async function init() {
-            await cargarTipos();
-            await cargarCatalogoEInventario();
+  <!-- MODAL FLOTANTE DE EDICIÓN / CONTEO -->
+  <div id="modal-stock" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem">
+        <div>
+          <h3 id="ed-nombre" style="color:var(--primary); font-size:1.1rem; margin-bottom:0.2rem"></h3>
+          <div id="ed-sub" style="font-size:0.75rem; color:var(--text-muted)"></div>
+        </div>
+        <button onclick="cerrarModal()" style="background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted); line-height:1">✕</button>
+      </div>
+
+      <div style="background:var(--bg); border-radius:8px; padding:0.75rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600">Stock Actual:</span>
+        <strong id="ed-stock-actual" style="font-size:1.05rem; color:var(--text)">0g</strong>
+      </div>
+
+      <!-- AJUSTE DE CANTIDAD FÍSICA -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom:0.5rem">
+        <div class="field" style="margin:0">
+          <label>Cantidad (Opcional)</label>
+          <input type="number" id="in-cantidad" step="any" placeholder="Vacío = No cambiar">
+        </div>
+        <div class="field" style="margin:0">
+          <label>Unidad</label>
+          <select id="in-unidad">
+            <option value="g" selected>Gramos (g)</option>
+            <option value="kg">Kilos (kg)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:0.85rem">
+        <label>Modo de Conteo</label>
+        <select id="in-modo">
+          <option value="add" selected>➕ Sumar a lo existente</option>
+          <option value="set">🔄 Reemplazar inventario (Conteo físico total)</option>
+        </select>
+      </div>
+
+      <!-- UMBRAL PERSONALIZADO DE STOCK MÍNIMO -->
+      <div class="field" style="margin-bottom:1.25rem; background:var(--bg); padding:0.65rem; border-radius:8px; border:1px solid var(--border)">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.3rem">
+          <label style="margin:0; font-weight:700">Stock Mínimo de Alerta</label>
+          <span style="font-size:0.72rem; color:var(--text-muted)">Alerta amarilla si baja de:</span>
+        </div>
+        <div style="display:flex; gap:0.5rem">
+          <input type="number" id="in-stock-minimo" step="any" placeholder="Ej: 500" style="flex:2">
+          <select id="in-stock-minimo-unidad" style="flex:1">
+            <option value="g" selected>g</option>
+            <option value="kg">kg</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:0.5rem">
+        <button class="btn btn-outline" style="flex:1" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn btn-primary" style="flex:1.5" onclick="guardarAjusteStock()">💾 Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="inventario.html" class="active"><span class="icon">📦</span> Stock</a>
+    <a href="CEDIS.html"><span class="icon">🧮</span> CEDIS</a>
+    <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
+    <a href="etiquetas.html"><span class="icon">🏷️</span> Etiquetas</a>
+  </nav>
+
+  <script src="supabase.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    let productos = [];
+    let tipos = [];
+    let productoSeleccionado = null;
+    let html5QrCode = null;
+
+    async function init() {
+      await cargarTipos();
+      await cargarCatalogoEInventario();
+    }
+
+    async function cargarTipos() {
+      try {
+        tipos = await getTipos();
+        const sel = document.getElementById('filtro-categoria');
+        tipos.forEach(t => {
+          sel.innerHTML += `<option value="${t.id}">${t.nombre}</option>`;
+        });
+      } catch (e) {
+        console.error("Error al cargar categorías:", e);
+      }
+    }
+
+    async function cargarCatalogoEInventario() {
+      try {
+        productos = await dbGet('productos', 'select=*,tipos_producto(nombre)&order=nombre.asc');
+        actualizarMetricasFinancieras();
+        filtrarLista();
+      } catch (e) {
+        document.getElementById('tbody-inventario').innerHTML = 
+          `<tr><td colspan="4"><div class="alert alert-error">${e.message}</div></td></tr>`;
+      }
+    }
+
+    function actualizarMetricasFinancieras() {
+      let totalDinero = 0;
+      let totalGramos = 0;
+      let sinStock = 0;
+
+      productos.forEach(p => {
+        const stockG = parseFloat(p.stock_gramos) || 0;
+        totalGramos += stockG;
+
+        if (stockG <= 0) sinStock++;
+
+        const cpg = costoPorGramo(p);
+        if (cpg && stockG > 0) {
+          totalDinero += (stockG * cpg);
+        }
+      });
+
+      document.getElementById('total-dinero-inv').textContent = formatPeso(totalDinero);
+      document.getElementById('total-kg-inv').textContent = `${(totalGramos / 1000).toFixed(1)} kg`;
+      document.getElementById('total-prods-inv').textContent = productos.length;
+      document.getElementById('total-criticos-inv').textContent = sinStock;
+    }
+
+    function toggleFiltroCero() {
+      const sel = document.getElementById('filtro-estado-stock');
+      sel.value = sel.value === 'cero' ? 'todos' : 'cero';
+      filtrarLista();
+    }
+
+    function filtrarLista() {
+      const q = document.getElementById('busqueda-prod').value.trim().toLowerCase();
+      const catId = document.getElementById('filtro-categoria').value;
+      const estado = document.getElementById('filtro-estado-stock').value;
+
+      let filtrados = productos.filter(p => {
+        const coincideTexto = !q || p.nombre.toLowerCase().includes(q) || String(p.codigo).includes(q);
+        const coincideCat = !catId || p.tipo_id == catId;
+        
+        const stockG = parseFloat(p.stock_gramos) || 0;
+        const minG = parseFloat(p.stock_minimo_g) || 1000;
+        let coincideEstado = true;
+
+        if (estado === 'negativo') {
+          coincideEstado = stockG < 0;
+        } else if (estado === 'bajo') {
+          coincideEstado = stockG > 0 && stockG <= minG;
+        } else if (estado === 'cero') {
+          coincideEstado = stockG === 0;
+        } else if (estado === 'ok') {
+          coincideEstado = stockG > minG;
         }
 
-        async function cargarTipos() {
-            try {
-                tipos = await getTipos();
-                const sel = document.getElementById('filtro-categoria');
-                tipos.forEach(t => {
-                    sel.innerHTML += `<option value="${t.id}">${t.nombre}</option>`;
-                });
-            } catch (e) {
-                console.error("Error al cargar tipos:", e);
-            }
+        return coincideTexto && coincideCat && coincideEstado;
+      });
+
+      document.getElementById('conteo-filtrados').textContent = `${filtrados.length} de ${productos.length}`;
+      renderTablaInventario(filtrados);
+    }
+
+    function renderTablaInventario(lista) {
+      const tbody = document.getElementById('tbody-inventario');
+      if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted)">Sin resultados que coincidan con los filtros.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = lista.map(p => {
+        const stockG = parseFloat(p.stock_gramos) || 0;
+        const minG = parseFloat(p.stock_minimo_g) || 1000;
+        const cpg = costoPorGramo(p);
+        const valorTotal = cpg ? (stockG * cpg) : 0;
+
+        let claseStock = 'stock-ok';
+        let textoStock = '';
+
+        if (stockG < 0) {
+          claseStock = 'stock-empty';
+          textoStock = `⚠️ ${stockG} g`;
+        } else if (stockG === 0) {
+          claseStock = 'stock-empty';
+          textoStock = '0 g';
+        } else if (stockG <= minG) {
+          claseStock = 'stock-warn';
+          textoStock = stockG >= 1000 ? `${(stockG / 1000).toFixed(2)} kg` : `${stockG} g`;
+        } else {
+          claseStock = 'stock-ok';
+          textoStock = `${(stockG / 1000).toFixed(2)} kg`;
         }
 
-        async function cargarCatalogoEInventario() {
-            try {
-                productos = await dbGet('productos', 'select=*,tipos_producto(nombre)&order=nombre.asc');
-                actualizarMetricasFinancieras();
-                filtrarLista();
-            } catch (e) {
-                document.getElementById('tbody-inventario').innerHTML =
-                    `<tr><td colspan="4"><div class="alert alert-error">${e.message}</div></td></tr>`;
-            }
-        }
-
-        function actualizarMetricasFinancieras() {
-            let totalDinero = 0;
-            let totalGramos = 0;
-            let sinStock = 0;
-
-            productos.forEach(p => {
-                const stockG = parseFloat(p.stock_gramos) || 0;
-                totalGramos += stockG;
-
-                if (stockG <= 0) sinStock++;
-
-                const cpg = costoPorGramo(p);
-                if (cpg && stockG > 0) {
-                    totalDinero += (stockG * cpg);
-                }
-            });
-
-            document.getElementById('total-dinero-inv').textContent = formatPeso(totalDinero);
-            document.getElementById('total-kg-inv').textContent = `${(totalGramos / 1000).toFixed(1)} kg`;
-            document.getElementById('total-prods-inv').textContent = productos.length;
-            document.getElementById('total-criticos-inv').textContent = sinStock;
-        }
-
-        function toggleFiltroCero() {
-            filtroSoloCero = !filtroSoloCero;
-            const btn = document.getElementById('btn-filtro-cero');
-            if (filtroSoloCero) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-            filtrarLista();
-        }
-
-        function filtrarLista() {
-            const q = document.getElementById('busqueda-prod').value.trim().toLowerCase();
-            const catId = document.getElementById('filtro-categoria').value;
-            const estado = document.getElementById('filtro-estado-stock').value;
-
-            let filtrados = productos.filter(p => {
-                const coincideTexto = !q || p.nombre.toLowerCase().includes(q) || String(p.codigo).includes(q);
-                const coincideCat = !catId || p.tipo_id == catId;
-
-                const stockG = parseFloat(p.stock_gramos) || 0;
-                const minG = parseFloat(p.stock_minimo_g) || 1000; // Umbral personalizado
-                let coincideEstado = true;
-
-                if (estado === 'negativo') {
-                    coincideEstado = stockG < 0;
-                } else if (estado === 'bajo') {
-                    coincideEstado = stockG > 0 && stockG <= minG; // Evalúa contra su propio mínimo
-                } else if (estado === 'cero') {
-                    coincideEstado = stockG === 0;
-                } else if (estado === 'ok') {
-                    coincideEstado = stockG > minG;
-                }
-
-                return coincideTexto && coincideCat && coincideEstado;
-            });
-
-            document.getElementById('conteo-filtrados').textContent = `${filtrados.length} de ${productos.length}`;
-            renderTablaInventario(filtrados);
-        }
-
-        function renderTablaInventario(lista) {
-            const tbody = document.getElementById('tbody-inventario');
-            if (!lista.length) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:var(--text-muted)">Sin resultados que coincidan con los filtros.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = lista.map(p => {
-                const stockG = parseFloat(p.stock_gramos) || 0;
-                const minG = parseFloat(p.stock_minimo_g) || 1000;
-                const cpg = costoPorGramo(p); //[cite: 7]
-                const valorTotal = cpg ? (stockG * cpg) : 0;
-
-                let claseStock = 'stock-ok';
-                let textoStock = '';
-
-                if (stockG < 0) {
-                    claseStock = 'stock-empty';
-                    textoStock = `⚠️ ${stockG} g`;
-                } else if (stockG === 0) {
-                    claseStock = 'stock-empty';
-                    textoStock = '0 g';
-                } else if (stockG <= minG) {
-                    claseStock = 'stock-warn'; // Stock bajo personalizado
-                    textoStock = stockG >= 1000 ? `${(stockG / 1000).toFixed(2)} kg` : `${stockG} g`;
-                } else {
-                    claseStock = 'stock-ok';
-                    textoStock = `${(stockG / 1000).toFixed(2)} kg`;
-                }
-                return `
+        return `
           <tr onclick="abrirModal(${p.id})" style="cursor:pointer">
             <td>
               <div style="font-weight:600; font-size:0.85rem">${p.nombre}</div>
@@ -454,165 +396,160 @@
             <td style="text-align:right; color:var(--primary); font-size:1.1rem">›</td>
           </tr>
         `;
-            }).join('');
+      }).join('');
+    }
+
+    // ─── ABRIR Y CERRAR MODAL ──────────────────────────────────────
+    function abrirModal(id) {
+      productoSeleccionado = productos.find(x => x.id == id);
+      if (!productoSeleccionado) {
+        console.error("Producto no encontrado con ID:", id);
+        return;
+      }
+
+      document.getElementById('ed-nombre').textContent = productoSeleccionado.nombre;
+      document.getElementById('ed-sub').textContent = `Código: ${productoSeleccionado.codigo} | Categoría: ${productoSeleccionado.tipos_producto?.nombre || 'General'}`;
+
+      const stockActual = parseFloat(productoSeleccionado.stock_gramos) || 0;
+      const formatActual = stockActual >= 1000 
+        ? `${(stockActual / 1000).toFixed(2)} kg (${stockActual} g)`
+        : `${stockActual} g`;
+
+      document.getElementById('ed-stock-actual').textContent = formatActual;
+
+      // Resetear campos de conteo físico
+      document.getElementById('in-cantidad').value = '';
+      document.getElementById('in-unidad').value = 'g';
+      document.getElementById('in-modo').value = 'add';
+
+      // Cargar stock mínimo guardado (o 1000g por defecto)
+      const minActual = parseFloat(productoSeleccionado.stock_minimo_g) || 1000;
+      if (minActual >= 1000 && minActual % 1000 === 0) {
+        document.getElementById('in-stock-minimo').value = minActual / 1000;
+        document.getElementById('in-stock-minimo-unidad').value = 'kg';
+      } else {
+        document.getElementById('in-stock-minimo').value = minActual;
+        document.getElementById('in-stock-minimo-unidad').value = 'g';
+      }
+
+      document.getElementById('modal-stock').style.display = 'block';
+    }
+
+    function cerrarModal() {
+      productoSeleccionado = null;
+      document.getElementById('modal-stock').style.display = 'none';
+    }
+
+    // ─── GUARDAR STOCK Y MÍNIMO ───────────────────────────────────
+    async function guardarAjusteStock() {
+      if (!productoSeleccionado || !productoSeleccionado.id) {
+        alert("Error: No hay un producto seleccionado. Vuelve a abrir el modal.");
+        return;
+      }
+
+      const inputCantidad = document.getElementById('in-cantidad').value.trim();
+      const rawCantidad = parseFloat(inputCantidad);
+      const unidad = document.getElementById('in-unidad').value;
+      const modo = document.getElementById('in-modo').value;
+
+      // 1. Determinar stock final: si el campo está vacío, mantiene el stock actual
+      const stockAnterior = parseFloat(productoSeleccionado.stock_gramos) || 0;
+      let stockFinal = stockAnterior;
+
+      if (inputCantidad !== '' && !isNaN(rawCantidad)) {
+        const gramosIngresados = unidad === 'kg' ? (rawCantidad * 1000) : rawCantidad;
+        if (modo === 'set') {
+          stockFinal = gramosIngresados;
+        } else {
+          stockFinal = stockAnterior + gramosIngresados;
+        }
+        stockFinal = redondear(stockFinal, 1);
+      }
+
+      // 2. Determinar stock mínimo
+      const inputMin = document.getElementById('in-stock-minimo').value.trim();
+      const rawMin = parseFloat(inputMin);
+      const unidadMin = document.getElementById('in-stock-minimo-unidad').value;
+      
+      let nuevoMinimoG = parseFloat(productoSeleccionado.stock_minimo_g) || 1000;
+      if (inputMin !== '' && !isNaN(rawMin) && rawMin >= 0) {
+        nuevoMinimoG = unidadMin === 'kg' ? (rawMin * 1000) : rawMin;
+      }
+
+      // 3. Enviar actualización a Supabase
+      try {
+        const dataAEnviar = {
+          stock_gramos: stockFinal,
+          stock_minimo_g: nuevoMinimoG
+        };
+
+        await dbPatch('productos', productoSeleccionado.id, dataAEnviar);
+
+        // Actualizar datos locales
+        productoSeleccionado.stock_gramos = stockFinal;
+        productoSeleccionado.stock_minimo_g = nuevoMinimoG;
+
+        const idx = productos.findIndex(p => p.id === productoSeleccionado.id);
+        if (idx !== -1) {
+          productos[idx].stock_gramos = stockFinal;
+          productos[idx].stock_minimo_g = nuevoMinimoG;
         }
 
-        function toggleFiltroCero() {
-            const sel = document.getElementById('filtro-estado-stock');
-            sel.value = sel.value === 'cero' ? 'todos' : 'cero';
-            filtrarLista();
-        }
+        actualizarMetricasFinancieras();
+        filtrarLista();
 
-        // --- MODAL FLOTANTE ---
-        function abrirModal(id) {
-            const p = productos.find(x => x.id === id);
-            if (!p) return;
+        cerrarModal();
+      } catch (e) {
+        alert("Error al actualizar inventario: " + e.message);
+      }
+    }
 
-            productoSeleccionado = p;
+    // ─── ESCÁNER POR CÁMARA ───────────────────────────────────────
+    async function encenderEscanner() {
+      document.getElementById('scanner-container').style.display = 'block';
+      html5QrCode = new Html5Qrcode("reader");
 
-            document.getElementById('ed-nombre').textContent = p.nombre;
-            document.getElementById('ed-sub').textContent = `Código: ${p.codigo} | Categoría: ${p.tipos_producto?.nombre || 'General'}`;
+      const config = { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 };
 
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            procesarCodigo(decodedText);
+          }
+        );
+      } catch (err) {
+        console.error("Error al iniciar cámara:", err);
+        alert("No se pudo iniciar la cámara.");
+      }
+    }
 
-            // Cargar stock mínimo actual del producto (o 1000g por defecto)
-            const minActual = parseFloat(p.stock_minimo_g) || 1000;
-            if (minActual >= 1000 && minActual % 1000 === 0) {
-                document.getElementById('in-stock-minimo').value = minActual / 1000;
-                document.getElementById('in-stock-minimo-unidad').value = 'kg';
-            } else {
-                document.getElementById('in-stock-minimo').value = minActual;
-                document.getElementById('in-stock-minimo-unidad').value = 'g';
-            }
+    async function apagarEscanner() {
+      if (html5QrCode) {
+        await html5QrCode.stop();
+        html5QrCode = null;
+      }
+      document.getElementById('scanner-container').style.display = 'none';
+    }
 
+    async function procesarCodigo(codigoFull) {
+      const limpio = codigoFull.replace(/\*/g, '').trim();
+      const codProdNum = parseInt(limpio.substring(0, 6));
 
-            const stockActual = parseFloat(p.stock_gramos) || 0;
-            const formatActual = stockActual >= 1000
-                ? `${(stockActual / 1000).toFixed(2)} kg (${stockActual} g)`
-                : `${stockActual} g`;
+      if (navigator.vibrate) navigator.vibrate(100);
+      await apagarEscanner();
 
-            document.getElementById('ed-stock-actual').textContent = formatActual;
+      const p = productos.find(x => x.codigo === codProdNum);
+      if (p) {
+        abrirModal(p.id);
+      } else {
+        alert("Producto no encontrado con código: " + codProdNum);
+      }
+    }
 
-            // Valores por defecto
-            document.getElementById('in-cantidad').value = '';
-            document.getElementById('in-unidad').value = 'g';   // Gramos por defecto
-            document.getElementById('in-modo').value = 'add';   // Sumar por defecto
-
-            document.getElementById('modal-stock').style.display = 'block';
-            setTimeout(() => document.getElementById('in-cantidad').focus(), 150);
-        }
-
-        function cerrarModal() {
-            productoSeleccionado = null;
-            document.getElementById('modal-stock').style.display = 'none';
-        }
-
-        async function guardarAjusteStock() {
-            if (!productoSeleccionado) return;
-
-            const rawCantidad = parseFloat(document.getElementById('in-cantidad').value);
-            if (isNaN(rawCantidad) || rawCantidad < 0) {
-                alert("Ingresa una cantidad válida mayor o igual a 0.");
-                return;
-            }
-
-            const unidad = document.getElementById('in-unidad').value;
-            const modo = document.getElementById('in-modo').value;
-
-            const gramosIngresados = unidad === 'kg' ? (rawCantidad * 1000) : rawCantidad;
-            const stockAnterior = parseFloat(productoSeleccionado.stock_gramos) || 0;
-
-            let stockFinal = 0;
-            if (modo === 'set') {
-                stockFinal = gramosIngresados;
-            } else {
-                stockFinal = stockAnterior + gramosIngresados;
-            }
-
-            stockFinal = redondear(stockFinal, 1);
-
-            try {
-                await dbPatch('productos', productoSeleccionado.id, { stock_gramos: stockFinal });
-
-                productoSeleccionado.stock_gramos = stockFinal;
-                actualizarMetricasFinancieras();
-                filtrarLista();
-
-                cerrarModal();
-            } catch (e) {
-                alert("Error al actualizar inventario: " + e.message);
-            }
-
-            // Convertir el stock mínimo a gramos
-            const rawMin = parseFloat(document.getElementById('in-stock-minimo').value);
-            const unidadMin = document.getElementById('in-stock-minimo-unidad').value;
-            const nuevoMinimoG = (!isNaN(rawMin) && rawMin >= 0)
-                ? (unidadMin === 'kg' ? rawMin * 1000 : rawMin)
-                : 1000;
-
-            try {
-                await dbPatch('productos', productoSeleccionado.id, {
-                    stock_gramos: stockFinal,
-                    stock_minimo_g: nuevoMinimoG
-                });
-
-                productoSeleccionado.stock_gramos = stockFinal;
-                productoSeleccionado.stock_minimo_g = nuevoMinimoG;
-
-                actualizarMetricasFinancieras();
-                filtrarLista();
-
-                cerrarModal();
-            } catch (e) {
-                alert("Error al actualizar inventario: " + e.message);
-            }
-        }
-
-        // --- ESCÁNER CON CÁMARA ---
-        async function encenderEscanner() {
-            document.getElementById('scanner-container').style.display = 'block';
-            html5QrCode = new Html5Qrcode("reader");
-
-            const config = { fps: 10, qrbox: { width: 250, height: 150 }, aspectRatio: 1.0 };
-
-            try {
-                await html5QrCode.start(
-                    { facingMode: "environment" },
-                    config,
-                    (decodedText) => {
-                        procesarCodigo(decodedText);
-                    }
-                );
-            } catch (err) {
-                console.error("Error al iniciar cámara:", err);
-                alert("No se pudo iniciar la cámara.");
-            }
-        }
-
-        async function apagarEscanner() {
-            if (html5QrCode) {
-                await html5QrCode.stop();
-                html5QrCode = null;
-            }
-            document.getElementById('scanner-container').style.display = 'none';
-        }
-
-        async function procesarCodigo(codigoFull) {
-            const limpio = codigoFull.replace(/\*/g, '').trim();
-            const codProdNum = parseInt(limpio.substring(0, 6));
-
-            if (navigator.vibrate) navigator.vibrate(100);
-            await apagarEscanner();
-
-            const p = productos.find(x => x.codigo === codProdNum);
-            if (p) {
-                abrirModal(p.id);
-            } else {
-                alert("Producto no encontrado con código: " + codProdNum);
-            }
-        }
-
-        init();
-    </script>
+    init();
+  </script>
 </body>
 
 </html>
