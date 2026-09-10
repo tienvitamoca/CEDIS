@@ -7,7 +7,6 @@
   <title>Recepción y Compras — CEDIS</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    /* Estilo Cuadrícula Táctil Tiendatek */
     .catalog-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -54,7 +53,6 @@
       margin-top: 0.2rem;
     }
 
-    /* Barra Superior de Categoría Activa */
     .cat-breadcrumb {
       display: flex;
       align-items: center;
@@ -78,8 +76,8 @@
     .modal-dialog {
       background: white;
       border-radius: var(--radius);
-      max-width: 460px;
-      margin: 2rem auto;
+      max-width: 480px;
+      margin: 1.5rem auto;
       padding: 1.25rem;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
     }
@@ -90,46 +88,45 @@
   <nav class="navbar">
     <a href="index.html">←</a>
     <h1>📥 Entrada de Mercancía</h1>
-    <button onclick="abrirModalProveedores()" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.4rem 0.7rem; font-size:0.8rem; font-weight:700; cursor:pointer;">
-      🤝 Proveedores
-    </button>
+    <span></span>
   </nav>
 
   <div class="container has-bottom-nav">
 
-    <!-- SELECTOR DE TIPO: MATERIA PRIMA VS OTROS GASTOS -->
-    <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
-      <button id="tab-mp" class="btn btn-primary" style="flex:1; padding:0.6rem; font-size:0.85rem;" onclick="cambiarModoEntrada('MP')">
-        🌾 Materia Prima (Stock)
+    <!-- SELECTOR DE VISTAS PRINCIPALES -->
+    <div style="display:flex; gap:0.4rem; margin-bottom:0.75rem;">
+      <button id="tab-mp" class="btn btn-primary" style="flex:1; padding:0.6rem 0.2rem; font-size:0.8rem;" onclick="cambiarSeccion('MP')">
+        🌾 Materia Prima
       </button>
-      <button id="tab-gasto" class="btn btn-outline" style="flex:1; padding:0.6rem; font-size:0.85rem;" onclick="cambiarModoEntrada('GASTO')">
-        📦 Insumos / Operativo
+      <button id="tab-gasto" class="btn btn-outline" style="flex:1; padding:0.6rem 0.2rem; font-size:0.8rem;" onclick="cambiarSeccion('GASTO')">
+        📦 Otros Gastos
+      </button>
+      <button id="tab-prov" class="btn btn-outline" style="flex:1; padding:0.6rem 0.2rem; font-size:0.8rem;" onclick="cambiarSeccion('PROV')">
+        🤝 Proveedores
       </button>
     </div>
 
-    <!-- VISTA 1: MATERIA PRIMA ESTILO TIENDATEK -->
+    <!-- ─── VISTA 1: MATERIA PRIMA (EN GRAMOS) ────────────────── -->
     <div id="vista-materia-prima">
       <div class="search-wrap" style="margin-bottom:0.5rem">
         <span class="icon">🔍</span>
-        <input type="text" id="busqueda-directa" placeholder="Buscar producto directamente..." oninput="filtrarProductosDirectos()" autocomplete="off">
+        <input type="text" id="busqueda-directa" placeholder="Buscar por nombre o código..." oninput="filtrarProductosDirectos()" autocomplete="off">
       </div>
 
-      <!-- Miga de pan de categoría -->
       <div id="breadcrumb-wrap" style="display:none;" class="cat-breadcrumb">
-        <button onclick="volverACategorias()" class="btn btn-outline" style="padding:0.25rem 0.6rem; font-size:0.75rem;">← Todas</button>
+        <button onclick="volverACategorias()" class="btn btn-outline" style="padding:0.25rem 0.6rem; font-size:0.75rem;">← Categorías</button>
         <span id="categoria-nombre-activa"></span>
       </div>
 
-      <!-- Cuadrícula interactiva -->
       <div id="grid-contenedor" class="catalog-grid">
         <div class="spinner"></div>
       </div>
     </div>
 
-    <!-- VISTA 2: GASTOS OPERATIVOS / BOLSAS DIRECTO -->
+    <!-- ─── VISTA 2: GASTOS GENERALES / INSUMOS ───────────────── -->
     <div id="vista-gastos-generales" style="display:none;">
       <div class="card">
-        <div class="card-title">Registrar Gasto Sin Inventario Directo</div>
+        <div class="card-title">Registrar Gasto de Insumos u Operación</div>
         
         <div class="field">
           <label>Categoría</label>
@@ -144,7 +141,7 @@
         </div>
 
         <div class="field">
-          <label>Proveedor (Opcional)</label>
+          <label>Proveedor</label>
           <select id="gen-proveedor">
             <option value="">-- Sin proveedor --</option>
           </select>
@@ -152,12 +149,12 @@
 
         <div class="field">
           <label>Concepto / Detalle</label>
-          <input type="text" id="gen-concepto" placeholder="Ej: 5 millares bolsa 10x15 calibre 200">
+          <input type="text" id="gen-concepto" placeholder="Ej: 5 millares bolsa celofán 10x15">
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem">
           <div class="field">
-            <label>Monto Pagado ($)</label>
+            <label>Total Pagado ($)</label>
             <input type="number" id="gen-total" step="0.5" placeholder="0.00">
           </div>
           <div class="field">
@@ -172,87 +169,101 @@
       </div>
     </div>
 
-  </div>
-
-  <!-- MODAL DE RECEPCIÓN: REGISTRAR KILOS Y COSTO DEL PRODUCTO SELECCIONADO -->
-  <div id="modal-recibir-mp" class="modal-backdrop">
-    <div class="modal-dialog">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem">
-        <div>
-          <h3 id="mp-prod-nombre" style="margin:0; color:var(--primary); font-size:1.15rem"></h3>
-          <small id="mp-prod-stock-actual" style="color:var(--text-muted)"></small>
-        </div>
-        <button onclick="cerrarModalRecibirMp()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
-      </div>
-
-      <div class="field">
-        <label>Proveedor</label>
-        <select id="mp-proveedor">
-          <option value="">-- Seleccionar Proveedor --</option>
-        </select>
-      </div>
-
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
-        <div class="field">
-          <label>Kilos Recibidos</label>
-          <input type="number" id="mp-kilos" step="0.1" placeholder="Ej: 50" oninput="calcularTotalMp()">
-        </div>
-        <div class="field">
-          <label>Costo por Kilo ($)</label>
-          <input type="number" id="mp-costo-kg" step="0.5" placeholder="0.00" oninput="calcularTotalMp()">
-        </div>
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:0.75rem; border-radius:8px; margin:0.5rem 0;">
-        <span style="font-weight:700;">Total a Pagar:</span>
-        <span id="mp-total-lbl" style="font-size:1.25rem; font-weight:800; color:#16a34a;">$0.00</span>
-      </div>
-
-      <div class="field">
-        <label>Folio Nota / Factura Proveedor</label>
-        <input type="text" id="mp-folio" placeholder="Opcional">
-      </div>
-
-      <div style="display:flex; flex-direction:column; gap:8px; margin-top:1rem;">
-        <button id="btn-guardar-mp" class="btn btn-primary btn-block" style="background:#16a34a;" onclick="confirmarRecepcionMp()">
-          📥 Ingresar a Bodega
-        </button>
-        <button class="btn btn-outline btn-block" onclick="cerrarModalRecibirMp()">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL GESTOR DE PROVEEDORES -->
-  <div id="modal-proveedores" class="modal-backdrop">
-    <div class="modal-dialog">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem">
-        <h3 style="margin:0; font-size:1.1rem">Directorio de Proveedores</h3>
-        <button onclick="cerrarModalProveedores()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
-      </div>
-
-      <!-- Mini-Formulario Alta / Edición -->
-      <div style="background:var(--bg); padding:0.75rem; border-radius:8px; margin-bottom:1rem;">
+    <!-- ─── VISTA 3: ADMINISTRACIÓN DE PROVEEDORES ────────────── -->
+    <div id="vista-proveedores" style="display:none;">
+      <div class="card">
+        <div class="card-title" id="form-prov-titulo">Registrar Nuevo Proveedor</div>
         <input type="hidden" id="prov-id">
-        <div class="field" style="margin-bottom:0.4rem">
-          <input type="text" id="prov-nombre" placeholder="Nombre de la empresa / proveedor *">
+
+        <div class="field">
+          <label>Nombre de la Empresa o Proveedor *</label>
+          <input type="text" id="prov-nombre" placeholder="Ej: Distribuidora La Central">
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.4rem">
-          <input type="text" id="prov-telefono" placeholder="Teléfono WhatsApp">
-          <input type="text" id="prov-contacto" placeholder="Nombre contacto">
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem">
+          <div class="field">
+            <label>Teléfono / WhatsApp</label>
+            <input type="text" id="prov-telefono" placeholder="Ej: 4431234567">
+          </div>
+          <div class="field">
+            <label>Contacto / Atiende</label>
+            <input type="text" id="prov-contacto" placeholder="Ej: Lic. Ramírez">
+          </div>
         </div>
-        <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
-          <button id="btn-guardar-prov" class="btn btn-primary" style="flex:2; padding:0.45rem; font-size:0.8rem;" onclick="guardarProveedor()">
+
+        <div style="display:flex; gap:0.5rem; margin-top:0.75rem">
+          <button id="btn-guardar-prov" class="btn btn-primary" style="flex:2;" onclick="guardarProveedor()">
             Guardar Proveedor
           </button>
-          <button id="btn-cancelar-prov" class="btn btn-outline" style="flex:1; padding:0.45rem; font-size:0.8rem; display:none;" onclick="limpiarFormProveedor()">
+          <button id="btn-cancelar-prov" class="btn btn-outline" style="flex:1; display:none;" onclick="limpiarFormProveedor()">
             Cancelar
           </button>
         </div>
       </div>
 
-      <!-- Lista de Proveedores Registrados -->
-      <div id="lista-proveedores-tabla" style="max-height:250px; overflow-y:auto;">
-        <div class="spinner"></div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-title">Proveedores Dados de Alta</div>
+        <div id="lista-proveedores-contenedor">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL PARA REGISTRAR ENTRADA EN GRAMOS -->
+  <div id="modal-recibir-mp" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem">
+        <div>
+          <h3 id="mp-prod-nombre" style="margin:0; color:var(--primary); font-size:1.15rem"></h3>
+          <small id="mp-prod-stock-actual" style="color:var(--text-muted); font-weight:600;"></small>
+        </div>
+        <button onclick="cerrarModalRecibirMp()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
+      </div>
+
+      <div class="field">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+          <label style="margin:0;">Proveedor</label>
+          <button type="button" onclick="cerrarModalRecibirMp(); cambiarSeccion('PROV');" style="background:none; border:none; color:var(--primary); font-size:0.75rem; font-weight:700; cursor:pointer;">
+            ➕ Nuevo Proveedor
+          </button>
+        </div>
+        <select id="mp-proveedor">
+          <option value="">-- Sin Proveedor Asignado --</option>
+        </select>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
+        <div class="field">
+          <label>Cantidad en GRAMOS (g)</label>
+          <input type="number" id="mp-gramos" step="10" placeholder="Ej: 5000" oninput="calcularDesdeGramos()">
+          <small id="mp-equivalencia-kg" style="color:var(--text-muted); font-size:0.7rem; font-weight:bold; display:block; margin-top:2px;">= 0.00 kg</small>
+        </div>
+        <div class="field">
+          <label>Costo por Kilo ($/kg)</label>
+          <input type="number" id="mp-costo-kg" step="0.5" placeholder="0.00" oninput="calcularDesdeGramos()">
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:0.75rem 1rem; border-radius:8px; margin:0.75rem 0;">
+        <div>
+          <span style="font-weight:700; font-size:0.85rem; display:block;">Total a Pagar:</span>
+          <small style="color:var(--text-muted); font-size:0.7rem;">(Gramos × Costo/kg ÷ 1000)</small>
+        </div>
+        <span id="mp-total-lbl" style="font-size:1.35rem; font-weight:800; color:#16a34a;">$0.00</span>
+      </div>
+
+      <div class="field">
+        <label>Folio Nota / Remisión</label>
+        <input type="text" id="mp-folio" placeholder="Opcional">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:1rem;">
+        <button id="btn-guardar-mp" class="btn btn-primary btn-block" style="background:#16a34a; font-size:1rem; font-weight:bold; padding:12px;" onclick="confirmarRecepcionMp()">
+          📥 Ingresar Gramos a Bodega
+        </button>
+        <button class="btn btn-outline btn-block" onclick="cerrarModalRecibirMp()">Cancelar</button>
       </div>
     </div>
   </div>
@@ -272,7 +283,6 @@
     let proveedores = [];
     let categoriaSeleccionada = null;
     let productoAProcesar = null;
-    let modoActual = 'MP';
 
     async function init() {
       await Promise.all([cargarCategorias(), cargarProductos(), cargarProveedores()]);
@@ -293,31 +303,34 @@
 
     async function cargarProveedores() {
       try {
-        proveedores = await dbGet('proveedores', 'order=nombre.asc');
+        proveedores = await dbGet('proveedores', 'order=nombre.asc') || [];
         poblarSelectsProveedores();
-      } catch (e) { console.warn("Tabla proveedores pendiente:", e); }
+        renderizarTablaProveedores();
+      } catch (e) { console.warn("Error cargando proveedores:", e); }
     }
 
     function poblarSelectsProveedores() {
       const sels = [document.getElementById('mp-proveedor'), document.getElementById('gen-proveedor')];
       sels.forEach(sel => {
         if (!sel) return;
-        sel.innerHTML = '<option value="">-- Sin proveedor --</option>';
+        sel.innerHTML = '<option value="">-- Sin Proveedor Asignado --</option>';
         proveedores.forEach(p => {
           sel.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
         });
       });
     }
 
-    function cambiarModoEntrada(modo) {
-      modoActual = modo;
-      document.getElementById('tab-mp').className = modo === 'MP' ? 'btn btn-primary' : 'btn btn-outline';
-      document.getElementById('tab-gasto').className = modo === 'GASTO' ? 'btn btn-primary' : 'btn btn-outline';
-      document.getElementById('vista-materia-prima').style.display = modo === 'MP' ? 'block' : 'none';
-      document.getElementById('vista-gastos-generales').style.display = modo === 'GASTO' ? 'block' : 'none';
+    function cambiarSeccion(seccion) {
+      document.getElementById('tab-mp').className = seccion === 'MP' ? 'btn btn-primary' : 'btn btn-outline';
+      document.getElementById('tab-gasto').className = seccion === 'GASTO' ? 'btn btn-primary' : 'btn btn-outline';
+      document.getElementById('tab-prov').className = seccion === 'PROV' ? 'btn btn-primary' : 'btn btn-outline';
+
+      document.getElementById('vista-materia-prima').style.display = seccion === 'MP' ? 'block' : 'none';
+      document.getElementById('vista-gastos-generales').style.display = seccion === 'GASTO' ? 'block' : 'none';
+      document.getElementById('vista-proveedores').style.display = seccion === 'PROV' ? 'block' : 'none';
     }
 
-    // ─── NAVEGACIÓN TIENDATEK: CATEGORÍAS Y PRODUCTOS ──────────────
+    // ─── VISTA MATERIA PRIMA TIENDATEK ────────────────────────────
     function renderizarCategorias() {
       categoriaSeleccionada = null;
       document.getElementById('breadcrumb-wrap').style.display = 'none';
@@ -357,17 +370,19 @@
     function renderizarGridProductos(lista) {
       const cont = document.getElementById('grid-contenedor');
       if (!lista.length) {
-        cont.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:1rem;">No hay productos en este apartado.</p>';
+        cont.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:1rem;">No hay productos en esta sección.</p>';
         return;
       }
 
       cont.innerHTML = lista.map(p => {
-        const kgStock = ((parseFloat(p.stock_gramos) || 0) / 1000).toFixed(1);
+        const stockGramos = parseFloat(p.stock_gramos) || 0;
+        const textoStock = stockGramos >= 1000 ? `${(stockGramos / 1000).toFixed(2)} kg` : `${stockGramos} g`;
+
         return `
           <div class="tile-card" onclick='abrirModalRecibirMp(${JSON.stringify(p)})'>
             <div class="icon">📦</div>
             <div class="title">${p.nombre}</div>
-            <div class="subtitle" style="font-weight:700; color:var(--primary);">${kgStock} kg en bodega</div>
+            <div class="subtitle" style="font-weight:700; color:var(--primary);">${textoStock} en stock</div>
           </div>
         `;
       }).join('');
@@ -391,15 +406,17 @@
       renderizarGridProductos(encontrados);
     }
 
-    // ─── ENTRADA DE MATERIA PRIMA (SUMA AL INVENTARIO) ─────────────
+    // ─── MODAL RECEPCIÓN EN GRAMOS ────────────────────────────────
     function abrirModalRecibirMp(prod) {
       productoAProcesar = prod;
       document.getElementById('mp-prod-nombre').textContent = prod.nombre;
-      const stockKg = ((parseFloat(prod.stock_gramos) || 0) / 1000).toFixed(2);
-      document.getElementById('mp-prod-stock-actual').textContent = `Stock actual: ${stockKg} kg`;
+      const stockGramos = parseFloat(prod.stock_gramos) || 0;
+      const textoStock = stockGramos >= 1000 ? `${(stockGramos / 1000).toFixed(2)} kg` : `${stockGramos} g`;
+      document.getElementById('mp-prod-stock-actual').textContent = `Stock actual: ${textoStock}`;
 
       document.getElementById('mp-costo-kg').value = prod.costo_kg || '';
-      document.getElementById('mp-kilos').value = '';
+      document.getElementById('mp-gramos').value = '';
+      document.getElementById('mp-equivalencia-kg').textContent = '= 0.00 kg';
       document.getElementById('mp-total-lbl').textContent = '$0.00';
       document.getElementById('mp-folio').value = '';
 
@@ -411,65 +428,70 @@
       productoAProcesar = null;
     }
 
-    function calcularTotalMp() {
-      const kg = parseFloat(document.getElementById('mp-kilos').value) || 0;
-      const costo = parseFloat(document.getElementById('mp-costo-kg').value) || 0;
-      const total = redondear(kg * costo, 2);
+    function calcularDesdeGramos() {
+      const gramos = parseFloat(document.getElementById('mp-gramos').value) || 0;
+      const cKg = parseFloat(document.getElementById('mp-costo-kg').value) || 0;
+
+      const kilos = gramos / 1000;
+      document.getElementById('mp-equivalencia-kg').textContent = `= ${kilos.toFixed(3)} kg`;
+
+      const total = redondear((gramos / 1000) * cKg, 2);
       document.getElementById('mp-total-lbl').textContent = formatPeso(total);
     }
 
     async function confirmarRecepcionMp() {
       if (!productoAProcesar) return;
 
-      const kilos = parseFloat(document.getElementById('mp-kilos').value) || 0;
+      const gramos = parseFloat(document.getElementById('mp-gramos').value) || 0;
       const cKg = parseFloat(document.getElementById('mp-costo-kg').value) || 0;
       const provId = document.getElementById('mp-proveedor').value || null;
       const folio = document.getElementById('mp-folio').value.trim() || null;
-      const total = redondear(kilos * cKg, 2);
+      const total = redondear((gramos / 1000) * cKg, 2);
 
-      if (kilos <= 0 || cKg <= 0) return alert("Ingresa kilos y costo por kilo válidos.");
+      if (gramos <= 0 || cKg <= 0) return alert("Ingresa gramos y costo por kilo válidos.");
 
       const btn = document.getElementById('btn-guardar-mp');
       btn.disabled = true;
       btn.textContent = "⏳ Guardando...";
 
       try {
-        // 1. Crear egreso en compras_gastos
+        const kilos = redondear(gramos / 1000, 3);
+
+        // 1. Guardar compra en compras_gastos
         const resGasto = await dbPost('compras_gastos', {
           tipo: 'MATERIA_PRIMA',
           categoria: productoAProcesar.tipos_producto?.nombre || 'Materia Prima',
           proveedor_id: provId ? parseInt(provId) : null,
-          concepto: `Compra: ${kilos}kg de ${productoAProcesar.nombre}`,
+          concepto: `Entrada: ${gramos}g (${kilos}kg) de ${productoAProcesar.nombre}`,
           total: total,
           folio_factura: folio,
           estado: 'COMPLETADO'
         });
 
         const compraId = resGasto[0].id;
-        const gramosEntrantes = kilos * 1000;
 
-        // 2. Registrar detalle de la compra
+        // 2. Guardar detalle de compra
         await dbPost('detalle_compras_mp', {
           compra_id: compraId,
           producto_id: productoAProcesar.id,
           kilos_comprados: kilos,
-          gramos_totales: gramosEntrantes,
+          gramos_totales: gramos,
           costo_por_kilo: cKg,
           subtotal: total
         });
 
-        // 3. Sumar gramos al stock de productos y actualizar último costo
+        // 3. Sumar gramos al producto y actualizar costo_kg
         const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${productoAProcesar.id}`);
         if (prodsDb && prodsDb.length) {
           const stockActual = parseFloat(prodsDb[0].stock_gramos) || 0;
-          const nuevoStock = redondear(stockActual + gramosEntrantes, 1);
+          const nuevoStock = redondear(stockActual + gramos, 1);
           await dbPatch('productos', productoAProcesar.id, {
             stock_gramos: nuevoStock,
             costo_kg: cKg
           });
         }
 
-        alert(`✅ ${kilos}kg de ${productoAProcesar.nombre} agregados con éxito al inventario.`);
+        alert(`✅ ${gramos}g (${kilos}kg) sumados correctamente a ${productoAProcesar.nombre}`);
         cerrarModalRecibirMp();
         await cargarProductos();
         
@@ -480,14 +502,15 @@
         }
 
       } catch (e) {
-        alert("Error al procesar entrada: " + e.message);
+        console.error("Detalle del error:", e);
+        alert("Error al procesar entrada: " + (e.message || JSON.stringify(e)));
       } finally {
         btn.disabled = false;
-        btn.textContent = "📥 Ingresar a Bodega";
+        btn.textContent = "📥 Ingresar Gramos a Bodega";
       }
     }
 
-    // ─── GASTOS GENERALES (BOLSAS, NÓMINA, FLETES) ────────────────
+    // ─── GASTOS GENERALES / INSUMOS ──────────────────────────────
     async function guardarGastoGeneral() {
       const categoria = document.getElementById('gen-categoria').value;
       const provId = document.getElementById('gen-proveedor').value || null;
@@ -495,7 +518,7 @@
       const total = parseFloat(document.getElementById('gen-total').value) || 0;
       const folio = document.getElementById('gen-folio').value.trim() || null;
 
-      if (!concepto || total <= 0) return alert("Ingresa un concepto y un monto válido.");
+      if (!concepto || total <= 0) return alert("Ingresa concepto y monto válido.");
 
       try {
         await dbPost('compras_gastos', {
@@ -508,43 +531,34 @@
           estado: 'COMPLETADO'
         });
 
-        alert("✅ Egreso registrado correctamente.");
+        alert("✅ Gasto registrado correctamente.");
         document.getElementById('gen-concepto').value = '';
         document.getElementById('gen-total').value = '';
         document.getElementById('gen-folio').value = '';
-
       } catch (e) {
-        alert("Error al registrar gasto: " + e.message);
+        alert("Error al registrar gasto: " + (e.message || JSON.stringify(e)));
       }
     }
 
-    // ─── CRUD DE PROVEEDORES (MODAL) ──────────────────────────────
-    function abrirModalProveedores() {
-      document.getElementById('modal-proveedores').style.display = 'block';
-      limpiarFormProveedor();
-      renderizarTablaProveedores();
-    }
-
-    function cerrarModalProveedores() {
-      document.getElementById('modal-proveedores').style.display = 'none';
-    }
-
+    // ─── CRUD DE PROVEEDORES ──────────────────────────────────────
     function renderizarTablaProveedores() {
-      const cont = document.getElementById('lista-proveedores-tabla');
-      if (!proveedores.length) {
-        cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.8rem">No hay proveedores dados de alta.</p>';
+      const cont = document.getElementById('lista-proveedores-contenedor');
+      if (!proveedores || !proveedores.length) {
+        cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem;">No hay proveedores registrados aún.</p>';
         return;
       }
 
       cont.innerHTML = proveedores.map(p => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem; border-bottom:1px solid var(--border); font-size:0.85rem">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
           <div>
             <strong>${p.nombre}</strong>
-            <div style="font-size:0.7rem; color:var(--text-muted)">${p.contacto || 'Sin contacto'} · 📞 ${p.telefono || 'S/N'}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted)">
+              📞 ${p.telefono || 'Sin teléfono'} · 👤 ${p.contacto || 'Sin contacto'}
+            </div>
           </div>
-          <div style="display:flex; gap:0.25rem;">
-            <button onclick='editarProveedor(${JSON.stringify(p)})' style="background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:0.25rem 0.5rem; cursor:pointer; font-size:0.75rem">✏️</button>
-            <button onclick="eliminarProveedor(${p.id})" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:4px; padding:0.25rem 0.5rem; cursor:pointer; font-size:0.75rem">🗑️</button>
+          <div style="display:flex; gap:0.3rem;">
+            <button onclick='editarProveedor(${JSON.stringify(p)})' style="background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0.3rem 0.6rem; cursor:pointer;">✏️</button>
+            <button onclick="eliminarProveedor(${p.id})" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:6px; padding:0.3rem 0.6rem; cursor:pointer;">🗑️</button>
           </div>
         </div>
       `).join('');
@@ -556,6 +570,7 @@
       document.getElementById('prov-telefono').value = p.telefono || '';
       document.getElementById('prov-contacto').value = p.contacto || '';
 
+      document.getElementById('form-prov-titulo').textContent = "Editar Proveedor";
       document.getElementById('btn-guardar-prov').textContent = "Actualizar Proveedor";
       document.getElementById('btn-cancelar-prov').style.display = 'block';
     }
@@ -566,6 +581,7 @@
       document.getElementById('prov-telefono').value = '';
       document.getElementById('prov-contacto').value = '';
 
+      document.getElementById('form-prov-titulo').textContent = "Registrar Nuevo Proveedor";
       document.getElementById('btn-guardar-prov').textContent = "Guardar Proveedor";
       document.getElementById('btn-cancelar-prov').style.display = 'none';
     }
@@ -585,24 +601,23 @@
           await dbPost('proveedores', { nombre, telefono, contacto });
         }
 
-        await cargarProveedores();
         limpiarFormProveedor();
-        renderizarTablaProveedores();
+        await cargarProveedores();
+        alert("✅ Proveedor guardado.");
       } catch (e) {
-        alert("Error al guardar proveedor: " + e.message);
+        alert("Error al guardar proveedor: " + (e.message || JSON.stringify(e)));
       }
     }
 
     async function eliminarProveedor(id) {
-      if (!confirm("¿Eliminar este proveedor?")) return;
+      if (!confirm("¿Eliminar este proveedor del catálogo?")) return;
       try {
         await fetch(`${SUPABASE_URL}/rest/v1/proveedores?id=eq.${id}`, {
           method: 'DELETE', headers: { ...headers }
         });
         await cargarProveedores();
-        renderizarTablaProveedores();
       } catch (e) {
-        alert("Error al eliminar: " + e.message);
+        alert("Error al eliminar proveedor: " + (e.message || JSON.stringify(e)));
       }
     }
 
@@ -610,4 +625,4 @@
   </script>
 </body>
 
-</html>s
+</html>
