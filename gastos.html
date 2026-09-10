@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gastos y Compras — CEDIS</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      text-align: center;
+      border-top: 4px solid var(--primary);
+    }
+
+    .kpi-card .num {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .kpi-card .lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-top: 0.25rem;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .btn-chip {
+      background: white;
+      border: 1.5px solid var(--border);
+      padding: 0.4rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .btn-chip.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 10000;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .modal-dialog {
+      background: white;
+      border-radius: var(--radius);
+      max-width: 500px;
+      margin: 1.5rem auto;
+      padding: 1.25rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <a href="index.html">←</a>
+    <h1>📉 Reporte de Gastos y Compras</h1>
+    <button onclick="abrirModalNuevoGasto()" style="background:var(--primary); color:white; border:none; border-radius:6px; padding:0.4rem 0.8rem; font-weight:bold; cursor:pointer;">
+      ➕ Nuevo
+    </button>
+  </nav>
+
+  <div class="container has-bottom-nav">
+
+    <!-- SELECTOR DE PERIODOS -->
+    <div class="filter-bar">
+      <button class="btn-chip" onclick="seleccionarPeriodo('hoy', this)">Hoy</button>
+      <button class="btn-chip active" onclick="seleccionarPeriodo('7d', this)">Últimos 7 días</button>
+      <button class="btn-chip" onclick="seleccionarPeriodo('mes', this)">Este Mes</button>
+      <button class="btn-chip" onclick="seleccionarPeriodo('mes-anterior', this)">Mes Anterior</button>
+      <button class="btn-chip" onclick="seleccionarPeriodo('todo', this)">Todo</button>
+      <button class="btn-chip" id="btn-chip-custom" onclick="toggleRangoPersonalizado(this)">📅 Personalizado</button>
+      <button class="btn-chip" style="margin-left:auto; background:var(--bg); border-color:#cbd5e1;" onclick="exportarCsvGastos()">📥 Exportar CSV</button>
+    </div>
+
+    <!-- PANEL FECHAS MANUALES -->
+    <div id="panel-rango-fechas" style="display:none; background:white; border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem 1rem; margin-bottom:1rem; box-shadow:var(--shadow);">
+      <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end;">
+        <div class="field" style="margin:0; flex:1; min-width:130px;">
+          <label style="font-size:0.72rem; font-weight:700;">Fecha Desde:</label>
+          <input type="date" id="fecha-inicio" onchange="aplicarRangoManual()">
+        </div>
+        <div class="field" style="margin:0; flex:1; min-width:130px;">
+          <label style="font-size:0.72rem; font-weight:700;">Fecha Hasta:</label>
+          <input type="date" id="fecha-fin" onchange="aplicarRangoManual()">
+        </div>
+        <button class="btn btn-primary" style="padding:0.45rem 1rem; font-size:0.85rem;" onclick="aplicarRangoManual()">Filtrar</button>
+      </div>
+    </div>
+
+    <!-- TARJETAS KPI DE GASTOS -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-top-color: #ef4444;">
+        <div class="num" id="kpi-total-gastos" style="color:#ef4444">$0.00</div>
+        <div class="lbl">Total Egresos</div>
+      </div>
+      <div class="kpi-card" style="border-top-color: #f97316;">
+        <div class="num" id="kpi-materia-prima" style="color:#f97316">$0.00</div>
+        <div class="lbl">Materia Prima</div>
+      </div>
+      <div class="kpi-card" style="border-top-color: #8b5cf6;">
+        <div class="num" id="kpi-insumos" style="color:#8b5cf6">$0.00</div>
+        <div class="lbl">Insumos (Bolsas/Etiq)</div>
+      </div>
+      <div class="kpi-card" style="border-top-color: #06b6d4;">
+        <div class="num" id="kpi-operativos" style="color:#06b6d4">$0.00</div>
+        <div class="lbl">Mano de Obra y Op.</div>
+      </div>
+    </div>
+
+    <!-- GRÁFICA DE DISTRIBUCIÓN -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Distribución de Gastos por Categoría</div>
+      <div style="position:relative; height:220px; width:100%">
+        <canvas id="chart-gastos"></canvas>
+      </div>
+    </div>
+
+    <!-- BITÁCORA DE GASTOS Y COMPRAS -->
+    <div class="card">
+      <div class="card-title">Bitácora de Egresos</div>
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem">
+        <input type="text" id="busqueda-gasto" placeholder="Buscar por concepto o proveedor..." 
+               style="flex:2; min-width:180px; padding:0.45rem 0.75rem; border-radius:8px; border:1px solid var(--border);" 
+               oninput="renderizarBitacora()">
+        <select id="filtro-tipo-gasto" 
+                style="flex:1; min-width:140px; padding:0.45rem 0.75rem; border-radius:8px; border:1px solid var(--border);" 
+                onchange="renderizarBitacora()">
+          <option value="TODOS">Todos los tipos</option>
+          <option value="MATERIA_PRIMA">Solo Materia Prima</option>
+          <option value="INSUMOS_EMPAQUE">Solo Insumos / Bolsas</option>
+          <option value="OPERATIVO">Solo Gastos Operativos</option>
+        </select>
+      </div>
+
+      <div id="bitacora-gastos-dias">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL PARA REGISTRAR COMPRA O GASTO -->
+  <div id="modal-nuevo-gasto" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+        <h3 style="margin:0; font-size:1.1rem; color:var(--primary)">Registrar Egreso / Compra</h3>
+        <button onclick="cerrarModalNuevoGasto()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
+      </div>
+
+      <div class="field">
+        <label>Tipo de Egreso</label>
+        <select id="form-tipo" onchange="cambiarTipoFormulario()">
+          <option value="MATERIA_PRIMA">Materia Prima (Suma Kilos/Gramos al Stock)</option>
+          <option value="INSUMOS_EMPAQUE">Insumos (Bolsas, Bobinas, Cinta, Etiquetas)</option>
+          <option value="OPERATIVO">Gasto Operativo (Mano de Obra, Flete, Servicios)</option>
+        </select>
+      </div>
+
+      <!-- SECCIÓN EXCLUSIVA PARA MATERIA PRIMA -->
+      <div id="bloque-mp" style="background:var(--bg); padding:0.75rem; border-radius:8px; margin-bottom:0.75rem;">
+        <div class="field">
+          <label>Producto a Reabastecer</label>
+          <select id="form-producto-id" onchange="autoCalcularMp()">
+            <option value="">-- Selecciona el Producto --</option>
+          </select>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem">
+          <div class="field">
+            <label>Kilos Comprados</label>
+            <input type="number" id="form-kilos" step="0.1" placeholder="Ej: 25.5" oninput="autoCalcularMp()">
+          </div>
+          <div class="field">
+            <label>Costo por Kilo ($)</label>
+            <input type="number" id="form-costo-kg" step="0.5" placeholder="Ej: 38" oninput="autoCalcularMp()">
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Categoría Específica</label>
+        <input type="text" id="form-categoria" placeholder="Ej: Semillas, Bolsas 10x15, Sueldo Empaque">
+      </div>
+
+      <div class="field">
+        <label>Proveedor (Opcional)</label>
+        <select id="form-proveedor">
+          <option value="">-- Sin Proveedor Asignado --</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Concepto / Detalle</label>
+        <input type="text" id="form-concepto" placeholder="Ej: Bulto 25kg frijol / Pago semanal empaque">
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem">
+        <div class="field">
+          <label>Total Pagado ($)</label>
+          <input type="number" id="form-total" step="0.5" placeholder="0.00">
+        </div>
+        <div class="field">
+          <label>Folio / Factura / Nota</label>
+          <input type="text" id="form-folio" placeholder="Opcional">
+        </div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:1rem">
+        <button id="btn-guardar-gasto" class="btn btn-primary btn-block" onclick="guardarGastoOCompra()">
+          💾 Guardar Registro
+        </button>
+        <button class="btn btn-outline btn-block" onclick="cerrarModalNuevoGasto()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="inventario.html"><span class="icon">📦</span> Stock</a>
+    <a href="CEDIS.html"><span class="icon">🧮</span> CEDIS</a>
+    <a href="ventas.html"><span class="icon">📊</span> Ventas</a>
+    <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
+  </nav>
+
+  <script src="supabase.js"></script>
+  <script>
+    let todosLosGastos = [];
+    let gastosFiltrados = [];
+    let proveedores = [];
+    let catalogoProductos = [];
+    let graficoGastos = null;
+    let periodoActual = '7d';
+
+    async function init() {
+      await Promise.all([cargarProveedores(), cargarCatalogo()]);
+      await cargarHistoricoGastos();
+    }
+
+    async function cargarProveedores() {
+      try {
+        proveedores = await dbGet('proveedores', 'order=nombre.asc');
+        const sel = document.getElementById('form-proveedor');
+        proveedores.forEach(p => {
+          sel.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+        });
+      } catch (e) {
+        console.warn("Tabla proveedores no iniciada aún.");
+      }
+    }
+
+    async function cargarCatalogo() {
+      try {
+        catalogoProductos = await dbGet('productos', 'select=id,nombre,costo_kg&order=nombre.asc');
+        const sel = document.getElementById('form-producto-id');
+        catalogoProductos.forEach(p => {
+          sel.innerHTML += `<option value="${p.id}" data-costo="${p.costo_kg || 0}">${p.nombre}</option>`;
+        });
+      } catch (e) {
+        console.error("Error al cargar productos:", e);
+      }
+    }
+
+    async function cargarHistoricoGastos() {
+      try {
+        todosLosGastos = await dbGet('compras_gastos', 'select=*,proveedores(nombre),detalle_compras_mp(*,productos(nombre))&order=id.desc');
+        aplicarFiltroPeriodo(periodoActual);
+      } catch (e) {
+        document.getElementById('bitacora-gastos-dias').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      }
+    }
+
+    function toggleRangoPersonalizado(btn) {
+      document.querySelectorAll('.filter-bar .btn-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      periodoActual = 'custom';
+
+      const panel = document.getElementById('panel-rango-fechas');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+
+      if (!document.getElementById('fecha-inicio').value) {
+        const ahora = new Date();
+        const hace7d = new Date(ahora.getTime() - (7 * 24 * 60 * 60 * 1000));
+        document.getElementById('fecha-inicio').value = hace7d.toISOString().split('T')[0];
+        document.getElementById('fecha-fin').value = ahora.toISOString().split('T')[0];
+      }
+      aplicarRangoManual();
+    }
+
+    function seleccionarPeriodo(periodo, btn) {
+      document.getElementById('panel-rango-fechas').style.display = 'none';
+      document.querySelectorAll('.filter-bar .btn-chip').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      periodoActual = periodo;
+      aplicarFiltroPeriodo(periodo);
+    }
+
+    function aplicarRangoManual() {
+      const fi = document.getElementById('fecha-inicio').value;
+      const ff = document.getElementById('fecha-fin').value;
+      if (!fi || !ff) return;
+
+      const inicio = new Date(`${fi}T00:00:00`);
+      const fin = new Date(`${ff}T23:59:59`);
+
+      gastosFiltrados = todosLosGastos.filter(g => {
+        const f = new Date(g.fecha);
+        return f >= inicio && f <= fin;
+      });
+
+      procesarAnaliticaCompleta();
+    }
+
+    function aplicarFiltroPeriodo(periodo) {
+      const ahora = new Date();
+      let inicio = new Date(0);
+
+      if (periodo === 'hoy') {
+        inicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+      } else if (periodo === '7d') {
+        inicio = new Date(ahora.getTime() - (7 * 24 * 60 * 60 * 1000));
+      } else if (periodo === 'mes') {
+        inicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+      } else if (periodo === 'mes-anterior') {
+        inicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+        const fin = new Date(ahora.getFullYear(), ahora.getMonth(), 0, 23, 59, 59);
+        gastosFiltrados = todosLosGastos.filter(g => {
+          const f = new Date(g.fecha);
+          return f >= inicio && f <= fin;
+        });
+        procesarAnaliticaCompleta();
+        return;
+      }
+
+      gastosFiltrados = todosLosGastos.filter(g => new Date(g.fecha) >= inicio);
+      procesarAnaliticaCompleta();
+    }
+
+    function procesarAnaliticaCompleta() {
+      actualizarKpis();
+      dibujarGraficoCategorias();
+      renderizarBitacora();
+    }
+
+    function actualizarKpis() {
+      let totalEgresos = 0;
+      let totalMP = 0;
+      let totalInsumos = 0;
+      let totalOp = 0;
+
+      gastosFiltrados.filter(g => g.estado !== 'CANCELADO').forEach(g => {
+        const monto = parseFloat(g.total) || 0;
+        totalEgresos += monto;
+
+        if (g.tipo === 'MATERIA_PRIMA') totalMP += monto;
+        else if (g.tipo === 'INSUMOS_EMPAQUE') totalInsumos += monto;
+        else totalOp += monto;
+      });
+
+      document.getElementById('kpi-total-gastos').textContent = formatPeso(totalEgresos);
+      document.getElementById('kpi-materia-prima').textContent = formatPeso(totalMP);
+      document.getElementById('kpi-insumos').textContent = formatPeso(totalInsumos);
+      document.getElementById('kpi-operativos').textContent = formatPeso(totalOp);
+    }
+
+    function dibujarGraficoCategorias() {
+      const mapa = {};
+      gastosFiltrados.filter(g => g.estado !== 'CANCELADO').forEach(g => {
+        const cat = g.categoria || g.tipo;
+        mapa[cat] = (mapa[cat] || 0) + (parseFloat(g.total) || 0);
+      });
+
+      const labels = Object.keys(mapa);
+      const data = Object.values(mapa);
+
+      const ctx = document.getElementById('chart-gastos').getContext('2d');
+      if (graficoGastos) graficoGastos.destroy();
+
+      graficoGastos = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels.length ? labels : ['Sin Gastos'],
+          datasets: [{
+            data: data.length ? data : [1],
+            backgroundColor: ['#f97316', '#8b5cf6', '#06b6d4', '#10b981', '#64748b']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    function renderizarBitacora() {
+      const q = (document.getElementById('busqueda-gasto').value || '').trim().toLowerCase();
+      const tipo = document.getElementById('filtro-tipo-gasto').value;
+      const cont = document.getElementById('bitacora-gastos-dias');
+
+      let list = gastosFiltrados.filter(g => {
+        const matchQ = !q || (g.concepto && g.concepto.toLowerCase().includes(q)) || (g.proveedores?.nombre && g.proveedores.nombre.toLowerCase().includes(q));
+        const matchTipo = tipo === 'TODOS' || g.tipo === tipo;
+        return matchQ && matchTipo;
+      });
+
+      if (!list.length) {
+        cont.innerHTML = '<p style="text-align:center; padding:1.5rem; color:var(--text-muted)">No hay registros de egreso para este filtro.</p>';
+        return;
+      }
+
+      const grupos = {};
+      list.forEach(g => {
+        const dia = new Date(g.fecha).toLocaleDateString('es-MX', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        if (!grupos[dia]) grupos[dia] = [];
+        grupos[dia].push(g);
+      });
+
+      let html = '';
+      for (const dia in grupos) {
+        html += `
+          <div style="background:var(--bg); padding:6px 12px; border-radius:6px; font-weight:700; font-size:0.8rem; text-transform:capitalize; margin:14px 0 8px; color:var(--primary);">
+            📅 ${dia}
+          </div>
+        `;
+
+        html += grupos[dia].map(g => {
+          const cancelado = g.estado === 'CANCELADO';
+          const hora = new Date(g.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+          const prov = g.proveedores?.nombre ? ` · Prov: ${g.proveedores.nombre}` : '';
+
+          return `
+            <div style="border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:8px; background:${cancelado ? '#fef2f2' : 'white'}; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-weight:700; font-size:0.92rem">
+                  ${g.concepto}
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted)">
+                  🕒 ${hora} · <span style="font-weight:600">${g.categoria}</span>${prov}
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-weight:800; font-size:1.05rem; color:${cancelado ? '#b91c1c' : '#ef4444'}">
+                  -${formatPeso(g.total)}
+                </div>
+                ${!cancelado ? `
+                  <button onclick="anularGasto(${g.id})" style="background:#fee2e2; color:#b91c1c; border:none; padding:2px 6px; border-radius:4px; font-size:0.68rem; cursor:pointer;">
+                    Anular
+                  </button>
+                ` : '<span class="badge badge-red" style="font-size:0.65rem">CANCELADO</span>'}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      cont.innerHTML = html;
+    }
+
+    // ─── FORMULARIO Y LOGICA DE REGISTRO ──────────────────────────
+    function abrirModalNuevoGasto() {
+      document.getElementById('modal-nuevo-gasto').style.display = 'block';
+      cambiarTipoFormulario();
+    }
+
+    function cerrarModalNuevoGasto() {
+      document.getElementById('modal-nuevo-gasto').style.display = 'none';
+      document.getElementById('form-concepto').value = '';
+      document.getElementById('form-total').value = '';
+      document.getElementById('form-kilos').value = '';
+    }
+
+    function cambiarTipoFormulario() {
+      const tipo = document.getElementById('form-tipo').value;
+      const bloqueMp = document.getElementById('bloque-mp');
+      const inCat = document.getElementById('form-categoria');
+
+      if (tipo === 'MATERIA_PRIMA') {
+        bloqueMp.style.display = 'block';
+        inCat.value = 'Materia Prima';
+      } else if (tipo === 'INSUMOS_EMPAQUE') {
+        bloqueMp.style.display = 'none';
+        inCat.value = 'Bolsas y Empaque';
+      } else {
+        bloqueMp.style.display = 'none';
+        inCat.value = 'Mano de Obra';
+      }
+    }
+
+    function autoCalcularMp() {
+      const sel = document.getElementById('form-producto-id');
+      const costoSugerido = sel.options[sel.selectedIndex]?.getAttribute('data-costo') || 0;
+      const inCosto = document.getElementById('form-costo-kg');
+      if (!inCosto.value && costoSugerido > 0) inCosto.value = costoSugerido;
+
+      const kilos = parseFloat(document.getElementById('form-kilos').value) || 0;
+      const cKg = parseFloat(inCosto.value) || 0;
+
+      if (kilos > 0 && cKg > 0) {
+        document.getElementById('form-total').value = redondear(kilos * cKg, 2);
+        const prodNombre = sel.options[sel.selectedIndex]?.text || '';
+        document.getElementById('form-concepto').value = `${kilos}kg de ${prodNombre}`;
+      }
+    }
+
+    async function guardarGastoOCompra() {
+      const tipo = document.getElementById('form-tipo').value;
+      const categoria = document.getElementById('form-categoria').value.trim() || 'General';
+      const concepto = document.getElementById('form-concepto').value.trim();
+      const total = parseFloat(document.getElementById('form-total').value) || 0;
+      const provId = document.getElementById('form-proveedor').value || null;
+      const folio = document.getElementById('form-folio').value.trim() || null;
+
+      if (!concepto || total <= 0) return alert("Ingresa un concepto y monto válido.");
+
+      const btn = document.getElementById('btn-guardar-gasto');
+      btn.disabled = true;
+
+      try {
+        // 1. Guardar encabezado de gasto
+        const resGasto = await dbPost('compras_gastos', {
+          tipo: tipo,
+          categoria: categoria,
+          proveedor_id: provId ? parseInt(provId) : null,
+          concepto: concepto,
+          total: total,
+          folio_factura: folio,
+          estado: 'COMPLETADO'
+        });
+
+        const gastoId = resGasto[0].id;
+
+        // 2. Si es Materia Prima, sumar gramos al inventario
+        if (tipo === 'MATERIA_PRIMA') {
+          const prodId = document.getElementById('form-producto-id').value;
+          const kilos = parseFloat(document.getElementById('form-kilos').value) || 0;
+          const cKg = parseFloat(document.getElementById('form-costo-kg').value) || 0;
+          const gramos = kilos * 1000;
+
+          if (prodId && kilos > 0) {
+            await dbPost('detalle_compras_mp', {
+              compra_id: gastoId,
+              producto_id: parseInt(prodId),
+              kilos_comprados: kilos,
+              gramos_totales: gramos,
+              costo_por_kilo: cKg,
+              subtotal: total
+            });
+
+            // Actualizar stock en productos
+            const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${prodId}`);
+            if (prodsDb && prodsDb.length) {
+              const stockActual = parseFloat(prodsDb[0].stock_gramos) || 0;
+              const nuevoStock = redondear(stockActual + gramos, 1);
+              await dbPatch('productos', prodId, { 
+                stock_gramos: nuevoStock,
+                costo_kg: cKg // Actualiza al último costo de compra
+              });
+            }
+          }
+        }
+
+        alert("✅ Egreso registrado correctamente.");
+        cerrarModalNuevoGasto();
+        await cargarHistoricoGastos();
+
+      } catch (e) {
+        alert("Error al guardar egreso: " + e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function anularGasto(id) {
+      if (!confirm("¿Anular este egreso? Si incluía materia prima, los gramos se restarán del inventario.")) return;
+
+      try {
+        const item = todosLosGastos.find(g => g.id === id);
+        if (!item) return;
+
+        // Si fue compra de materia prima, descontar los gramos ingresados
+        if (item.tipo === 'MATERIA_PRIMA' && item.detalle_compras_mp?.length) {
+          for (const d of item.detalle_compras_mp) {
+            const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${d.producto_id}`);
+            if (prodsDb && prodsDb.length) {
+              const stockActual = parseFloat(prodsDb[0].stock_gramos) || 0;
+              const nuevoStock = redondear(stockActual - parseFloat(d.gramos_totales), 1);
+              await dbPatch('productos', d.producto_id, { stock_gramos: nuevoStock });
+            }
+          }
+        }
+
+        await dbPatch('compras_gastos', id, { estado: 'CANCELADO' });
+        await cargarHistoricoGastos();
+      } catch (e) {
+        alert("Error al anular: " + e.message);
+      }
+    }
+
+    function exportarCsvGastos() {
+      if (!gastosFiltrados.length) return alert("Sin datos en este periodo.");
+
+      let csv = "\uFEFFFolio,Fecha,Hora,Tipo,Categoria,Proveedor,Concepto,Total,Estado\n";
+      gastosFiltrados.forEach(g => {
+        const f = new Date(g.fecha);
+        csv += `${g.id},${f.toLocaleDateString('es-MX')},${f.toLocaleTimeString('es-MX')},${g.tipo},"${g.categoria}","${g.proveedores?.nombre || ''}","${g.concepto.replace(/"/g, '""')}",${g.total},${g.estado}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Egresos_CEDIS_${Date.now()}.csv`;
+      a.click();
+    }
+
+    init();
+  </script>
+</body>
+
+</html>
