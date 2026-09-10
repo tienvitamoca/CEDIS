@@ -88,9 +88,9 @@
   <nav class="navbar">
     <a href="index.html">←</a>
     <h1>📉 Reporte de Gastos y Compras</h1>
-    <button onclick="abrirModalNuevoGasto()" style="background:var(--primary); color:white; border:none; border-radius:6px; padding:0.4rem 0.8rem; font-weight:bold; cursor:pointer;">
-      ➕ Nuevo
-    </button>
+    <button onclick="window.location.href='compras.html'" style="background:var(--primary); color:white; border:none; border-radius:6px; padding:0.4rem 0.8rem; font-weight:bold; cursor:pointer;">
+  ➕ Registrar Compra / Gasto
+</button>
   </nav>
 
   <div class="container has-bottom-nav">
@@ -173,79 +173,6 @@
 
   </div>
 
-  <!-- MODAL PARA REGISTRAR COMPRA O GASTO -->
-  <div id="modal-nuevo-gasto" class="modal-backdrop">
-    <div class="modal-dialog">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
-        <h3 style="margin:0; font-size:1.1rem; color:var(--primary)">Registrar Egreso / Compra</h3>
-        <button onclick="cerrarModalNuevoGasto()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
-      </div>
-
-      <div class="field">
-        <label>Tipo de Egreso</label>
-        <select id="form-tipo" onchange="cambiarTipoFormulario()">
-          <option value="MATERIA_PRIMA">Materia Prima (Suma Kilos/Gramos al Stock)</option>
-          <option value="INSUMOS_EMPAQUE">Insumos (Bolsas, Bobinas, Cinta, Etiquetas)</option>
-          <option value="OPERATIVO">Gasto Operativo (Mano de Obra, Flete, Servicios)</option>
-        </select>
-      </div>
-
-      <!-- SECCIÓN EXCLUSIVA PARA MATERIA PRIMA -->
-      <div id="bloque-mp" style="background:var(--bg); padding:0.75rem; border-radius:8px; margin-bottom:0.75rem;">
-        <div class="field">
-          <label>Producto a Reabastecer</label>
-          <select id="form-producto-id" onchange="autoCalcularMp()">
-            <option value="">-- Selecciona el Producto --</option>
-          </select>
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem">
-          <div class="field">
-            <label>Kilos Comprados</label>
-            <input type="number" id="form-kilos" step="0.1" placeholder="Ej: 25.5" oninput="autoCalcularMp()">
-          </div>
-          <div class="field">
-            <label>Costo por Kilo ($)</label>
-            <input type="number" id="form-costo-kg" step="0.5" placeholder="Ej: 38" oninput="autoCalcularMp()">
-          </div>
-        </div>
-      </div>
-
-      <div class="field">
-        <label>Categoría Específica</label>
-        <input type="text" id="form-categoria" placeholder="Ej: Semillas, Bolsas 10x15, Sueldo Empaque">
-      </div>
-
-      <div class="field">
-        <label>Proveedor (Opcional)</label>
-        <select id="form-proveedor">
-          <option value="">-- Sin Proveedor Asignado --</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Concepto / Detalle</label>
-        <input type="text" id="form-concepto" placeholder="Ej: Bulto 25kg frijol / Pago semanal empaque">
-      </div>
-
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem">
-        <div class="field">
-          <label>Total Pagado ($)</label>
-          <input type="number" id="form-total" step="0.5" placeholder="0.00">
-        </div>
-        <div class="field">
-          <label>Folio / Factura / Nota</label>
-          <input type="text" id="form-folio" placeholder="Opcional">
-        </div>
-      </div>
-
-      <div style="display:flex; flex-direction:column; gap:8px; margin-top:1rem">
-        <button id="btn-guardar-gasto" class="btn btn-primary btn-block" onclick="guardarGastoOCompra()">
-          💾 Guardar Registro
-        </button>
-        <button class="btn btn-outline btn-block" onclick="cerrarModalNuevoGasto()">Cancelar</button>
-      </div>
-    </div>
-  </div>
 
   <nav class="bottom-nav">
     <a href="index.html"><span class="icon">🏠</span> Inicio</a>
@@ -491,120 +418,6 @@
       }
 
       cont.innerHTML = html;
-    }
-
-    // ─── FORMULARIO Y LOGICA DE REGISTRO ──────────────────────────
-    function abrirModalNuevoGasto() {
-      document.getElementById('modal-nuevo-gasto').style.display = 'block';
-      cambiarTipoFormulario();
-    }
-
-    function cerrarModalNuevoGasto() {
-      document.getElementById('modal-nuevo-gasto').style.display = 'none';
-      document.getElementById('form-concepto').value = '';
-      document.getElementById('form-total').value = '';
-      document.getElementById('form-kilos').value = '';
-    }
-
-    function cambiarTipoFormulario() {
-      const tipo = document.getElementById('form-tipo').value;
-      const bloqueMp = document.getElementById('bloque-mp');
-      const inCat = document.getElementById('form-categoria');
-
-      if (tipo === 'MATERIA_PRIMA') {
-        bloqueMp.style.display = 'block';
-        inCat.value = 'Materia Prima';
-      } else if (tipo === 'INSUMOS_EMPAQUE') {
-        bloqueMp.style.display = 'none';
-        inCat.value = 'Bolsas y Empaque';
-      } else {
-        bloqueMp.style.display = 'none';
-        inCat.value = 'Mano de Obra';
-      }
-    }
-
-    function autoCalcularMp() {
-      const sel = document.getElementById('form-producto-id');
-      const costoSugerido = sel.options[sel.selectedIndex]?.getAttribute('data-costo') || 0;
-      const inCosto = document.getElementById('form-costo-kg');
-      if (!inCosto.value && costoSugerido > 0) inCosto.value = costoSugerido;
-
-      const kilos = parseFloat(document.getElementById('form-kilos').value) || 0;
-      const cKg = parseFloat(inCosto.value) || 0;
-
-      if (kilos > 0 && cKg > 0) {
-        document.getElementById('form-total').value = redondear(kilos * cKg, 2);
-        const prodNombre = sel.options[sel.selectedIndex]?.text || '';
-        document.getElementById('form-concepto').value = `${kilos}kg de ${prodNombre}`;
-      }
-    }
-
-    async function guardarGastoOCompra() {
-      const tipo = document.getElementById('form-tipo').value;
-      const categoria = document.getElementById('form-categoria').value.trim() || 'General';
-      const concepto = document.getElementById('form-concepto').value.trim();
-      const total = parseFloat(document.getElementById('form-total').value) || 0;
-      const provId = document.getElementById('form-proveedor').value || null;
-      const folio = document.getElementById('form-folio').value.trim() || null;
-
-      if (!concepto || total <= 0) return alert("Ingresa un concepto y monto válido.");
-
-      const btn = document.getElementById('btn-guardar-gasto');
-      btn.disabled = true;
-
-      try {
-        // 1. Guardar encabezado de gasto
-        const resGasto = await dbPost('compras_gastos', {
-          tipo: tipo,
-          categoria: categoria,
-          proveedor_id: provId ? parseInt(provId) : null,
-          concepto: concepto,
-          total: total,
-          folio_factura: folio,
-          estado: 'COMPLETADO'
-        });
-
-        const gastoId = resGasto[0].id;
-
-        // 2. Si es Materia Prima, sumar gramos al inventario
-        if (tipo === 'MATERIA_PRIMA') {
-          const prodId = document.getElementById('form-producto-id').value;
-          const kilos = parseFloat(document.getElementById('form-kilos').value) || 0;
-          const cKg = parseFloat(document.getElementById('form-costo-kg').value) || 0;
-          const gramos = kilos * 1000;
-
-          if (prodId && kilos > 0) {
-            await dbPost('detalle_compras_mp', {
-              compra_id: gastoId,
-              producto_id: parseInt(prodId),
-              kilos_comprados: kilos,
-              gramos_totales: gramos,
-              costo_por_kilo: cKg,
-              subtotal: total
-            });
-
-            // Actualizar stock en productos
-            const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${prodId}`);
-            if (prodsDb && prodsDb.length) {
-              const stockActual = parseFloat(prodsDb[0].stock_gramos) || 0;
-              const nuevoStock = redondear(stockActual + gramos, 1);
-              await dbPatch('productos', prodId, { 
-                stock_gramos: nuevoStock,
-                costo_kg: cKg // Actualiza al último costo de compra
-              });
-            }
-          }
-        }
-
-        alert("✅ Egreso registrado correctamente.");
-        cerrarModalNuevoGasto();
-        await cargarHistoricoGastos();
-
-      } catch (e) {
-        alert("Error al guardar egreso: " + e.message);
-      } finally {
-        btn.disabled = false;
-      }
     }
 
     async function anularGasto(id) {

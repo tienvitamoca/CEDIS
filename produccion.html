@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Producción y Mano de Obra — CEDIS</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .kpi-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1rem;
+      text-align: center;
+      border-top: 4px solid var(--primary);
+    }
+
+    .kpi-card .num {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .kpi-card .lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-top: 0.25rem;
+    }
+
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 10000;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .modal-dialog {
+      background: white;
+      border-radius: var(--radius);
+      max-width: 460px;
+      margin: 2rem auto;
+      padding: 1.25rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <a href="index.html">←</a>
+    <h1>⚙️ Producción y Empaque</h1>
+    <button onclick="abrirModalEmpleados()" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.4rem 0.7rem; font-size:0.8rem; font-weight:700; cursor:pointer;">
+      👥 Personal
+    </button>
+  </nav>
+
+  <div class="container has-bottom-nav">
+
+    <!-- RESUMEN DE PAGO PENDIENTE -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-top-color: #8b5cf6;">
+        <div class="num" id="kpi-bolsas-pendientes" style="color:#8b5cf6">0</div>
+        <div class="lbl">Bolsas por Liquidar</div>
+      </div>
+      <div class="kpi-card" style="border-top-color: #ef4444;">
+        <div class="num" id="kpi-mano-obra-deuda" style="color:#ef4444">$0.00</div>
+        <div class="lbl">Mano de Obra por Pagar</div>
+      </div>
+      <div class="kpi-card" style="border-top-color: #16a34a;">
+        <div class="num" id="kpi-bolsas-hoy" style="color:#16a34a">0</div>
+        <div class="lbl">Bolsas Hechas Hoy</div>
+      </div>
+    </div>
+
+    <!-- FORMULARIO RÁPIDO DE REGISTRO DE EMPAQUE -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-title">Registrar Turno / Lote Terminado</div>
+
+      <div class="field">
+        <label>Personal de Empaque</label>
+        <select id="prod-empleado" onchange="actualizarTarifaEmpleado()">
+          <option value="">-- Seleccionar Trabajador --</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Producto Empacado</label>
+        <select id="prod-producto">
+          <option value="">-- Seleccionar Producto --</option>
+        </select>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem">
+        <div class="field">
+          <label>Bolsas Terminadas</label>
+          <input type="number" id="prod-bolsas" min="1" placeholder="Ej: 120" oninput="calcularTotalLote()">
+        </div>
+        <div class="field">
+          <label>Pago x Bolsa ($)</label>
+          <input type="number" id="prod-tarifa" step="0.10" value="0.50" oninput="calcularTotalLote()">
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:0.75rem 1rem; border-radius:8px; margin:0.75rem 0;">
+        <span style="font-weight:700;">Pago de este lote:</span>
+        <span id="prod-total-lbl" style="font-size:1.25rem; font-weight:800; color:#16a34a;">$0.00</span>
+      </div>
+
+      <button id="btn-guardar-lote" class="btn btn-primary btn-block" style="background:#2563eb; padding:12px; font-weight:bold;" onclick="guardarLoteProduccion()">
+        💾 Anotar Producción
+      </button>
+    </div>
+
+    <!-- LISTA DE LOTES PENDIENTES DE PAGO -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem">
+        <div class="card-title" style="margin:0">Lotes Pendientes de Pago</div>
+        <button id="btn-liquidar-todo" class="btn btn-primary" style="background:#16a34a; font-size:0.78rem; padding:0.35rem 0.7rem;" onclick="liquidarManoDeObra()">
+          💵 Liquidar Todo
+        </button>
+      </div>
+
+      <div id="lista-lotes-pendientes">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL GESTOR DE EMPLEADOS -->
+  <div id="modal-empleados" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem">
+        <h3 style="margin:0; font-size:1.1rem">Personal de Empaque</h3>
+        <button onclick="cerrarModalEmpleados()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
+      </div>
+
+      <div style="background:var(--bg); padding:0.75rem; border-radius:8px; margin-bottom:1rem;">
+        <div class="field" style="margin-bottom:0.4rem">
+          <input type="text" id="emp-nombre" placeholder="Nombre del trabajador *">
+        </div>
+        <div class="field" style="margin-bottom:0.4rem">
+          <label style="font-size:0.7rem">Tarifa por defecto por bolsa ($):</label>
+          <input type="number" id="emp-tarifa" step="0.10" value="0.50">
+        </div>
+        <button class="btn btn-primary btn-block" style="padding:0.5rem; font-size:0.85rem;" onclick="guardarEmpleado()">
+          Guardar Trabajador
+        </button>
+      </div>
+
+      <div id="lista-empleados-contenedor" style="max-height:200px; overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="inventario.html"><span class="icon">📦</span> Stock</a>
+    <a href="compras.html"><span class="icon">📥</span> Compras</a>
+    <a href="produccion.html" class="active"><span class="icon">⚙️</span> Producción</a>
+    <a href="gastos.html"><span class="icon">📉</span> Gastos</a>
+  </nav>
+
+  <script src="supabase.js"></script>
+  <script>
+    let empleados = [];
+    let productos = [];
+    let lotesPendientes = [];
+    let lotesHoy = [];
+
+    async function init() {
+      await Promise.all([cargarEmpleados(), cargarProductos()]);
+      await cargarLotes();
+    }
+
+    async function cargarEmpleados() {
+      try {
+        empleados = await dbGet('empleados', 'order=nombre.asc') || [];
+        const sel = document.getElementById('prod-empleado');
+        sel.innerHTML = '<option value="">-- Seleccionar Trabajador --</option>';
+        empleados.forEach(e => {
+          sel.innerHTML += `<option value="${e.id}" data-tarifa="${e.pago_por_bolsa}">${e.nombre}</option>`;
+        });
+        renderizarListaEmpleados();
+      } catch (e) { console.warn(e); }
+    }
+
+    async function cargarProductos() {
+      try {
+        productos = await dbGet('productos', 'select=id,nombre&order=nombre.asc') || [];
+        const sel = document.getElementById('prod-producto');
+        sel.innerHTML = '<option value="">-- Seleccionar Producto --</option>';
+        productos.forEach(p => {
+          sel.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+        });
+      } catch (e) { console.error(e); }
+    }
+
+    async function cargarLotes() {
+      try {
+        const todos = await dbGet('produccion_lotes', 'select=*,empleados(nombre),productos(nombre)&order=id.desc');
+        
+        lotesPendientes = todos.filter(l => l.estado_pago === 'PENDIENTE');
+
+        const hoyStr = new Date().toDateString();
+        lotesHoy = todos.filter(l => new Date(l.fecha).toDateString() === hoyStr);
+
+        actualizarResumen();
+        renderizarLotesPendientes();
+      } catch (e) {
+        document.getElementById('lista-lotes-pendientes').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      }
+    }
+
+    function actualizarTarifaEmpleado() {
+      const sel = document.getElementById('prod-empleado');
+      const tarifa = sel.options[sel.selectedIndex]?.getAttribute('data-tarifa') || 0.50;
+      document.getElementById('prod-tarifa').value = tarifa;
+      calcularTotalLote();
+    }
+
+    function calcularTotalLote() {
+      const bolsas = parseInt(document.getElementById('prod-bolsas').value) || 0;
+      const tarifa = parseFloat(document.getElementById('prod-tarifa').value) || 0;
+      const total = redondear(bolsas * tarifa, 2);
+      document.getElementById('prod-total-lbl').textContent = formatPeso(total);
+    }
+
+    async function guardarLoteProduccion() {
+      const empId = document.getElementById('prod-empleado').value;
+      const prodId = document.getElementById('prod-producto').value;
+      const bolsas = parseInt(document.getElementById('prod-bolsas').value) || 0;
+      const tarifa = parseFloat(document.getElementById('prod-tarifa').value) || 0;
+      const total = redondear(bolsas * tarifa, 2);
+
+      if (!empId || !prodId || bolsas <= 0) {
+        return alert("Por favor selecciona trabajador, producto y cantidad de bolsas.");
+      }
+
+      const btn = document.getElementById('btn-guardar-lote');
+      btn.disabled = true;
+
+      try {
+        await dbPost('produccion_lotes', {
+          empleado_id: parseInt(empId),
+          producto_id: parseInt(prodId),
+          bolsas_producidas: bolsas,
+          pago_unitario: tarifa,
+          total_mano_obra: total,
+          estado_pago: 'PENDIENTE'
+        });
+
+        alert(`✅ Registradas ${bolsas} bolsas empacadas.`);
+        document.getElementById('prod-bolsas').value = '';
+        document.getElementById('prod-total-lbl').textContent = '$0.00';
+        await cargarLotes();
+
+      } catch (e) {
+        alert("Error al guardar lote: " + e.message);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function actualizarResumen() {
+      let bolsasPend = 0;
+      let deudaTotal = 0;
+
+      lotesPendientes.forEach(l => {
+        bolsasPend += parseInt(l.bolsas_producidas) || 0;
+        deudaTotal += parseFloat(l.total_mano_obra) || 0;
+      });
+
+      let bolsasHoyTotal = 0;
+      lotesHoy.forEach(l => {
+        bolsasHoyTotal += parseInt(l.bolsas_producidas) || 0;
+      });
+
+      document.getElementById('kpi-bolsas-pendientes').textContent = bolsasPend.toLocaleString('es-MX');
+      document.getElementById('kpi-mano-obra-deuda').textContent = formatPeso(deudaTotal);
+      document.getElementById('kpi-bolsas-hoy').textContent = bolsasHoyTotal.toLocaleString('es-MX');
+
+      document.getElementById('btn-liquidar-todo').style.display = lotesPendientes.length ? 'block' : 'none';
+    }
+
+    function renderizarLotesPendientes() {
+      const cont = document.getElementById('lista-lotes-pendientes');
+      if (!lotesPendientes.length) {
+        cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem">No hay mano de obra pendiente de pago.</p>';
+        return;
+      }
+
+      cont.innerHTML = lotesPendientes.map(l => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
+          <div>
+            <strong>${l.empleados?.nombre || 'Operador'}</strong> — ${l.productos?.nombre || 'Producto'}
+            <div style="font-size:0.72rem; color:var(--text-muted)">
+              ${new Date(l.fecha).toLocaleDateString('es-MX')} · ${l.bolsas_producidas} bolsas x $${parseFloat(l.pago_unitario).toFixed(2)}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <strong style="color:#ef4444">${formatPeso(l.total_mano_obra)}</strong>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ─── LIQUIDAR PAGO Y MANDAR A GASTOS ──────────────────────────
+    async function liquidarManoDeObra() {
+      let totalPagar = 0;
+      let totalBolsas = 0;
+      lotesPendientes.forEach(l => {
+        totalPagar += parseFloat(l.total_mano_obra) || 0;
+        totalBolsas += parseInt(l.bolsas_producidas) || 0;
+      });
+
+      if (!confirm(`¿Liquidar ${formatPeso(totalPagar)} por ${totalBolsas} bolsas empacadas? Esto creará un egreso de "Mano de Obra" en tus gastos.`)) return;
+
+      try {
+        // 1. Guardar en compras_gastos
+        await dbPost('compras_gastos', {
+          tipo: 'OPERATIVO',
+          categoria: 'Mano de Obra',
+          concepto: `Pago destajo empaque (${totalBolsas} bolsas)`,
+          total: totalPagar,
+          estado: 'COMPLETADO'
+        });
+
+        // 2. Marcar lotes como PAGADO
+        for (const l of lotesPendientes) {
+          await dbPatch('produccion_lotes', l.id, { estado_pago: 'PAGADO' });
+        }
+
+        alert("✅ Mano de obra liquidada y registrada en el módulo de Gastos.");
+        await cargarLotes();
+
+      } catch (e) {
+        alert("Error al liquidar: " + e.message);
+      }
+    }
+
+    // ─── GESTIÓN DE EMPLEADOS ────────────────────────────────────
+    function abrirModalEmpleados() {
+      document.getElementById('modal-empleados').style.display = 'block';
+    }
+
+    function cerrarModalEmpleados() {
+      document.getElementById('modal-empleados').style.display = 'none';
+    }
+
+    function renderizarListaEmpleados() {
+      const cont = document.getElementById('lista-empleados-contenedor');
+      if (!empleados.length) {
+        cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.8rem">Sin empleados registrados.</p>';
+        return;
+      }
+      cont.innerHTML = empleados.map(e => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid var(--border); font-size:0.82rem;">
+          <span>${e.nombre} ($${parseFloat(e.pago_por_bolsa).toFixed(2)}/bolsa)</span>
+        </div>
+      `).join('');
+    }
+
+    async function guardarEmpleado() {
+      const nombre = document.getElementById('emp-nombre').value.trim();
+      const tarifa = parseFloat(document.getElementById('emp-tarifa').value) || 0.50;
+
+      if (!nombre) return alert("Ingresa el nombre del trabajador.");
+
+      try {
+        await dbPost('empleados', { nombre, pago_por_bolsa: tarifa, activo: true });
+        document.getElementById('emp-nombre').value = '';
+        await cargarEmpleados();
+        alert("✅ Trabajador registrado.");
+      } catch (e) {
+        alert("Error al guardar: " + e.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+
+</html>
