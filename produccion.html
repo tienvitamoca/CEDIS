@@ -68,7 +68,7 @@
 
 <body>
   <nav class="navbar">
-    <a href="index.html">←</a>[cite: 1]
+    <a href="index.html">←</a>
     <h1>⚙️ Producción y Empaque</h1>
     <button onclick="abrirModalEmpleados()" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.4rem 0.7rem; font-size:0.8rem; font-weight:700; cursor:pointer;">
       👥 Personal
@@ -105,23 +105,17 @@
         </select>
       </div>
 
-      <!-- SELECCIÓN DE PRODUCTO ESTILO INVENTARIO (FILTRO + BUSCADOR) -->
+      <!-- BÚSQUEDA DIRECTA DE PRODUCTO -->
       <div class="field" style="margin-bottom: 0.5rem;">
         <label>Producto Empacado</label>
         
-        <!-- Filtros rápidos -->
-        <div style="display:flex; gap:0.5rem; margin-bottom:0.4rem;">
-          <div class="search-wrap" style="flex:2; margin:0;">
-            <span class="icon">🔍</span>
-            <input type="text" id="busqueda-producto" placeholder="Buscar por nombre..." oninput="filtrarListaProductos()" autocomplete="off">
-          </div>
-          <select id="filtro-categoria" style="flex:1; padding:0.45rem; border-radius:8px; border:1px solid var(--border); font-size:0.8rem;" onchange="filtrarListaProductos()">
-            <option value="TODAS">Todas las categorías</option>
-          </select>
+        <div class="search-wrap" style="margin-bottom:0.4rem;">
+          <span class="icon">🔍</span>
+          <input type="text" id="busqueda-producto" placeholder="Escribe el nombre o código del producto..." oninput="filtrarListaProductos()" autocomplete="off">
         </div>
 
         <!-- Sugerencias desplegables -->
-        <div id="lista-sugerencias-prod" style="display:none; max-height:180px; overflow-y:auto; border:1.5px solid var(--border); border-radius:8px; background:white; margin-bottom:0.5rem;"></div>
+        <div id="lista-sugerencias-prod" style="display:none; max-height:190px; overflow-y:auto; border:1.5px solid var(--border); border-radius:8px; background:white; margin-bottom:0.5rem;"></div>
 
         <!-- Producto activo seleccionado -->
         <div id="prod-seleccionado-badge" class="prod-sel-box" style="display:none;">
@@ -210,7 +204,7 @@
   </div>
 
   <nav class="bottom-nav">
-    <a href="index.html"><span class="icon">🏠</span> Inicio</a>[cite: 1]
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
     <a href="inventario.html"><span class="icon">📦</span> Stock</a>
     <a href="compras.html"><span class="icon">📥</span> Compras</a>
     <a href="produccion.html" class="active"><span class="icon">⚙️</span> Producción</a>
@@ -221,64 +215,51 @@
   <script>
     let empleados = [];
     let productos = [];
-    let categorias = [];
     let productoSeleccionadoId = null;
     let lotesPendientes = [];
     let lotesHoy = [];
 
     async function init() {
-      await Promise.all([cargarCategorias(), cargarProductos(), cargarEmpleados()]);
+      await Promise.all([cargarProductos(), cargarEmpleados()]);
       await cargarLotes();
     }
 
-    // ─── 1. CATEGORÍAS Y PRODUCTOS (ESTILO INVENTARIO) ────────────
-    async function cargarCategorias() {
-      try {
-        categorias = await dbGet('tipos_producto', 'order=nombre.asc') || [];
-        const sel = document.getElementById('filtro-categoria');
-        sel.innerHTML = '<option value="TODAS">Todas las categorías</option>';
-        categorias.forEach(c => {
-          sel.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
-        });
-      } catch (e) { console.error(e); }
-    }
-
+    // ─── 1. BÚSQUEDA DIRECTA DE PRODUCTOS ────────────────────────
     async function cargarProductos() {
       try {
-        productos = await dbGet('productos', 'select=id,nombre,codigo,tipo_id,tipos_producto(nombre)&order=nombre.asc') || [];
-      } catch (e) { console.error(e); }
+        productos = await dbGet('productos', 'select=id,nombre,codigo&order=nombre.asc') || [];
+      } catch (e) {
+        console.error("Error al cargar productos:", e);
+      }
     }
 
     function filtrarListaProductos() {
       const q = (document.getElementById('busqueda-producto').value || '').trim().toLowerCase();
-      const catId = document.getElementById('filtro-categoria').value;
       const cont = document.getElementById('lista-sugerencias-prod');
 
-      if (!q && catId === 'TODAS') {
+      if (!q) {
         cont.style.display = 'none';
         return;
       }
 
-      const filtrados = productos.filter(p => {
-        const matchQ = !q || p.nombre.toLowerCase().includes(q) || String(p.codigo).includes(q);
-        const matchCat = catId === 'TODAS' || String(p.tipo_id) === String(catId);
-        return matchQ && matchCat;
-      });
+      const filtrados = productos.filter(p => 
+        p.nombre.toLowerCase().includes(q) || String(p.codigo).includes(q)
+      );
 
       if (!filtrados.length) {
-        cont.innerHTML = '<div style="padding:0.6rem; color:var(--text-muted); font-size:0.8rem; text-align:center;">Sin resultados</div>';
+        cont.innerHTML = '<div style="padding:0.7rem; color:var(--text-muted); font-size:0.8rem; text-align:center;">Sin resultados</div>';
         cont.style.display = 'block';
         return;
       }
 
       cont.innerHTML = filtrados.slice(0, 15).map(p => `
         <div onclick='seleccionarProducto(${JSON.stringify(p)})' 
-             style="padding:0.55rem 0.75rem; border-bottom:1px solid var(--border); cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+             style="padding:0.6rem 0.8rem; border-bottom:1px solid var(--border); cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
           <div>
             <div style="font-weight:700; font-size:0.85rem;">${p.nombre}</div>
-            <div style="font-size:0.7rem; color:var(--text-muted);">Cod: ${p.codigo} · ${p.tipos_producto?.nombre || 'General'}</div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">Código: ${p.codigo}</div>
           </div>
-          <span style="color:var(--primary); font-size:1rem;">＋</span>
+          <span style="color:var(--primary); font-size:1.1rem; font-weight:bold;">＋</span>
         </div>
       `).join('');
 
@@ -288,7 +269,7 @@
     function seleccionarProducto(p) {
       productoSeleccionadoId = p.id;
       document.getElementById('sel-prod-nombre').textContent = p.nombre;
-      document.getElementById('sel-prod-det').textContent = `Código: ${p.codigo} · ${p.tipos_producto?.nombre || 'General'}`;
+      document.getElementById('sel-prod-det').textContent = `Código: ${p.codigo}`;
 
       document.getElementById('prod-seleccionado-badge').style.display = 'block';
       document.getElementById('lista-sugerencias-prod').style.display = 'none';
@@ -337,7 +318,7 @@
       const total = redondear(bolsas * tarifa, 2);
 
       if (!empId) return alert("Selecciona el trabajador.");
-      if (!productoSeleccionadoId) return alert("Selecciona el producto empacado usando el buscador.");
+      if (!productoSeleccionadoId) return alert("Busca y selecciona el producto empacado.");
       if (bolsas <= 0) return alert("Ingresa una cantidad de bolsas válida.");
 
       const btn = document.getElementById('btn-guardar-lote');
@@ -428,7 +409,6 @@
       `).join('');
     }
 
-    // CANCELAR / BORRAR UN LOTE PENDIENTE
     async function cancelarLotePendiente(loteId) {
       if (!confirm("¿Cancelar y eliminar este lote de producción?")) return;
 
@@ -442,7 +422,6 @@
       }
     }
 
-    // LIQUIDAR PAGO Y REGISTRAR EN GASTOS
     async function liquidarManoDeObra() {
       let totalPagar = 0;
       let totalBolsas = 0;
