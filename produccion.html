@@ -37,62 +37,6 @@
       margin-top: 0.25rem;
     }
 
-    .catalog-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 0.75rem;
-      margin-top: 0.75rem;
-    }
-
-    .tile-card {
-      background: white;
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: 0.9rem 0.6rem;
-      text-align: center;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 90px;
-      transition: all 0.15s ease;
-      box-shadow: var(--shadow);
-    }
-
-    .tile-card:active {
-      transform: scale(0.96);
-      background: var(--bg);
-    }
-
-    .tile-card .icon {
-      font-size: 1.8rem;
-      margin-bottom: 0.35rem;
-    }
-
-    .tile-card .title {
-      font-weight: 700;
-      font-size: 0.85rem;
-      color: var(--text);
-      line-height: 1.15;
-    }
-
-    .tile-card .subtitle {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      margin-top: 0.2rem;
-    }
-
-    .cat-breadcrumb {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: var(--primary);
-    }
-
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -106,17 +50,25 @@
     .modal-dialog {
       background: white;
       border-radius: var(--radius);
-      max-width: 480px;
+      max-width: 460px;
       margin: 1.5rem auto;
       padding: 1.25rem;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    }
+
+    .prod-sel-box {
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 0.75rem;
     }
   </style>
 </head>
 
 <body>
   <nav class="navbar">
-    <a href="index.html">←</a>
+    <a href="index.html">←</a>[cite: 1]
     <h1>⚙️ Producción y Empaque</h1>
     <button onclick="abrirModalEmpleados()" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.4rem 0.7rem; font-size:0.8rem; font-weight:700; cursor:pointer;">
       👥 Personal
@@ -133,7 +85,7 @@
       </div>
       <div class="kpi-card" style="border-top-color: #ef4444;">
         <div class="num" id="kpi-mano-obra-deuda" style="color:#ef4444">$0.00</div>
-        <div class="lbl">Mano de Obra Pendiente</div>
+        <div class="lbl">Mano de Obra por Pagar</div>
       </div>
       <div class="kpi-card" style="border-top-color: #16a34a;">
         <div class="num" id="kpi-bolsas-hoy" style="color:#16a34a">0</div>
@@ -141,23 +93,68 @@
       </div>
     </div>
 
-    <!-- NAVEGACIÓN Y SELECCIÓN DE PRODUCTO TIPO TIENDATEK -->
+    <!-- FORMULARIO RÁPIDO DE REGISTRO DE EMPAQUE -->
     <div class="card" style="margin-bottom:1rem">
-      <div class="card-title">1. Seleccionar Producto Empacado</div>
-      
-      <div class="search-wrap" style="margin-bottom:0.5rem">
-        <span class="icon">🔍</span>
-        <input type="text" id="busqueda-prod" placeholder="Buscar por nombre o código..." oninput="filtrarProductosDirectos()" autocomplete="off">
+      <div class="card-title">Registrar Turno / Lote Terminado</div>
+
+      <!-- SELECCIÓN DE TRABAJADOR -->
+      <div class="field">
+        <label>Personal de Empaque</label>
+        <select id="prod-empleado" onchange="actualizarTarifaEmpleado()">
+          <option value="">-- Seleccionar Trabajador --</option>
+        </select>
       </div>
 
-      <div id="breadcrumb-wrap" style="display:none;" class="cat-breadcrumb">
-        <button onclick="volverACategorias()" class="btn btn-outline" style="padding:0.25rem 0.6rem; font-size:0.75rem;">← Categorías</button>
-        <span id="categoria-nombre-activa"></span>
+      <!-- SELECCIÓN DE PRODUCTO ESTILO INVENTARIO (FILTRO + BUSCADOR) -->
+      <div class="field" style="margin-bottom: 0.5rem;">
+        <label>Producto Empacado</label>
+        
+        <!-- Filtros rápidos -->
+        <div style="display:flex; gap:0.5rem; margin-bottom:0.4rem;">
+          <div class="search-wrap" style="flex:2; margin:0;">
+            <span class="icon">🔍</span>
+            <input type="text" id="busqueda-producto" placeholder="Buscar por nombre..." oninput="filtrarListaProductos()" autocomplete="off">
+          </div>
+          <select id="filtro-categoria" style="flex:1; padding:0.45rem; border-radius:8px; border:1px solid var(--border); font-size:0.8rem;" onchange="filtrarListaProductos()">
+            <option value="TODAS">Todas las categorías</option>
+          </select>
+        </div>
+
+        <!-- Sugerencias desplegables -->
+        <div id="lista-sugerencias-prod" style="display:none; max-height:180px; overflow-y:auto; border:1.5px solid var(--border); border-radius:8px; background:white; margin-bottom:0.5rem;"></div>
+
+        <!-- Producto activo seleccionado -->
+        <div id="prod-seleccionado-badge" class="prod-sel-box" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div id="sel-prod-nombre" style="font-weight:700; color:var(--primary); font-size:0.92rem;"></div>
+              <div id="sel-prod-det" style="font-size:0.75rem; color:var(--text-muted);"></div>
+            </div>
+            <button onclick="deseleccionarProducto()" style="background:none; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer;">✕</button>
+          </div>
+        </div>
       </div>
 
-      <div id="grid-contenedor" class="catalog-grid">
-        <div class="spinner"></div>
+      <!-- CANTIDAD Y TARIFA -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem">
+        <div class="field">
+          <label>Bolsas Terminadas</label>
+          <input type="number" id="prod-bolsas" min="1" placeholder="Ej: 120" oninput="calcularTotalLote()">
+        </div>
+        <div class="field">
+          <label>Pago x Bolsa ($)</label>
+          <input type="number" id="prod-tarifa" step="0.10" value="0.50" oninput="calcularTotalLote()">
+        </div>
       </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:0.75rem 1rem; border-radius:8px; margin:0.75rem 0;">
+        <span style="font-weight:700;">Pago de este lote:</span>
+        <span id="prod-total-lbl" style="font-size:1.25rem; font-weight:800; color:#16a34a;">$0.00</span>
+      </div>
+
+      <button id="btn-guardar-lote" class="btn btn-primary btn-block" style="background:#2563eb; padding:12px; font-weight:bold;" onclick="guardarLoteProduccion()">
+        💾 Anotar Producción
+      </button>
     </div>
 
     <!-- LISTA DE LOTES PENDIENTES DE PAGO -->
@@ -176,66 +173,24 @@
 
   </div>
 
-  <!-- MODAL: REGISTRAR BOLSAS DEL PRODUCTO SELECCIONADO -->
-  <div id="modal-anotar-lote" class="modal-backdrop">
-    <div class="modal-dialog">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem">
-        <div>
-          <h3 id="modal-prod-nombre" style="margin:0; color:var(--primary); font-size:1.15rem"></h3>
-          <small id="modal-prod-stock" style="color:var(--text-muted); font-weight:600;"></small>
-        </div>
-        <button onclick="cerrarModalAnotarLote()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
-      </div>
-
-      <div class="field">
-        <label>Personal de Empaque</label>
-        <select id="prod-empleado" onchange="actualizarTarifaEmpleado()">
-          <option value="">-- Seleccionar Trabajador --</option>
-        </select>
-      </div>
-
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem">
-        <div class="field">
-          <label>Bolsas Empacadas</label>
-          <input type="number" id="prod-bolsas" min="1" placeholder="Ej: 150" oninput="calcularTotalLote()">
-        </div>
-        <div class="field">
-          <label>Pago x Bolsa ($)</label>
-          <input type="number" id="prod-tarifa" step="0.05" value="0.50" oninput="calcularTotalLote()">
-        </div>
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:0.75rem 1rem; border-radius:8px; margin:0.75rem 0;">
-        <span style="font-weight:700;">Pago de este lote:</span>
-        <span id="prod-total-lbl" style="font-size:1.3rem; font-weight:800; color:#16a34a;">$0.00</span>
-      </div>
-
-      <div style="display:flex; flex-direction:column; gap:8px; margin-top:1rem;">
-        <button id="btn-guardar-lote" class="btn btn-primary btn-block" style="background:#2563eb; font-weight:bold; padding:12px;" onclick="guardarLoteProduccion()">
-          💾 Guardar Lote de Producción
-        </button>
-        <button class="btn btn-outline btn-block" onclick="cerrarModalAnotarLote()">Cancelar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL GESTOR DE EMPLEADOS (ALTA Y EDICIÓN) -->
+  <!-- MODAL GESTOR Y EDICIÓN DE EMPLEADOS -->
   <div id="modal-empleados" class="modal-backdrop">
     <div class="modal-dialog">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem">
-        <h3 style="margin:0; font-size:1.1rem" id="emp-form-titulo">Personal de Empaque</h3>
+        <h3 id="emp-form-titulo" style="margin:0; font-size:1.1rem">Personal de Empaque</h3>
         <button onclick="cerrarModalEmpleados()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
       </div>
 
+      <!-- Mini-Formulario Alta / Edición -->
       <div style="background:var(--bg); padding:0.75rem; border-radius:8px; margin-bottom:1rem;">
         <input type="hidden" id="emp-id">
         <div class="field" style="margin-bottom:0.4rem">
-          <label style="font-size:0.72rem; font-weight:bold">Nombre del Trabajador *</label>
+          <label style="font-size:0.7rem; font-weight:700;">Nombre del Trabajador *</label>
           <input type="text" id="emp-nombre" placeholder="Ej: Juan Pérez">
         </div>
         <div class="field" style="margin-bottom:0.4rem">
-          <label style="font-size:0.72rem; font-weight:bold">Tarifa habitual por bolsa ($):</label>
-          <input type="number" id="emp-tarifa" step="0.05" value="0.50">
+          <label style="font-size:0.7rem; font-weight:700;">Tarifa por defecto por bolsa ($):</label>
+          <input type="number" id="emp-tarifa" step="0.10" value="0.50">
         </div>
         <div style="display:flex; gap:0.4rem; margin-top:0.6rem;">
           <button id="btn-guardar-emp" class="btn btn-primary" style="flex:2; padding:0.5rem; font-size:0.85rem;" onclick="guardarEmpleado()">
@@ -247,13 +202,15 @@
         </div>
       </div>
 
-      <div class="card-title" style="font-size:0.8rem; margin-bottom:0.4rem">Trabajadores Registrados</div>
-      <div id="lista-empleados-contenedor" style="max-height:220px; overflow-y:auto;"></div>
+      <div class="card-title" style="font-size:0.82rem; margin-bottom:0.4rem;">Trabajadores Registrados</div>
+      <div id="lista-empleados-contenedor" style="max-height:220px; overflow-y:auto;">
+        <div class="spinner"></div>
+      </div>
     </div>
   </div>
 
   <nav class="bottom-nav">
-    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>[cite: 1]
     <a href="inventario.html"><span class="icon">📦</span> Stock</a>
     <a href="compras.html"><span class="icon">📥</span> Compras</a>
     <a href="produccion.html" class="active"><span class="icon">⚙️</span> Producción</a>
@@ -262,161 +219,100 @@
 
   <script src="supabase.js"></script>
   <script>
-    let categorias = [];
-    let productos = [];
     let empleados = [];
+    let productos = [];
+    let categorias = [];
+    let productoSeleccionadoId = null;
     let lotesPendientes = [];
     let lotesHoy = [];
-    let categoriaSeleccionada = null;
-    let productoSeleccionado = null;
 
     async function init() {
       await Promise.all([cargarCategorias(), cargarProductos(), cargarEmpleados()]);
-      renderizarCategorias();
       await cargarLotes();
     }
 
+    // ─── 1. CATEGORÍAS Y PRODUCTOS (ESTILO INVENTARIO) ────────────
     async function cargarCategorias() {
       try {
         categorias = await dbGet('tipos_producto', 'order=nombre.asc') || [];
+        const sel = document.getElementById('filtro-categoria');
+        sel.innerHTML = '<option value="TODAS">Todas las categorías</option>';
+        categorias.forEach(c => {
+          sel.innerHTML += `<option value="${c.id}">${c.nombre}</option>`;
+        });
       } catch (e) { console.error(e); }
     }
 
     async function cargarProductos() {
       try {
-        productos = await dbGet('productos', 'select=*,tipos_producto(nombre)&order=nombre.asc') || [];
+        productos = await dbGet('productos', 'select=id,nombre,codigo,tipo_id,tipos_producto(nombre)&order=nombre.asc') || [];
       } catch (e) { console.error(e); }
     }
 
+    function filtrarListaProductos() {
+      const q = (document.getElementById('busqueda-producto').value || '').trim().toLowerCase();
+      const catId = document.getElementById('filtro-categoria').value;
+      const cont = document.getElementById('lista-sugerencias-prod');
+
+      if (!q && catId === 'TODAS') {
+        cont.style.display = 'none';
+        return;
+      }
+
+      const filtrados = productos.filter(p => {
+        const matchQ = !q || p.nombre.toLowerCase().includes(q) || String(p.codigo).includes(q);
+        const matchCat = catId === 'TODAS' || String(p.tipo_id) === String(catId);
+        return matchQ && matchCat;
+      });
+
+      if (!filtrados.length) {
+        cont.innerHTML = '<div style="padding:0.6rem; color:var(--text-muted); font-size:0.8rem; text-align:center;">Sin resultados</div>';
+        cont.style.display = 'block';
+        return;
+      }
+
+      cont.innerHTML = filtrados.slice(0, 15).map(p => `
+        <div onclick='seleccionarProducto(${JSON.stringify(p)})' 
+             style="padding:0.55rem 0.75rem; border-bottom:1px solid var(--border); cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:700; font-size:0.85rem;">${p.nombre}</div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">Cod: ${p.codigo} · ${p.tipos_producto?.nombre || 'General'}</div>
+          </div>
+          <span style="color:var(--primary); font-size:1rem;">＋</span>
+        </div>
+      `).join('');
+
+      cont.style.display = 'block';
+    }
+
+    function seleccionarProducto(p) {
+      productoSeleccionadoId = p.id;
+      document.getElementById('sel-prod-nombre').textContent = p.nombre;
+      document.getElementById('sel-prod-det').textContent = `Código: ${p.codigo} · ${p.tipos_producto?.nombre || 'General'}`;
+
+      document.getElementById('prod-seleccionado-badge').style.display = 'block';
+      document.getElementById('lista-sugerencias-prod').style.display = 'none';
+      document.getElementById('busqueda-producto').value = '';
+    }
+
+    function deseleccionarProducto() {
+      productoSeleccionadoId = null;
+      document.getElementById('prod-seleccionado-badge').style.display = 'none';
+      document.getElementById('busqueda-producto').value = '';
+      document.getElementById('lista-sugerencias-prod').style.display = 'none';
+    }
+
+    // ─── 2. EMPLEADOS Y TARIFAS ───────────────────────────────────
     async function cargarEmpleados() {
       try {
         empleados = await dbGet('empleados', 'order=nombre.asc') || [];
-        poblarSelectEmpleados();
+        const sel = document.getElementById('prod-empleado');
+        sel.innerHTML = '<option value="">-- Seleccionar Trabajador --</option>';
+        empleados.forEach(e => {
+          sel.innerHTML += `<option value="${e.id}" data-tarifa="${e.pago_por_bolsa}">${e.nombre}</option>`;
+        });
         renderizarListaEmpleados();
       } catch (e) { console.warn(e); }
-    }
-
-    function poblarSelectEmpleados() {
-      const sel = document.getElementById('prod-empleado');
-      sel.innerHTML = '<option value="">-- Seleccionar Trabajador --</option>';
-      empleados.forEach(e => {
-        sel.innerHTML += `<option value="${e.id}" data-tarifa="${e.pago_por_bolsa}">${e.nombre}</option>`;
-      });
-    }
-
-    async function cargarLotes() {
-      try {
-        const todos = await dbGet('produccion_lotes', 'select=*,empleados(nombre),productos(nombre)&order=id.desc') || [];
-        lotesPendientes = todos.filter(l => l.estado_pago === 'PENDIENTE');
-
-        const hoyStr = new Date().toDateString();
-        lotesHoy = todos.filter(l => new Date(l.fecha).toDateString() === hoyStr);
-
-        actualizarResumen();
-        renderizarLotesPendientes();
-      } catch (e) {
-        document.getElementById('lista-lotes-pendientes').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
-      }
-    }
-
-    // ─── TIENDATEK: CATEGORÍAS Y PRODUCTOS ────────────────────────
-    function renderizarCategorias() {
-      categoriaSeleccionada = null;
-      document.getElementById('breadcrumb-wrap').style.display = 'none';
-      document.getElementById('busqueda-prod').value = '';
-      const cont = document.getElementById('grid-contenedor');
-
-      if (!categorias.length) {
-        cont.innerHTML = '<p style="color:var(--text-muted)">Sin categorías configuradas.</p>';
-        return;
-      }
-
-      cont.innerHTML = categorias.map(c => {
-        const totalProds = productos.filter(p => p.tipo_id === c.id).length;
-        return `
-          <div class="tile-card" onclick="seleccionarCategoria(${c.id}, '${c.nombre}')">
-            <div class="icon">🏷️</div>
-            <div class="title">${c.nombre}</div>
-            <div class="subtitle">${totalProds} productos</div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function seleccionarCategoria(catId, catNombre) {
-      categoriaSeleccionada = catId;
-      document.getElementById('breadcrumb-wrap').style.display = 'flex';
-      document.getElementById('categoria-nombre-activa').textContent = catNombre;
-
-      const filtrados = productos.filter(p => p.tipo_id === catId);
-      renderizarGridProductos(filtrados);
-    }
-
-    function volverACategorias() {
-      renderizarCategorias();
-    }
-
-    function renderizarGridProductos(lista) {
-      const cont = document.getElementById('grid-contenedor');
-      if (!lista.length) {
-        cont.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:1rem;">No hay productos en esta sección.</p>';
-        return;
-      }
-
-      cont.innerHTML = lista.map(p => {
-        const stockG = parseFloat(p.stock_gramos) || 0;
-        const textoStock = stockG >= 1000 ? `${(stockG / 1000).toFixed(1)} kg` : `${stockG} g`;
-
-        return `
-          <div class="tile-card" onclick='abrirModalAnotarLote(${JSON.stringify(p)})'>
-            <div class="icon">📦</div>
-            <div class="title">${p.nombre}</div>
-            <div class="subtitle" style="font-weight:700; color:var(--primary);">${textoStock}</div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function filtrarProductosDirectos() {
-      const q = document.getElementById('busqueda-prod').value.trim().toLowerCase();
-      if (!q) {
-        if (categoriaSeleccionada) {
-          renderizarGridProductos(productos.filter(p => p.tipo_id === categoriaSeleccionada));
-        } else {
-          renderizarCategorias();
-        }
-        return;
-      }
-
-      document.getElementById('breadcrumb-wrap').style.display = 'none';
-      const encontrados = productos.filter(p =>
-        p.nombre.toLowerCase().includes(q) || String(p.codigo).includes(q)
-      );
-      renderizarGridProductos(encontrados);
-    }
-
-    // ─── MODAL: ANOTAR LOTE ───────────────────────────────────────
-    function abrirModalAnotarLote(prod) {
-      productoSeleccionado = prod;
-      document.getElementById('modal-prod-nombre').textContent = prod.nombre;
-      const stockG = parseFloat(prod.stock_gramos) || 0;
-      const textoStock = stockG >= 1000 ? `${(stockG / 1000).toFixed(2)} kg` : `${stockG} g`;
-      document.getElementById('modal-prod-stock').textContent = `Stock en bodega: ${textoStock}`;
-
-      document.getElementById('prod-bolsas').value = '';
-      document.getElementById('prod-total-lbl').textContent = '$0.00';
-
-      const selEmp = document.getElementById('prod-empleado');
-      if (selEmp.selectedIndex > 0) {
-        actualizarTarifaEmpleado();
-      }
-
-      document.getElementById('modal-anotar-lote').style.display = 'block';
-    }
-
-    function cerrarModalAnotarLote() {
-      document.getElementById('modal-anotar-lote').style.display = 'none';
-      productoSeleccionado = null;
     }
 
     function actualizarTarifaEmpleado() {
@@ -433,15 +329,15 @@
       document.getElementById('prod-total-lbl').textContent = formatPeso(total);
     }
 
+    // ─── 3. GUARDAR Y GESTIONAR LOTES DE EMPAQUE ─────────────────
     async function guardarLoteProduccion() {
-      if (!productoSeleccionado) return;
-
       const empId = document.getElementById('prod-empleado').value;
       const bolsas = parseInt(document.getElementById('prod-bolsas').value) || 0;
       const tarifa = parseFloat(document.getElementById('prod-tarifa').value) || 0;
       const total = redondear(bolsas * tarifa, 2);
 
-      if (!empId) return alert("Por favor selecciona quién realizó el empacado.");
+      if (!empId) return alert("Selecciona el trabajador.");
+      if (!productoSeleccionadoId) return alert("Selecciona el producto empacado usando el buscador.");
       if (bolsas <= 0) return alert("Ingresa una cantidad de bolsas válida.");
 
       const btn = document.getElementById('btn-guardar-lote');
@@ -450,25 +346,42 @@
       try {
         await dbPost('produccion_lotes', {
           empleado_id: parseInt(empId),
-          producto_id: productoSeleccionado.id,
+          producto_id: parseInt(productoSeleccionadoId),
           bolsas_producidas: bolsas,
           pago_unitario: tarifa,
           total_mano_obra: total,
           estado_pago: 'PENDIENTE'
         });
 
-        alert(`✅ Registradas ${bolsas} bolsas empacadas de ${productoSeleccionado.nombre}`);
-        cerrarModalAnotarLote();
+        alert(`✅ Registradas ${bolsas} bolsas empacadas.`);
+        document.getElementById('prod-bolsas').value = '';
+        document.getElementById('prod-total-lbl').textContent = '$0.00';
+        deseleccionarProducto();
         await cargarLotes();
 
       } catch (e) {
-        alert("Error al guardar producción: " + e.message);
+        alert("Error al guardar lote: " + e.message);
       } finally {
         btn.disabled = false;
       }
     }
 
-    // ─── RESUMEN Y LOTES PENDIENTES ──────────────────────────────
+    async function cargarLotes() {
+      try {
+        const todos = await dbGet('produccion_lotes', 'select=*,empleados(nombre),productos(nombre)&order=id.desc');
+        
+        lotesPendientes = todos.filter(l => l.estado_pago === 'PENDIENTE');
+
+        const hoyStr = new Date().toDateString();
+        lotesHoy = todos.filter(l => new Date(l.fecha).toDateString() === hoyStr);
+
+        actualizarResumen();
+        renderizarLotesPendientes();
+      } catch (e) {
+        document.getElementById('lista-lotes-pendientes').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      }
+    }
+
     function actualizarResumen() {
       let bolsasPend = 0;
       let deudaTotal = 0;
@@ -493,12 +406,12 @@
     function renderizarLotesPendientes() {
       const cont = document.getElementById('lista-lotes-pendientes');
       if (!lotesPendientes.length) {
-        cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem">No hay mano de obra pendiente de liquidar.</p>';
+        cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem">No hay mano de obra pendiente de pago.</p>';
         return;
       }
 
       cont.innerHTML = lotesPendientes.map(l => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.65rem 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
           <div>
             <strong>${l.empleados?.nombre || 'Operador'}</strong> — ${l.productos?.nombre || 'Producto'}
             <div style="font-size:0.72rem; color:var(--text-muted)">
@@ -507,29 +420,29 @@
           </div>
           <div style="text-align:right; display:flex; align-items:center; gap:0.5rem;">
             <strong style="color:#ef4444">${formatPeso(l.total_mano_obra)}</strong>
-            <button onclick="cancelarLotePendiente(${l.id})" style="background:#fee2e2; color:#b91c1c; border:none; padding:4px 8px; border-radius:4px; font-size:0.72rem; cursor:pointer;" title="Cancelar este lote">
-              🗑️
+            <button onclick="cancelarLotePendiente(${l.id})" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:4px; padding:0.3rem 0.5rem; font-size:0.7rem; cursor:pointer;" title="Eliminar / Cancelar lote">
+              ✕
             </button>
           </div>
         </div>
       `).join('');
     }
 
-    async function cancelarLotePendiente(id) {
-      if (!confirm("¿Cancelar y borrar este lote pendiente de pago?")) return;
+    // CANCELAR / BORRAR UN LOTE PENDIENTE
+    async function cancelarLotePendiente(loteId) {
+      if (!confirm("¿Cancelar y eliminar este lote de producción?")) return;
 
       try {
-        await fetch(`${SUPABASE_URL}/rest/v1/produccion_lotes?id=eq.${id}`, {
-          method: 'DELETE',
-          headers: { ...headers }
+        await fetch(`${SUPABASE_URL}/rest/v1/produccion_lotes?id=eq.${loteId}`, {
+          method: 'DELETE', headers: { ...headers }
         });
-
         await cargarLotes();
       } catch (e) {
         alert("Error al cancelar lote: " + e.message);
       }
     }
 
+    // LIQUIDAR PAGO Y REGISTRAR EN GASTOS
     async function liquidarManoDeObra() {
       let totalPagar = 0;
       let totalBolsas = 0;
@@ -538,7 +451,7 @@
         totalBolsas += parseInt(l.bolsas_producidas) || 0;
       });
 
-      if (!confirm(`¿Liquidar ${formatPeso(totalPagar)} por ${totalBolsas} bolsas empacadas? Esto creará un egreso en Gastos y marcará los lotes como pagados.`)) return;
+      if (!confirm(`¿Liquidar ${formatPeso(totalPagar)} por ${totalBolsas} bolsas empacadas? Esto creará un egreso de "Mano de Obra" en tus gastos.`)) return;
 
       try {
         await dbPost('compras_gastos', {
@@ -553,7 +466,7 @@
           await dbPatch('produccion_lotes', l.id, { estado_pago: 'PAGADO' });
         }
 
-        alert("✅ Mano de obra liquidada y registrada en Gastos.");
+        alert("✅ Mano de obra liquidada y registrada en el módulo de Gastos.");
         await cargarLotes();
 
       } catch (e) {
@@ -561,7 +474,7 @@
       }
     }
 
-    // ─── GESTIÓN DE PERSONAL (CREAR Y EDITAR) ─────────────────────
+    // ─── 4. GESTIÓN Y EDICIÓN DE EMPLEADOS ────────────────────────
     function abrirModalEmpleados() {
       document.getElementById('modal-empleados').style.display = 'block';
       limpiarFormEmpleado();
@@ -578,16 +491,15 @@
         cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.8rem">Sin personal registrado.</p>';
         return;
       }
-
       cont.innerHTML = empleados.map(e => `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0; border-bottom:1px solid var(--border); font-size:0.82rem;">
           <div>
             <strong>${e.nombre}</strong>
-            <div style="font-size:0.7rem; color:var(--text-muted)">$${parseFloat(e.pago_por_bolsa).toFixed(2)} por bolsa empacada</div>
+            <div style="font-size:0.7rem; color:var(--text-muted);">$${parseFloat(e.pago_por_bolsa).toFixed(2)} por bolsa</div>
           </div>
           <div style="display:flex; gap:0.25rem;">
-            <button onclick='editarEmpleado(${JSON.stringify(e)})' style="background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:0.25rem 0.5rem; cursor:pointer; font-size:0.75rem">✏️</button>
-            <button onclick="eliminarEmpleado(${e.id})" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:4px; padding:0.25rem 0.5rem; cursor:pointer; font-size:0.75rem">🗑️</button>
+            <button onclick='editarEmpleado(${JSON.stringify(e)})' style="background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:0.25rem 0.5rem; cursor:pointer; font-size:0.75rem;">✏️</button>
+            <button onclick="eliminarEmpleado(${e.id})" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:4px; padding:0.25rem 0.5rem; cursor:pointer; font-size:0.75rem;">🗑️</button>
           </div>
         </div>
       `).join('');
@@ -599,7 +511,7 @@
       document.getElementById('emp-tarifa').value = e.pago_por_bolsa;
 
       document.getElementById('emp-form-titulo').textContent = "Editar Trabajador";
-      document.getElementById('btn-guardar-emp').textContent = "Actualizar Datos";
+      document.getElementById('btn-guardar-emp').textContent = "Actualizar Trabajador";
       document.getElementById('btn-cancelar-emp').style.display = 'block';
     }
 
@@ -629,19 +541,20 @@
 
         limpiarFormEmpleado();
         await cargarEmpleados();
+        renderizarListaEmpleados();
       } catch (e) {
-        alert("Error al guardar trabajador: " + e.message);
+        alert("Error al guardar: " + e.message);
       }
     }
 
     async function eliminarEmpleado(id) {
-      if (!confirm("¿Eliminar este trabajador?")) return;
+      if (!confirm("¿Eliminar este trabajador del catálogo?")) return;
       try {
         await fetch(`${SUPABASE_URL}/rest/v1/empleados?id=eq.${id}`, {
-          method: 'DELETE',
-          headers: { ...headers }
+          method: 'DELETE', headers: { ...headers }
         });
         await cargarEmpleados();
+        renderizarListaEmpleados();
       } catch (e) {
         alert("Error al eliminar trabajador: " + e.message);
       }
