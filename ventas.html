@@ -326,7 +326,7 @@
 
     async function cargarHistoricoVentas() {
       try {
-        todasLasVentas = await dbGet('ventas', 'select=*,detalle_ventas(*,productos(id,nombre,costo_kg,tipo_id,tipos_producto(nombre)))&order=id.desc');
+        todasLasVentas = await dbGet('ventas', 'select=*,detalle_ventas(*,productos(id,nombre,costo_kg,margen_tuyo,tipo_id,tipos_producto(nombre,margen_tuyo)))&order=id.desc');
         aplicarFiltroPeriodo(periodoActual);
       } catch (e) {
         document.getElementById('bitacora-ventas-dias').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
@@ -407,7 +407,7 @@
       renderizarBitacora();
     }
 
-    function actualizarKpis() {
+  function actualizarKpis() {
       let totalIngresos = 0;
       let totalGanancia = 0;
       let totalGramos = 0;
@@ -424,12 +424,17 @@
             const gramos = parseFloat(d.gramos_totales) || 0;
             totalGramos += gramos;
 
-            const costoKg = parseFloat(d.productos?.costo_kg) || 0;
-            const costoMP = (gramos / 1000) * costoKg;
-            const costoInsumos = pzas * 0.85;
             const subtotal = parseFloat(d.subtotal) || 0;
 
-            totalGanancia += (subtotal - (costoMP + costoInsumos));
+            // Obtener el margen propio asignado al producto o a su categoría
+            const prod = d.productos;
+            const mt = (prod && prod.margen_tuyo !== null && prod.margen_tuyo !== undefined)
+              ? parseFloat(prod.margen_tuyo)
+              : (prod && prod.tipos_producto?.margen_tuyo !== undefined ? parseFloat(prod.tipos_producto.margen_tuyo) : 0.12);
+
+            // Utilidad Neta Real = Lo que te pagaron multiplicado por tu margen propio acordado
+            const utilidadRenglon = redondear(subtotal * mt);
+            totalGanancia += utilidadRenglon;
           });
         } else if (v.estado === 'CANCELADA') {
           canceladas++;
@@ -478,14 +483,19 @@
           const pzas = parseInt(d.cantidad_piezas) || 1;
           const gTotales = parseFloat(d.gramos_totales) || 0;
           const subt = parseFloat(d.subtotal) || 0;
-          const cKg = parseFloat(d.productos?.costo_kg) || 0;
-          const costoMP = (gTotales / 1000) * cKg;
-          const costoIns = pzas * 0.85;
+
+          // Margen propio exacto
+          const prod = d.productos;
+          const mt = (prod && prod.margen_tuyo !== null && prod.margen_tuyo !== undefined)
+            ? parseFloat(prod.margen_tuyo)
+            : (prod && prod.tipos_producto?.margen_tuyo !== undefined ? parseFloat(prod.tipos_producto.margen_tuyo) : 0.12);
+
+          const utilidadNetaRenglon = redondear(subt * mt);
 
           mapa[id].piezas += pzas;
           mapa[id].gramos += gTotales;
           mapa[id].ingreso += subt;
-          mapa[id].ganancia += (subt - (costoMP + costoIns));
+          mapa[id].ganancia += utilidadNetaRenglon;
         });
       });
 
