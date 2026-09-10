@@ -124,7 +124,7 @@
       max-width: 480px;
       margin: 2rem auto;
       padding: 1.25rem;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
     }
   </style>
 </head>
@@ -146,11 +146,13 @@
       <button class="btn-chip" onclick="seleccionarPeriodo('mes-anterior', this)">Mes Anterior</button>
       <button class="btn-chip" onclick="seleccionarPeriodo('todo', this)">Todo</button>
       <button class="btn-chip" id="btn-chip-custom" onclick="toggleRangoPersonalizado(this)">📅 Personalizado</button>
-      <button class="btn-chip" style="margin-left:auto; background:var(--bg); border-color:#cbd5e1;" onclick="exportarCsvVentas()">📥 Exportar CSV</button>
+      <button class="btn-chip" style="margin-left:auto; background:var(--bg); border-color:#cbd5e1;"
+        onclick="exportarCsvVentas()">📥 Exportar CSV</button>
     </div>
 
     <!-- PANEL DESPLEGABLE DE FECHAS PERSONALIZADAS -->
-    <div id="panel-rango-fechas" style="display:none; background:white; border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem 1rem; margin-bottom:1rem; box-shadow:var(--shadow);">
+    <div id="panel-rango-fechas"
+      style="display:none; background:white; border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem 1rem; margin-bottom:1rem; box-shadow:var(--shadow);">
       <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-end;">
         <div class="field" style="margin:0; flex:1; min-width:130px;">
           <label style="font-size:0.72rem; font-weight:700;">Fecha Desde:</label>
@@ -160,7 +162,8 @@
           <label style="font-size:0.72rem; font-weight:700;">Fecha Hasta:</label>
           <input type="date" id="fecha-fin" onchange="aplicarRangoManual()">
         </div>
-        <button class="btn btn-primary" style="padding:0.45rem 1rem; font-size:0.85rem;" onclick="aplicarRangoManual()">Filtrar</button>
+        <button class="btn btn-primary" style="padding:0.45rem 1rem; font-size:0.85rem;"
+          onclick="aplicarRangoManual()">Filtrar</button>
       </div>
     </div>
 
@@ -243,12 +246,12 @@
     <div class="card">
       <div class="card-title">Registro Detallado de Ventas</div>
       <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.75rem">
-        <input type="text" id="busqueda-venta" placeholder="Buscar por cliente o folio..." 
-               style="flex:2; min-width:180px; padding:0.45rem 0.75rem; border-radius:8px; border:1px solid var(--border);" 
-               oninput="renderizarBitacora()">
-        <select id="filtro-estado-venta" 
-                style="flex:1; min-width:140px; padding:0.45rem 0.75rem; border-radius:8px; border:1px solid var(--border);" 
-                onchange="renderizarBitacora()">
+        <input type="text" id="busqueda-venta" placeholder="Buscar por cliente o folio..."
+          style="flex:2; min-width:180px; padding:0.45rem 0.75rem; border-radius:8px; border:1px solid var(--border);"
+          oninput="renderizarBitacora()">
+        <select id="filtro-estado-venta"
+          style="flex:1; min-width:140px; padding:0.45rem 0.75rem; border-radius:8px; border:1px solid var(--border);"
+          onchange="renderizarBitacora()">
           <option value="TODOS">Todos los estados</option>
           <option value="COMPLETADA" selected>Solo Completadas</option>
           <option value="CANCELADA">Solo Canceladas</option>
@@ -270,7 +273,8 @@
           <h3 id="det-titulo" style="color:var(--primary); font-size:1.15rem; margin:0"></h3>
           <div id="det-fecha" style="font-size:0.75rem; color:var(--text-muted)"></div>
         </div>
-        <button onclick="cerrarDetalle()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
+        <button onclick="cerrarDetalle()"
+          style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
       </div>
 
       <div id="det-estado-badge" style="margin-bottom:1rem"></div>
@@ -278,7 +282,8 @@
       <div class="card-title" style="margin-bottom:0.5rem">Artículos Registrados</div>
       <div id="det-items-lista" style="margin-bottom:1rem"></div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; font-size:1.1rem; font-weight:700; border-top:2px solid var(--border); padding-top:0.75rem; margin-bottom:1.25rem;">
+      <div
+        style="display:flex; justify-content:space-between; align-items:center; font-size:1.1rem; font-weight:700; border-top:2px solid var(--border); padding-top:0.75rem; margin-bottom:1.25rem;">
         <span>Total Venta:</span>
         <span id="det-total" style="color:var(--primary)">$0.00</span>
       </div>
@@ -407,7 +412,7 @@
       renderizarBitacora();
     }
 
-  function actualizarKpis() {
+    function actualizarKpis() {
       let totalIngresos = 0;
       let totalGanancia = 0;
       let totalGramos = 0;
@@ -424,23 +429,26 @@
             const gramos = parseFloat(d.gramos_totales) || 0;
             totalGramos += gramos;
 
-            const subtotal = parseFloat(d.subtotal) || 0;
+            // 1. Si existe la utilidad unitaria guardada, usarla directamente
+            if (d.utilidad_unitaria !== undefined && d.utilidad_unitaria !== null) {
+              totalGanancia += (parseFloat(d.utilidad_unitaria) * pzas);
+            } else {
+              // 2. Respaldo para ventas anteriores: Precio venta * Margen propio
+              const prod = d.productos;
+              const mt = (prod && prod.margen_tuyo !== null && prod.margen_tuyo !== undefined)
+                ? parseFloat(prod.margen_tuyo)
+                : (prod && prod.tipos_producto?.margen_tuyo !== undefined ? parseFloat(prod.tipos_producto.margen_tuyo) : 0.12);
 
-            // Obtener el margen propio asignado al producto o a su categoría
-            const prod = d.productos;
-            const mt = (prod && prod.margen_tuyo !== null && prod.margen_tuyo !== undefined)
-              ? parseFloat(prod.margen_tuyo)
-              : (prod && prod.tipos_producto?.margen_tuyo !== undefined ? parseFloat(prod.tipos_producto.margen_tuyo) : 0.12);
-
-            // Utilidad Neta Real = Lo que te pagaron multiplicado por tu margen propio acordado
-            const utilidadRenglon = redondear(subtotal * mt);
-            totalGanancia += utilidadRenglon;
+              const subtotal = parseFloat(d.subtotal) || 0;
+              totalGanancia += (subtotal * mt);
+            }
           });
         } else if (v.estado === 'CANCELADA') {
           canceladas++;
         }
       });
 
+      totalGanancia = redondear(totalGanancia, 2);
       const margenPct = totalIngresos > 0 ? ((totalGanancia / totalIngresos) * 100).toFixed(1) : 0;
       const ticketPromedio = completadas > 0 ? (totalIngresos / completadas) : 0;
 
@@ -502,7 +510,7 @@
       const lista = Object.values(mapa);
 
       const topRotacion = [...lista].sort((a, b) => b.piezas - a.piezas).slice(0, 5);
-      renderListaCuadrante('top-rotan', topRotacion, p => `<strong>${p.piezas} pzas</strong> (${(p.gramos/1000).toFixed(1)}kg)`);
+      renderListaCuadrante('top-rotan', topRotacion, p => `<strong>${p.piezas} pzas</strong> (${(p.gramos / 1000).toFixed(1)}kg)`);
 
       const peorRotacion = [...lista].sort((a, b) => a.piezas - b.piezas).slice(0, 5);
       renderListaCuadrante('peor-rotan', peorRotacion, p => `<span style="color:#dc2626">${p.piezas} pzas</span>`);
@@ -746,7 +754,7 @@
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'mm', format: [80, 150] });
 
-      try { doc.addImage("Logo.png", 'PNG', 25, 5, 30, 15); } catch (e) {}
+      try { doc.addImage("Logo.png", 'PNG', 25, 5, 30, 15); } catch (e) { }
 
       doc.setFontSize(10);
       doc.text(`Cliente: ${ventaSeleccionada.cliente}`, 10, 25);

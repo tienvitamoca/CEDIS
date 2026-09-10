@@ -329,6 +329,9 @@
             const presText = document.getElementById('r-presentacion-nombre').textContent || "Estándar";
             const gramosPorBolsa = parseFloat(document.getElementById('in-gramos').value) || 0;
 
+            // Extraer la utilidad unitaria exacta mostrada en pantalla
+            const utilidadMostrada = parseFloat(document.getElementById('r-utilidad').textContent.replace('$', '')) || 0;
+
             const item = {
                 producto: productoActual,
                 precio: precioVenta,
@@ -337,7 +340,8 @@
                 gramosTotales: gramosPorBolsa * cantidad,
                 costo: parseFloat(productoActual.costo_kg),
                 precioObjetivo: parseFloat(document.getElementById('in-precio').value) || 0,
-                presentacion: presText
+                presentacion: presText,
+                utilidadUnitaria: utilidadMostrada // <-- Guardada aquí
             };
 
             carrito.push(item);
@@ -426,7 +430,8 @@
                         precio_unitario: parseFloat(item.precio) || 0,
                         cantidad_piezas: parseInt(item.cantidad) || 1,
                         gramos_totales: gTotales,
-                        subtotal: redondear(item.cantidad * item.precio)
+                        subtotal: redondear(item.cantidad * item.precio),
+                        utilidad_unitaria: parseFloat(item.utilidadUnitaria) || 0
                     });
 
                     const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${item.producto.id}`);
@@ -452,7 +457,7 @@
                 if (overlay) overlay.style.display = 'none';
             }
         }
-
+       
         async function imprimirTicketDirecto() {
             if (carrito.length === 0) return alert("El carrito está vacío.");
             await imprimirTicket('share');
