@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recepción y Compras — CEDIS</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Estilo Cuadrícula Táctil Tiendatek */
+    .catalog-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .tile-card {
+      background: white;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.9rem 0.6rem;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 90px;
+      transition: all 0.15s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .tile-card:active {
+      transform: scale(0.96);
+      background: var(--bg);
+    }
+
+    .tile-card .icon {
+      font-size: 1.8rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .tile-card .title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text);
+      line-height: 1.15;
+    }
+
+    .tile-card .subtitle {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 0.2rem;
+    }
+
+    /* Barra Superior de Categoría Activa */
+    .cat-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      z-index: 10000;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .modal-dialog {
+      background: white;
+      border-radius: var(--radius);
+      max-width: 460px;
+      margin: 2rem auto;
+      padding: 1.25rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <a href="index.html">←</a>
+    <h1>📥 Entrada de Mercancía</h1>
+    <button onclick="abrirModalProveedores()" style="background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:0.4rem 0.7rem; font-size:0.8rem; font-weight:700; cursor:pointer;">
+      🤝 Proveedores
+    </button>
+  </nav>
+
+  <div class="container has-bottom-nav">
+
+    <!-- SELECTOR DE TIPO: MATERIA PRIMA VS OTROS GASTOS -->
+    <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+      <button id="tab-mp" class="btn btn-primary" style="flex:1; padding:0.6rem; font-size:0.85rem;" onclick="cambiarModoEntrada('MP')">
+        🌾 Materia Prima (Stock)
+      </button>
+      <button id="tab-gasto" class="btn btn-outline" style="flex:1; padding:0.6rem; font-size:0.85rem;" onclick="cambiarModoEntrada('GASTO')">
+        📦 Insumos / Operativo
+      </button>
+    </div>
+
+    <!-- VISTA 1: MATERIA PRIMA ESTILO TIENDATEK -->
+    <div id="vista-materia-prima">
+      <div class="search-wrap" style="margin-bottom:0.5rem">
+        <span class="icon">🔍</span>
+        <input type="text" id="busqueda-directa" placeholder="Buscar producto directamente..." oninput="filtrarProductosDirectos()" autocomplete="off">
+      </div>
+
+      <!-- Miga de pan de categoría -->
+      <div id="breadcrumb-wrap" style="display:none;" class="cat-breadcrumb">
+        <button onclick="volverACategorias()" class="btn btn-outline" style="padding:0.25rem 0.6rem; font-size:0.75rem;">← Todas</button>
+        <span id="categoria-nombre-activa"></span>
+      </div>
+
+      <!-- Cuadrícula interactiva -->
+      <div id="grid-contenedor" class="catalog-grid">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <!-- VISTA 2: GASTOS OPERATIVOS / BOLSAS DIRECTO -->
+    <div id="vista-gastos-generales" style="display:none;">
+      <div class="card">
+        <div class="card-title">Registrar Gasto Sin Inventario Directo</div>
+        
+        <div class="field">
+          <label>Categoría</label>
+          <select id="gen-categoria">
+            <option value="Bolsas y Bobinas">Bolsas / Bobinas de Empaque</option>
+            <option value="Etiquetas y Cinta">Etiquetas, Tintas y Cintas</option>
+            <option value="Mano de Obra">Mano de Obra / Sueldos</option>
+            <option value="Fletes y Acarreos">Fletes y Combustible</option>
+            <option value="Servicios y Mantenimiento">Servicios (Luz, Básculas, Renta)</option>
+            <option value="Otros">Otros Egresos</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Proveedor (Opcional)</label>
+          <select id="gen-proveedor">
+            <option value="">-- Sin proveedor --</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Concepto / Detalle</label>
+          <input type="text" id="gen-concepto" placeholder="Ej: 5 millares bolsa 10x15 calibre 200">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem">
+          <div class="field">
+            <label>Monto Pagado ($)</label>
+            <input type="number" id="gen-total" step="0.5" placeholder="0.00">
+          </div>
+          <div class="field">
+            <label>Folio / Remisión</label>
+            <input type="text" id="gen-folio" placeholder="Opcional">
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-block" style="margin-top:0.75rem; background:#16a34a;" onclick="guardarGastoGeneral()">
+          💾 Registrar Egreso
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL DE RECEPCIÓN: REGISTRAR KILOS Y COSTO DEL PRODUCTO SELECCIONADO -->
+  <div id="modal-recibir-mp" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem">
+        <div>
+          <h3 id="mp-prod-nombre" style="margin:0; color:var(--primary); font-size:1.15rem"></h3>
+          <small id="mp-prod-stock-actual" style="color:var(--text-muted)"></small>
+        </div>
+        <button onclick="cerrarModalRecibirMp()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
+      </div>
+
+      <div class="field">
+        <label>Proveedor</label>
+        <select id="mp-proveedor">
+          <option value="">-- Seleccionar Proveedor --</option>
+        </select>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
+        <div class="field">
+          <label>Kilos Recibidos</label>
+          <input type="number" id="mp-kilos" step="0.1" placeholder="Ej: 50" oninput="calcularTotalMp()">
+        </div>
+        <div class="field">
+          <label>Costo por Kilo ($)</label>
+          <input type="number" id="mp-costo-kg" step="0.5" placeholder="0.00" oninput="calcularTotalMp()">
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:0.75rem; border-radius:8px; margin:0.5rem 0;">
+        <span style="font-weight:700;">Total a Pagar:</span>
+        <span id="mp-total-lbl" style="font-size:1.25rem; font-weight:800; color:#16a34a;">$0.00</span>
+      </div>
+
+      <div class="field">
+        <label>Folio Nota / Factura Proveedor</label>
+        <input type="text" id="mp-folio" placeholder="Opcional">
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:1rem;">
+        <button id="btn-guardar-mp" class="btn btn-primary btn-block" style="background:#16a34a;" onclick="confirmarRecepcionMp()">
+          📥 Ingresar a Bodega
+        </button>
+        <button class="btn btn-outline btn-block" onclick="cerrarModalRecibirMp()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GESTOR DE PROVEEDORES -->
+  <div id="modal-proveedores" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem">
+        <h3 style="margin:0; font-size:1.1rem">Directorio de Proveedores</h3>
+        <button onclick="cerrarModalProveedores()" style="background:none; border:none; font-size:1.3rem; cursor:pointer">✕</button>
+      </div>
+
+      <!-- Mini-Formulario Alta / Edición -->
+      <div style="background:var(--bg); padding:0.75rem; border-radius:8px; margin-bottom:1rem;">
+        <input type="hidden" id="prov-id">
+        <div class="field" style="margin-bottom:0.4rem">
+          <input type="text" id="prov-nombre" placeholder="Nombre de la empresa / proveedor *">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.4rem">
+          <input type="text" id="prov-telefono" placeholder="Teléfono WhatsApp">
+          <input type="text" id="prov-contacto" placeholder="Nombre contacto">
+        </div>
+        <div style="display:flex; gap:0.4rem; margin-top:0.5rem;">
+          <button id="btn-guardar-prov" class="btn btn-primary" style="flex:2; padding:0.45rem; font-size:0.8rem;" onclick="guardarProveedor()">
+            Guardar Proveedor
+          </button>
+          <button id="btn-cancelar-prov" class="btn btn-outline" style="flex:1; padding:0.45rem; font-size:0.8rem; display:none;" onclick="limpiarFormProveedor()">
+            Cancelar
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de Proveedores Registrados -->
+      <div id="lista-proveedores-tabla" style="max-height:250px; overflow-y:auto;">
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="inventario.html"><span class="icon">📦</span> Stock</a>
+    <a href="compras.html" class="active"><span class="icon">📥</span> Compras</a>
+    <a href="gastos.html"><span class="icon">📉</span> Gastos</a>
+    <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
+  </nav>
+
+  <script src="supabase.js"></script>
+  <script>
+    let categorias = [];
+    let productos = [];
+    let proveedores = [];
+    let categoriaSeleccionada = null;
+    let productoAProcesar = null;
+    let modoActual = 'MP';
+
+    async function init() {
+      await Promise.all([cargarCategorias(), cargarProductos(), cargarProveedores()]);
+      renderizarCategorias();
+    }
+
+    async function cargarCategorias() {
+      try {
+        categorias = await dbGet('tipos_producto', 'order=nombre.asc');
+      } catch (e) { console.error(e); }
+    }
+
+    async function cargarProductos() {
+      try {
+        productos = await dbGet('productos', 'select=*,tipos_producto(nombre)&order=nombre.asc');
+      } catch (e) { console.error(e); }
+    }
+
+    async function cargarProveedores() {
+      try {
+        proveedores = await dbGet('proveedores', 'order=nombre.asc');
+        poblarSelectsProveedores();
+      } catch (e) { console.warn("Tabla proveedores pendiente:", e); }
+    }
+
+    function poblarSelectsProveedores() {
+      const sels = [document.getElementById('mp-proveedor'), document.getElementById('gen-proveedor')];
+      sels.forEach(sel => {
+        if (!sel) return;
+        sel.innerHTML = '<option value="">-- Sin proveedor --</option>';
+        proveedores.forEach(p => {
+          sel.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
+        });
+      });
+    }
+
+    function cambiarModoEntrada(modo) {
+      modoActual = modo;
+      document.getElementById('tab-mp').className = modo === 'MP' ? 'btn btn-primary' : 'btn btn-outline';
+      document.getElementById('tab-gasto').className = modo === 'GASTO' ? 'btn btn-primary' : 'btn btn-outline';
+      document.getElementById('vista-materia-prima').style.display = modo === 'MP' ? 'block' : 'none';
+      document.getElementById('vista-gastos-generales').style.display = modo === 'GASTO' ? 'block' : 'none';
+    }
+
+    // ─── NAVEGACIÓN TIENDATEK: CATEGORÍAS Y PRODUCTOS ──────────────
+    function renderizarCategorias() {
+      categoriaSeleccionada = null;
+      document.getElementById('breadcrumb-wrap').style.display = 'none';
+      document.getElementById('busqueda-directa').value = '';
+      const cont = document.getElementById('grid-contenedor');
+
+      if (!categorias.length) {
+        cont.innerHTML = '<p style="color:var(--text-muted)">Sin categorías configuradas.</p>';
+        return;
+      }
+
+      cont.innerHTML = categorias.map(c => {
+        const prodsEnCat = productos.filter(p => p.tipo_id === c.id).length;
+        return `
+          <div class="tile-card" onclick="seleccionarCategoria(${c.id}, '${c.nombre}')">
+            <div class="icon">🏷️</div>
+            <div class="title">${c.nombre}</div>
+            <div class="subtitle">${prodsEnCat} productos</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function seleccionarCategoria(catId, catNombre) {
+      categoriaSeleccionada = catId;
+      document.getElementById('breadcrumb-wrap').style.display = 'flex';
+      document.getElementById('categoria-nombre-activa').textContent = catNombre;
+
+      const filtrados = productos.filter(p => p.tipo_id === catId);
+      renderizarGridProductos(filtrados);
+    }
+
+    function volverACategorias() {
+      renderizarCategorias();
+    }
+
+    function renderizarGridProductos(lista) {
+      const cont = document.getElementById('grid-contenedor');
+      if (!lista.length) {
+        cont.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:1rem;">No hay productos en este apartado.</p>';
+        return;
+      }
+
+      cont.innerHTML = lista.map(p => {
+        const kgStock = ((parseFloat(p.stock_gramos) || 0) / 1000).toFixed(1);
+        return `
+          <div class="tile-card" onclick='abrirModalRecibirMp(${JSON.stringify(p)})'>
+            <div class="icon">📦</div>
+            <div class="title">${p.nombre}</div>
+            <div class="subtitle" style="font-weight:700; color:var(--primary);">${kgStock} kg en bodega</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filtrarProductosDirectos() {
+      const q = document.getElementById('busqueda-directa').value.trim().toLowerCase();
+      if (!q) {
+        if (categoriaSeleccionada) {
+          renderizarGridProductos(productos.filter(p => p.tipo_id === categoriaSeleccionada));
+        } else {
+          renderizarCategorias();
+        }
+        return;
+      }
+
+      document.getElementById('breadcrumb-wrap').style.display = 'none';
+      const encontrados = productos.filter(p => 
+        p.nombre.toLowerCase().includes(q) || String(p.codigo).includes(q)
+      );
+      renderizarGridProductos(encontrados);
+    }
+
+    // ─── ENTRADA DE MATERIA PRIMA (SUMA AL INVENTARIO) ─────────────
+    function abrirModalRecibirMp(prod) {
+      productoAProcesar = prod;
+      document.getElementById('mp-prod-nombre').textContent = prod.nombre;
+      const stockKg = ((parseFloat(prod.stock_gramos) || 0) / 1000).toFixed(2);
+      document.getElementById('mp-prod-stock-actual').textContent = `Stock actual: ${stockKg} kg`;
+
+      document.getElementById('mp-costo-kg').value = prod.costo_kg || '';
+      document.getElementById('mp-kilos').value = '';
+      document.getElementById('mp-total-lbl').textContent = '$0.00';
+      document.getElementById('mp-folio').value = '';
+
+      document.getElementById('modal-recibir-mp').style.display = 'block';
+    }
+
+    function cerrarModalRecibirMp() {
+      document.getElementById('modal-recibir-mp').style.display = 'none';
+      productoAProcesar = null;
+    }
+
+    function calcularTotalMp() {
+      const kg = parseFloat(document.getElementById('mp-kilos').value) || 0;
+      const costo = parseFloat(document.getElementById('mp-costo-kg').value) || 0;
+      const total = redondear(kg * costo, 2);
+      document.getElementById('mp-total-lbl').textContent = formatPeso(total);
+    }
+
+    async function confirmarRecepcionMp() {
+      if (!productoAProcesar) return;
+
+      const kilos = parseFloat(document.getElementById('mp-kilos').value) || 0;
+      const cKg = parseFloat(document.getElementById('mp-costo-kg').value) || 0;
+      const provId = document.getElementById('mp-proveedor').value || null;
+      const folio = document.getElementById('mp-folio').value.trim() || null;
+      const total = redondear(kilos * cKg, 2);
+
+      if (kilos <= 0 || cKg <= 0) return alert("Ingresa kilos y costo por kilo válidos.");
+
+      const btn = document.getElementById('btn-guardar-mp');
+      btn.disabled = true;
+      btn.textContent = "⏳ Guardando...";
+
+      try {
+        // 1. Crear egreso en compras_gastos
+        const resGasto = await dbPost('compras_gastos', {
+          tipo: 'MATERIA_PRIMA',
+          categoria: productoAProcesar.tipos_producto?.nombre || 'Materia Prima',
+          proveedor_id: provId ? parseInt(provId) : null,
+          concepto: `Compra: ${kilos}kg de ${productoAProcesar.nombre}`,
+          total: total,
+          folio_factura: folio,
+          estado: 'COMPLETADO'
+        });
+
+        const compraId = resGasto[0].id;
+        const gramosEntrantes = kilos * 1000;
+
+        // 2. Registrar detalle de la compra
+        await dbPost('detalle_compras_mp', {
+          compra_id: compraId,
+          producto_id: productoAProcesar.id,
+          kilos_comprados: kilos,
+          gramos_totales: gramosEntrantes,
+          costo_por_kilo: cKg,
+          subtotal: total
+        });
+
+        // 3. Sumar gramos al stock de productos y actualizar último costo
+        const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${productoAProcesar.id}`);
+        if (prodsDb && prodsDb.length) {
+          const stockActual = parseFloat(prodsDb[0].stock_gramos) || 0;
+          const nuevoStock = redondear(stockActual + gramosEntrantes, 1);
+          await dbPatch('productos', productoAProcesar.id, {
+            stock_gramos: nuevoStock,
+            costo_kg: cKg
+          });
+        }
+
+        alert(`✅ ${kilos}kg de ${productoAProcesar.nombre} agregados con éxito al inventario.`);
+        cerrarModalRecibirMp();
+        await cargarProductos();
+        
+        if (categoriaSeleccionada) {
+          renderizarGridProductos(productos.filter(p => p.tipo_id === categoriaSeleccionada));
+        } else {
+          renderizarCategorias();
+        }
+
+      } catch (e) {
+        alert("Error al procesar entrada: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "📥 Ingresar a Bodega";
+      }
+    }
+
+    // ─── GASTOS GENERALES (BOLSAS, NÓMINA, FLETES) ────────────────
+    async function guardarGastoGeneral() {
+      const categoria = document.getElementById('gen-categoria').value;
+      const provId = document.getElementById('gen-proveedor').value || null;
+      const concepto = document.getElementById('gen-concepto').value.trim();
+      const total = parseFloat(document.getElementById('gen-total').value) || 0;
+      const folio = document.getElementById('gen-folio').value.trim() || null;
+
+      if (!concepto || total <= 0) return alert("Ingresa un concepto y un monto válido.");
+
+      try {
+        await dbPost('compras_gastos', {
+          tipo: categoria.includes('Bolsas') ? 'INSUMOS_EMPAQUE' : 'OPERATIVO',
+          categoria: categoria,
+          proveedor_id: provId ? parseInt(provId) : null,
+          concepto: concepto,
+          total: total,
+          folio_factura: folio,
+          estado: 'COMPLETADO'
+        });
+
+        alert("✅ Egreso registrado correctamente.");
+        document.getElementById('gen-concepto').value = '';
+        document.getElementById('gen-total').value = '';
+        document.getElementById('gen-folio').value = '';
+
+      } catch (e) {
+        alert("Error al registrar gasto: " + e.message);
+      }
+    }
+
+    // ─── CRUD DE PROVEEDORES (MODAL) ──────────────────────────────
+    function abrirModalProveedores() {
+      document.getElementById('modal-proveedores').style.display = 'block';
+      limpiarFormProveedor();
+      renderizarTablaProveedores();
+    }
+
+    function cerrarModalProveedores() {
+      document.getElementById('modal-proveedores').style.display = 'none';
+    }
+
+    function renderizarTablaProveedores() {
+      const cont = document.getElementById('lista-proveedores-tabla');
+      if (!proveedores.length) {
+        cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.8rem">No hay proveedores dados de alta.</p>';
+        return;
+      }
+
+      cont.innerHTML = proveedores.map(p => `
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem; border-bottom:1px solid var(--border); font-size:0.85rem">
+          <div>
+            <strong>${p.nombre}</strong>
+            <div style="font-size:0.7rem; color:var(--text-muted)">${p.contacto || 'Sin contacto'} · 📞 ${p.telefono || 'S/N'}</div>
+          </div>
+          <div style="display:flex; gap:0.25rem;">
+            <button onclick='editarProveedor(${JSON.stringify(p)})' style="background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:0.25rem 0.5rem; cursor:pointer; font-size:0.75rem">✏️</button>
+            <button onclick="eliminarProveedor(${p.id})" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:4px; padding:0.25rem 0.5rem; cursor:pointer; font-size:0.75rem">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function editarProveedor(p) {
+      document.getElementById('prov-id').value = p.id;
+      document.getElementById('prov-nombre').value = p.nombre;
+      document.getElementById('prov-telefono').value = p.telefono || '';
+      document.getElementById('prov-contacto').value = p.contacto || '';
+
+      document.getElementById('btn-guardar-prov').textContent = "Actualizar Proveedor";
+      document.getElementById('btn-cancelar-prov').style.display = 'block';
+    }
+
+    function limpiarFormProveedor() {
+      document.getElementById('prov-id').value = '';
+      document.getElementById('prov-nombre').value = '';
+      document.getElementById('prov-telefono').value = '';
+      document.getElementById('prov-contacto').value = '';
+
+      document.getElementById('btn-guardar-prov').textContent = "Guardar Proveedor";
+      document.getElementById('btn-cancelar-prov').style.display = 'none';
+    }
+
+    async function guardarProveedor() {
+      const id = document.getElementById('prov-id').value;
+      const nombre = document.getElementById('prov-nombre').value.trim();
+      const telefono = document.getElementById('prov-telefono').value.trim();
+      const contacto = document.getElementById('prov-contacto').value.trim();
+
+      if (!nombre) return alert("El nombre del proveedor es obligatorio.");
+
+      try {
+        if (id) {
+          await dbPatch('proveedores', id, { nombre, telefono, contacto });
+        } else {
+          await dbPost('proveedores', { nombre, telefono, contacto });
+        }
+
+        await cargarProveedores();
+        limpiarFormProveedor();
+        renderizarTablaProveedores();
+      } catch (e) {
+        alert("Error al guardar proveedor: " + e.message);
+      }
+    }
+
+    async function eliminarProveedor(id) {
+      if (!confirm("¿Eliminar este proveedor?")) return;
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/proveedores?id=eq.${id}`, {
+          method: 'DELETE', headers: { ...headers }
+        });
+        await cargarProveedores();
+        renderizarTablaProveedores();
+      } catch (e) {
+        alert("Error al eliminar: " + e.message);
+      }
+    }
+
+    init();
+  </script>
+</body>
+
+</html>s
