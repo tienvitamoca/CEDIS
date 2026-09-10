@@ -173,22 +173,32 @@
         <div class="num" id="kpi-ingresos" style="color:#16a34a">$0.00</div>
         <div class="lbl">Ingresos Netos</div>
       </div>
+
       <div class="kpi-card" style="border-top-color: #2563eb;">
         <div class="num" id="kpi-ganancias" style="color:#2563eb">$0.00</div>
         <div class="lbl">Ganancia (<span id="kpi-margen-pct">0%</span>)</div>
       </div>
+
+      <div class="kpi-card" style="border-top-color: #8b5cf6;">
+        <div class="num" id="kpi-bolsas" style="color:#8b5cf6">0</div>
+        <div class="lbl">Bolsas / Pzas Vendidas</div>
+      </div>
+
       <div class="kpi-card" style="border-top-color: #0d9488;">
         <div class="num" id="kpi-ticket-promedio">$0.00</div>
         <div class="lbl">Ticket Promedio</div>
       </div>
+
       <div class="kpi-card" style="border-top-color: #f59e0b;">
         <div class="num" id="kpi-kilos">0.0 kg</div>
         <div class="lbl">Volumen Despachado</div>
       </div>
+
       <div class="kpi-card" style="border-top-color: #64748b;">
         <div class="num" id="kpi-tickets">0 / 0</div>
         <div class="lbl">Cobrados / Canc.</div>
       </div>
+
     </div>
 
     <!-- CUADRANTE POS: ROTACIÓN Y APORTE DE MARGEN -->
@@ -412,10 +422,11 @@
       renderizarBitacora();
     }
 
-    function actualizarKpis() {
+   function actualizarKpis() {
       let totalIngresos = 0;
       let totalGanancia = 0;
       let totalGramos = 0;
+      let totalBolsas = 0; // Acumulador de bolsas/piezas
       let completadas = 0;
       let canceladas = 0;
 
@@ -427,18 +438,19 @@
           (v.detalle_ventas || []).forEach(d => {
             const pzas = parseInt(d.cantidad_piezas) || 1;
             const gramos = parseFloat(d.gramos_totales) || 0;
+            
             totalGramos += gramos;
+            totalBolsas += pzas; // Sumar bolsas vendidas
 
-            // 1. Si existe la utilidad unitaria guardada, usarla directamente
+            // Utilidad exacta unitaria guardada o por margen
             if (d.utilidad_unitaria !== undefined && d.utilidad_unitaria !== null) {
               totalGanancia += (parseFloat(d.utilidad_unitaria) * pzas);
             } else {
-              // 2. Respaldo para ventas anteriores: Precio venta * Margen propio
               const prod = d.productos;
               const mt = (prod && prod.margen_tuyo !== null && prod.margen_tuyo !== undefined)
                 ? parseFloat(prod.margen_tuyo)
                 : (prod && prod.tipos_producto?.margen_tuyo !== undefined ? parseFloat(prod.tipos_producto.margen_tuyo) : 0.12);
-
+              
               const subtotal = parseFloat(d.subtotal) || 0;
               totalGanancia += (subtotal * mt);
             }
@@ -457,9 +469,10 @@
       document.getElementById('kpi-margen-pct').textContent = `${margenPct}%`;
       document.getElementById('kpi-ticket-promedio').textContent = formatPeso(ticketPromedio);
       document.getElementById('kpi-kilos').textContent = `${(totalGramos / 1000).toFixed(1)} kg / ${totalGramos.toLocaleString('es-MX')} g`;
+      document.getElementById('kpi-bolsas').textContent = totalBolsas.toLocaleString('es-MX'); // Renderizado de bolsas
       document.getElementById('kpi-tickets').textContent = `${completadas} / ${canceladas}`;
     }
-
+    
     function calcularCuadrantesPos() {
       const mapa = {};
 
