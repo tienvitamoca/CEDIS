@@ -250,13 +250,19 @@
       if (prod) await abrirModal(prod);
     }
 
-    async function guardarProducto() {
+   async function guardarProducto() {
       const id = document.getElementById('prod-id').value;
       const nombre = document.getElementById('prod-nombre').value.trim();
       const codigo = parseInt(document.getElementById('prod-codigo').value);
 
       if (!nombre) { mostrarError('El nombre es obligatorio'); return; }
       if (!codigo || isNaN(codigo)) { mostrarError('Código inválido, selecciona una categoría'); return; }
+
+      // Referencia a los botones para bloquear múltiples clics
+      const btnGuardar = document.querySelector('#modal button.btn-primary');
+      if (btnGuardar.disabled) return;
+      btnGuardar.disabled = true;
+      btnGuardar.textContent = "⏳ Guardando...";
 
       const data = {
         nombre,
@@ -278,9 +284,11 @@
         await buscar();
       } catch (e) {
         mostrarError(e.message);
+      } finally {
+        btnGuardar.disabled = false;
+        btnGuardar.textContent = "Guardar";
       }
     }
-
     // ── Eliminar Producto ──────────────────────────────────────
     async function confirmarEliminarProducto() {
       const id = document.getElementById('prod-id').value;
@@ -323,7 +331,7 @@
         btn.textContent = "🗑️";
       }
     }
-    
+
     function mostrarError(msg) {
       const el = document.getElementById('modal-error');
       el.textContent = msg;
