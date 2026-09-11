@@ -38,9 +38,20 @@
   <div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;overflow-y:auto">
     <div
       style="background:white;margin:1rem auto;border-radius:var(--radius);padding:1.25rem;max-width:500px;margin-top:2rem">
+     
+      <!-- Encabezado con título, icono de basura y cruz de cierre -->
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-        <h3 id="modal-titulo">Producto</h3>
-        <button onclick="cerrarModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer">✕</button>
+        <h3 id="modal-titulo" style="margin:0;">Producto</h3>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <button id="btn-eliminar-producto" type="button" onclick="confirmarEliminarProducto()" 
+                  title="Eliminar producto"
+                  style="background:none;border:none;font-size:1.1rem;cursor:pointer;opacity:0.4;display:none;padding:2px 4px;transition:opacity 0.2s;"
+                  onmouseover="this.style.opacity='1'" 
+                  onmouseout="this.style.opacity='0.4'">
+            🗑️
+          </button>
+          <button onclick="cerrarModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-muted);line-height:1;">✕</button>
+        </div>
       </div>
 
       <input type="hidden" id="prod-id">
@@ -87,18 +98,21 @@
 
       <div id="modal-error" class="alert alert-error" style="display:none"></div>
 
-      
       <div style="display:flex;gap:0.75rem;margin-top:0.75rem">
         <button class="btn btn-outline" style="flex:1" onclick="cerrarModal()">Cancelar</button>
         <button class="btn btn-primary" style="flex:1" onclick="guardarProducto()">Guardar</button>
       </div>
+
+      
     </div>
   </div>
 
   <nav class="bottom-nav">
     <a href="index.html"><span class="icon">🏠</span> Inicio</a>
-    <a href="etiquetas.html"><span class="icon">🏷️</span> Etiquetas</a>
-    <a href="CEDIS.html"><span class="icon">🧮</span> CEDIS</a>
+    <a href="inventario.html"><span class="icon">📦</span> Stock</a>
+    <a href="compras.html"><span class="icon">📥</span> Compras</a>
+    <a href="produccion.html"><span class="icon">⚙️</span> Producción</a>
+    <a href="catalogo.html" class="active"><span class="icon">📋</span> Catálogo</a>
   </nav>
 
   <script src="supabase.js"></script>
@@ -164,8 +178,6 @@
     }
 
     // ── Código automático ──────────────────────────────────────
-    // Estructura: tipoId(3 dígitos) + correlativo(3 dígitos)
-    // Ej: tipo 260 → códigos 260000, 260001, 260002...
     async function actualizarCodigoAuto() {
       const esNuevo = document.getElementById('prod-es-nuevo').value === '1';
       if (!esNuevo) return;
@@ -177,8 +189,8 @@
       document.getElementById('prod-codigo').value = '';
 
       try {
-        const prefijo = tipoId * 1000;       // 260000
-        const maximo = tipoId * 1000 + 999; // 260999
+        const prefijo = tipoId * 1000;
+        const maximo = tipoId * 1000 + 999;
 
         const data = await dbGet('productos',
           `select=codigo&codigo=gte.${prefijo}&codigo=lte.${maximo}&order=codigo.desc&limit=1`
@@ -207,7 +219,6 @@
 
     // ── Modal ──────────────────────────────────────────────────
     async function abrirModal(prod = null) {
-      
       const esNuevo = !prod;
       document.getElementById('modal-titulo').textContent = esNuevo ? 'Nuevo Producto' : 'Editar Producto';
       document.getElementById('prod-id').value = prod?.id || '';
@@ -221,6 +232,9 @@
       document.getElementById('prod-produccion').value = prod?.costo_produccion || '';
       document.getElementById('modal-error').style.display = 'none';
       document.getElementById('codigo-estado').textContent = esNuevo ? '' : '🔒';
+
+      // Mostrar botón eliminar solo si es un producto existente
+      document.getElementById('btn-eliminar-producto').style.display = esNuevo ? 'none' : 'block';
 
       if (esNuevo) await actualizarCodigoAuto();
 
@@ -256,10 +270,8 @@
 
       try {
         if (id) {
-          console.log('Guardando tipo:', id, data);
           await dbPatch('productos', id, data);
         } else {
-          console.log('Guardando tipo:', data);
           await dbPost('productos', data);
         }
         cerrarModal();
@@ -269,75 +281,93 @@
       }
     }
 
+    // ── Eliminar Producto ──────────────────────────────────────
+    async function confirmarEliminarProducto() {
+      const id = document.getElementById('prod-id').value;
+      if (!id) return;
+
+      const prod = productos.find(p => String(p.id) === String(id));
+      const nombre = prod ? prod.nombre : "este producto";
+
+      if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente "${nombre}"?\nEsta acción no se puede deshacer.`)) {
+        return;
+      }
+
+      const btn = document.getElementById('btn-eliminar-producto');
+      btn.disabled = true;
+      btn.textContent = "⏳";
+
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/productos?id=eq.${id}`, {
+          method: 'DELETE',
+          headers: { ...headers }
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          if (err.code === '23503') {
+            alert(`⚠️ No es posible eliminar "${nombre}" porque ya tiene movimientos registrados (ventas, entradas o lotes).\n\nPara proteger el historial financiero, no se puede borrar físicamente.`);
+            return;
+          }
+          throw new Error(err.message || "Error al eliminar producto");
+        }
+
+        alert(`✅ Producto "${nombre}" eliminado correctamente.`);
+        cerrarModal();
+        await buscar();
+      } catch (e) {
+        console.error("Error:", e);
+        mostrarError("Error al eliminar: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "🗑️";
+      }
+    }
+    
     function mostrarError(msg) {
       const el = document.getElementById('modal-error');
       el.textContent = msg;
       el.style.display = 'block';
     }
 
-    // Agrega esta función a catalogo.html
-    function actualizarCodigoPorCategoria() {
-      const tipoId = document.getElementById('prod-tipo').value; // Ej: 250
+    async function sugerirCodigo() {
+      const tipoId = document.getElementById('prod-tipo').value;
       const inputCodigo = document.getElementById('prod-codigo');
+      const prodId = document.getElementById('prod-id').value;
 
       if (!tipoId) return;
 
-      const prefijoNuevo = String(tipoId).substring(0, 3);
-      const codigoActual = String(inputCodigo.value);
+      const prefijo = String(tipoId).substring(0, 3);
+      
+      try {
+        const data = await dbGet('productos', `select=codigo&tipo_id=eq.${tipoId}&order=codigo.desc&limit=1`);
+        
+        if (prodId) {
+          const pActual = productos.find(x => x.id == prodId);
+          if (pActual && pActual.tipo_id == tipoId) {
+            inputCodigo.value = pActual.codigo;
+            return;
+          }
+        }
 
-      // Si el código actual no empieza con el prefijo de la categoría elegida
-      if (!codigoActual.startsWith(prefijoNuevo)) {
-        // Tomamos los últimos 3 dígitos del código viejo para mantener la secuencia
-        const correlativo = codigoActual.slice(-3);
-        inputCodigo.value = prefijoNuevo + correlativo;
-
-        console.log(`Sistema: Código actualizado a ${inputCodigo.value} para coincidir con la categoría.`);
-      }
-    }
-    // REEMPLAZAR en catalogo.html
-// REEMPLAZAR COMPLETAMENTE EN catalogo.html
-async function sugerirCodigo() {
-  const tipoId = document.getElementById('prod-tipo').value;
-  const inputCodigo = document.getElementById('prod-codigo');
-  const prodId = document.getElementById('prod-id').value;
-
-  if (!tipoId) return;
-
-  const prefijo = String(tipoId).substring(0, 3);
-  
-  try {
-    // CONSULTA REAL: Traemos solo el código más alto de esta categoría desde Supabase
-    const data = await dbGet('productos', `select=codigo&tipo_id=eq.${tipoId}&order=codigo.desc&limit=1`);
-    
-    // Si estamos editando, verificamos si el código actual ya pertenece a la categoría
-    if (prodId) {
-      const pActual = productos.find(x => x.id == prodId);
-      if (pActual && pActual.tipo_id == tipoId) {
-        inputCodigo.value = pActual.codigo;
-        return;
+        if (data && data.length > 0) {
+          const ultimoCodigo = parseInt(data[0].codigo);
+          inputCodigo.value = ultimoCodigo + 1;
+        } else {
+          inputCodigo.value = prefijo + "001";
+        }
+      } catch (e) {
+        console.error("Error al sugerir código:", e);
+        const locales = productos.filter(p => p.tipo_id == tipoId);
+        if (locales.length > 0) {
+          const max = Math.max(...locales.map(p => p.codigo));
+          inputCodigo.value = max + 1;
+        } else {
+          inputCodigo.value = prefijo + "001";
+        }
       }
     }
 
-    if (data && data.length > 0) {
-      // Si hay productos, sumamos 1 al más alto
-      const ultimoCodigo = parseInt(data[0].codigo);
-      inputCodigo.value = ultimoCodigo + 1;
-    } else {
-      // Si la categoría está vacía, empezamos en 001
-      inputCodigo.value = prefijo + "001";
-    }
-  } catch (e) {
-    console.error("Error al sugerir código:", e);
-    // Fallback: usar la lista local si la red falla
-    const locales = productos.filter(p => p.tipo_id == tipoId);
-    if (locales.length > 0) {
-      const max = Math.max(...locales.map(p => p.codigo));
-      inputCodigo.value = max + 1;
-    } else {
-      inputCodigo.value = prefijo + "001";
-    }
-  }
-}
     init();
   </script>
 </body>
