@@ -171,11 +171,6 @@
       color: #15803d;
     }
 
-    .btn-del {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-
     .tag {
       display: inline-block;
       padding: 0.15rem 0.5rem;
@@ -187,16 +182,6 @@
     .tag-blue {
       background: #dbeafe;
       color: #1d4ed8;
-    }
-
-    .tag-green {
-      background: #dcfce7;
-      color: #15803d;
-    }
-
-    .tag-red {
-      background: #fee2e2;
-      color: #b91c1c;
     }
   </style>
 </head>
@@ -223,18 +208,10 @@
     <!-- RESUMEN -->
     <div id="sec-resumen" class="section active">
       <div class="stats-grid" id="stats-grid">
-        <div class="stat-card">
-          <div class="spinner"></div>
-        </div>
-        <div class="stat-card">
-          <div class="spinner"></div>
-        </div>
-        <div class="stat-card">
-          <div class="spinner"></div>
-        </div>
-        <div class="stat-card">
-          <div class="spinner"></div>
-        </div>
+        <div class="stat-card"><div class="spinner"></div></div>
+        <div class="stat-card"><div class="spinner"></div></div>
+        <div class="stat-card"><div class="spinner"></div></div>
+        <div class="stat-card"><div class="spinner"></div></div>
       </div>
       <div class="card">
         <div class="card-title">Productos sin costo por kg</div>
@@ -310,9 +287,7 @@
             </thead>
             <tbody id="tbody-costos">
               <tr>
-                <td colspan="6">
-                  <div class="spinner"></div>
-                </td>
+                <td colspan="6"><div class="spinner"></div></td>
               </tr>
             </tbody>
           </table>
@@ -322,11 +297,10 @@
 
     <!-- MÁRGENES -->
     <div id="sec-margenes" class="section">
-
       <div class="card">
-        <div class="card-title">Márgenes Predeterminados</div>
+        <div class="card-title">Márgenes Predeterminados por Categoría</div>
         <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem; padding: 0 1rem;">
-          Valores por categoría para Target Costing y Modo Tradicional.
+          Valores base para Target Costing y Modo Tradicional.
         </p>
 
         <div style="padding:0 1rem 1rem 1rem">
@@ -337,22 +311,21 @@
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-top:0.75rem">
             <div class="field">
-              <label>Margen Propio</label>
+              <label>Margen Propio (tuyo)</label>
               <input type="number" step="0.01" id="m-tuyo" placeholder="0.12">
             </div>
             <div class="field">
-              <label>Margen Cliente</label>
+              <label>Margen Cliente (tienda)</label>
               <input type="number" step="0.01" id="m-clie" placeholder="0.22">
             </div>
           </div>
 
           <button class="btn btn-primary btn-block" style="margin-top:1.5rem" onclick="actualizarMargenesMasivo()">
-            Actualizar Categoría y Productos 💾
+            Actualizar Categoría 💾
           </button>
-          <div id="msg-margenes" style="display:none;margin-top:0.75rem"></div>
         </div>
 
-        <!-- NUEVA TABLA: Márgenes Individuales por Producto -->
+        <!-- Tabla: Márgenes Individuales por Producto -->
         <div class="card" id="card-margenes-individuales" style="display:none; padding: 1rem 0 0 0; overflow:hidden">
           <div style="padding: 0 1rem 0.5rem 1rem;">
             <div class="card-title" style="margin:0">Márgenes Individuales por Producto</div>
@@ -381,93 +354,22 @@
             </table>
           </div>
         </div>
-
       </div>
 
-      <!-- <div id="tab-categorias" class="section">
-        <div class="card">
-          <div class="card-title">Actualizar Márgenes por Categoría (Masivo)</div>
-          <div style="padding:1rem">
-            <div class="field">
-              <label>Seleccionar Categoría</label>
-              <select id="m-tipo" onchange="cargarMargenesActuales()"></select>
-            </div>
-
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px">
-              <div class="field">
-                <label>Margen Propio (Nuevo)</label>
-                <input type="number" step="0.01" id="m-tuyo" placeholder="0.12">
-              </div>
-              <div class="field">
-                <label>Margen Cliente (Nuevo)</label>
-                <input type="number" step="0.01" id="m-clie" placeholder="0.22">
-              </div>
-            </div>
-
-            <button class="btn btn-primary btn-block" style="margin-top:1.5rem" onclick="actualizarMargenesMasivo()">
-              Actualizar Categoría y Productos
-            </button>
-          </div>
-        </div>
-      </div> -->
-
-      <!-- <div class="card">
-        <div class="card-title">Márgenes Predeterminados</div>
-        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem">
-          Valores que aparecen por defecto en Target Costing y Modo Tradicional. Se guardan en este dispositivo.
-        </p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
-          <div class="field">
-            <label>Tu Margen (Markup %)</label>
-            <input type="number" step="0.01" id="cfg-margen-tuyo" placeholder="0.80">
-            <small style="color:var(--text-muted);font-size:0.72rem">Ej: 0.80 = 80% sobre costo</small>
-          </div>
-          <div class="field">
-            <label>Margen Cliente (%)</label>
-            <input type="number" step="0.01" id="cfg-margen-cliente" placeholder="0.80">
-            <small style="color:var(--text-muted);font-size:0.72rem">Ej: 0.80 = lo que cobra la tienda</small>
-          </div>
-        </div>
-        <button class="btn btn-primary btn-block" onclick="guardarMargenes()">💾 Guardar Márgenes</button>
-        <div id="msg-margenes" style="display:none;margin-top:0.75rem"></div>
-      </div> -->
-
-      <div class="card">
-        <div class="card-title">Costos de Insumos por Defecto</div>
-        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem">
-          Se usan al crear nuevos productos si no se especifica otro valor.
-        </p>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem">
-          <div class="field">
-            <label>Costo Bolsa ($)</label>
-            <input type="number" step="0.01" id="cfg-bolsa" placeholder="0.29">
-          </div>
-          <div class="field">
-            <label>Costo Producción ($)</label>
-            <input type="number" step="0.01" id="cfg-produccion" placeholder="1.30">
-          </div>
-          <div class="field">
-            <label>Merma (%)</label>
-            <input type="number" step="0.001" id="cfg-merma" placeholder="0.02">
-          </div>
-        </div>
-        <button class="btn btn-primary btn-block" onclick="guardarDefaults()">💾 Guardar Defaults</button>
-        <div id="msg-defaults" style="display:none;margin-top:0.75rem"></div>
-      </div>
-
+      <!-- Simulador de Impacto -->
       <div class="card">
         <div class="card-title">Simulador de Impacto Real</div>
         <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.75rem">
-          Proyecta la rentabilidad real seleccionando un producto específico de tu inventario.
+          Proyecta la rentabilidad real seleccionando un producto específico de tu catálogo.
         </p>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem; margin-bottom: 1rem;">
           <div class="field">
-            <label>1. Categoría (Márgenes)</label>
+            <label>1. Categoría</label>
             <select id="sim-cat" onchange="cargarSimuladorCategoria()"></select>
           </div>
           <div class="field">
-            <label>2. Producto (Costos)</label>
+            <label>2. Producto</label>
             <select id="sim-prod" onchange="ejecutarSimulacion()"></select>
           </div>
         </div>
@@ -478,11 +380,11 @@
             <input type="number" id="sim-precio" placeholder="10" oninput="ejecutarSimulacion()">
           </div>
           <div class="field">
-            <label>M. Tuyo (Sim)</label>
+            <label>M. Tuyo</label>
             <input type="number" step="0.01" id="sim-mtuyo" oninput="ejecutarSimulacion()">
           </div>
           <div class="field">
-            <label>M. Cliente (Sim)</label>
+            <label>M. Cliente</label>
             <input type="number" step="0.01" id="sim-mcliente" oninput="ejecutarSimulacion()">
           </div>
         </div>
@@ -492,52 +394,45 @@
             style="font-size: 0.75rem; background: #f8fafc; padding: 0.5rem; border-radius: 4px; margin-bottom: 0.5rem; border: 1px dashed var(--border);">
           </div>
 
-          <div class="result-grid" style="background: var(--bg); padding: 1rem; border-radius: 8px;">
-            <div class="res-item">
-              <div class="label">Gramos Posibles</div>
-              <div class="value" id="sim-r-gramos" style="color: var(--primary); font-size: 1.2rem;">—</div>
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; background: var(--bg); padding: 1rem; border-radius: 8px;">
+            <div>
+              <div style="font-size:0.72rem; color:var(--text-muted); font-weight:bold;">Gramos Posibles</div>
+              <div id="sim-r-gramos" style="color: var(--primary); font-size: 1.25rem; font-weight:800;">—</div>
             </div>
-            <div class="res-item">
-              <div class="label">Tu Utilidad ($)</div>
-              <div class="value success" id="sim-r-utilidad">—</div>
+            <div>
+              <div style="font-size:0.72rem; color:var(--text-muted); font-weight:bold;">Tu Utilidad ($)</div>
+              <div id="sim-r-utilidad" style="color:#16a34a; font-size: 1.25rem; font-weight:800;">—</div>
             </div>
-            <div class="res-item" style="border-top: 1px solid var(--border); padding-top: 0.5rem;">
-              <div class="label">Precio CEDIS</div>
-              <div class="value" id="sim-r-cedis" style="font-size: 0.9rem;">—</div>
+            <div style="border-top: 1px solid var(--border); padding-top: 0.4rem;">
+              <div style="font-size:0.72rem; color:var(--text-muted);">Precio CEDIS</div>
+              <div id="sim-r-cedis" style="font-weight:700;">—</div>
             </div>
-            <div class="res-item" style="border-top: 1px solid var(--border); padding-top: 0.5rem;">
-              <div class="label">Margen Real</div>
-              <div class="value" id="sim-r-marginp">—</div>
+            <div style="border-top: 1px solid var(--border); padding-top: 0.4rem;">
+              <div style="font-size:0.72rem; color:var(--text-muted);">Margen Real %</div>
+              <div id="sim-r-marginp" style="font-weight:700;">—</div>
             </div>
           </div>
         </div>
       </div>
-
     </div>
 
     <!-- MASIVO -->
     <div id="sec-masivo" class="section">
-
       <div class="bulk-card">
         <h4>📦 Actualizar insumos por categoría</h4>
-        <p style="font-size:0.78rem;color:#1e40af;margin-bottom:0.75rem">Cambia bolsa y producción para todos los
-          productos de una categoría.</p>
+        <p style="font-size:0.78rem;color:#1e40af;margin-bottom:0.75rem">Cambia bolsa y producción para todos los productos de una categoría.</p>
         <div class="bulk-row">
           <div class="field" style="flex:2;margin:0"><label>Categoría</label><select id="bulk-cat"></select></div>
-          <div class="field" style="flex:1;margin:0"><label>Bolsa ($)</label><input type="number" step="0.01"
-              id="bulk-bolsa" placeholder="0.29"></div>
-          <div class="field" style="flex:1;margin:0"><label>Producción ($)</label><input type="number" step="0.01"
-              id="bulk-prod" placeholder="1.30"></div>
+          <div class="field" style="flex:1;margin:0"><label>Bolsa ($)</label><input type="number" step="0.01" id="bulk-bolsa" placeholder="0.29"></div>
+          <div class="field" style="flex:1;margin:0"><label>Producción ($)</label><input type="number" step="0.01" id="bulk-prod" placeholder="1.30"></div>
         </div>
-        <button class="btn btn-primary" style="width:100%;margin-top:0.75rem" onclick="aplicarBulkCostos()">⚡ Aplicar a
-          categoría</button>
+        <button class="btn btn-primary" style="width:100%;margin-top:0.75rem" onclick="aplicarBulkCostos()">⚡ Aplicar a categoría</button>
         <div id="msg-bulk-costos" style="margin-top:0.5rem;font-size:0.82rem"></div>
       </div>
 
       <div class="bulk-card">
         <h4>📈 Ajuste por inflación / cambio de proveedor</h4>
-        <p style="font-size:0.78rem;color:#1e40af;margin-bottom:0.75rem">Incrementa o reduce el costo/kg de todos los
-          productos de una categoría en un %.</p>
+        <p style="font-size:0.78rem;color:#1e40af;margin-bottom:0.75rem">Incrementa o reduce el costo/kg de todos los productos de una categoría en un %.</p>
         <div class="bulk-row">
           <div class="field" style="flex:2;margin:0"><label>Categoría</label><select id="bulk-inf-cat"></select></div>
           <div class="field" style="flex:1;margin:0">
@@ -546,8 +441,7 @@
             <small style="color:#1e40af;font-size:0.7rem">Positivo=aumento, negativo=baja</small>
           </div>
         </div>
-        <button class="btn btn-primary" style="width:100%;margin-top:0.75rem" onclick="aplicarInflacion()">⚡ Aplicar
-          ajuste</button>
+        <button class="btn btn-primary" style="width:100%;margin-top:0.75rem" onclick="aplicarInflacion()">⚡ Aplicar ajuste</button>
         <div id="msg-bulk-inf" style="margin-top:0.5rem;font-size:0.82rem"></div>
       </div>
 
@@ -559,35 +453,32 @@
         </div>
         <div id="msg-herramientas" style="margin-top:0.75rem;font-size:0.82rem"></div>
       </div>
-
     </div>
 
   </div>
 
   <!-- Modal genérico -->
-  <div id="modal-gen"
-    style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;overflow-y:auto">
+  <div id="modal-gen" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;overflow-y:auto">
     <div style="background:white;margin:2rem auto;border-radius:var(--radius);padding:1.25rem;max-width:420px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-        <h3 id="modal-gen-titulo"></h3>
-        <button onclick="cerrarModalGen()"
-          style="background:none;border:none;font-size:1.4rem;cursor:pointer">✕</button>
+        <h3 id="modal-gen-titulo" style="margin:0;"></h3>
+        <button onclick="cerrarModalGen()" style="background:none;border:none;font-size:1.4rem;cursor:pointer">✕</button>
       </div>
       <div id="modal-gen-body"></div>
       <div id="modal-gen-error" class="alert alert-error" style="display:none;margin-top:0.75rem"></div>
       <div style="display:flex;gap:0.5rem;margin-top:1rem">
         <button class="btn btn-outline" style="flex:1" onclick="cerrarModalGen()">Cancelar</button>
-        <button class="btn btn-primary" style="flex:1" onclick="modalGenConfirmar()">Guardar</button>
+        <button id="btn-modal-confirmar" class="btn btn-primary" style="flex:1" onclick="modalGenConfirmar()">Guardar</button>
       </div>
     </div>
   </div>
 
   <nav class="bottom-nav">
     <a href="index.html"><span class="icon">🏠</span> Inicio</a>
+    <a href="inventario.html"><span class="icon">📦</span> Stock</a>
+    <a href="compras.html"><span class="icon">📥</span> Compras</a>
+    <a href="produccion.html"><span class="icon">⚙️</span> Producción</a>
     <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
-    <a href="etiquetas.html" class="active"><span class="icon">🏷️</span> Etiquetas</a>
-    <a href="CEDIS.html"><span class="icon">🧮</span> CEDIS</a>
-
   </nav>
 
   <script src="supabase.js"></script>
@@ -600,18 +491,22 @@
     let presFiltro = 'gramos';
     let prodsCategoriaActual = [];
 
-
     async function init() {
-      tipos = await getTipos();
-      presentaciones = await getPresentaciones();
+      tipos = await getTipos() || [];
+      presentaciones = await getPresentaciones() || [];
 
-      cargarCategorias();
+      await cargarCategorias();
       llenarSelectsBulk();
-      llenarSelectSimulador(); // <-- AGREGAR ESTA LÍNEA
+      llenarSelectSimulador();
       cargarPresentaciones();
-      cargarCostos();
-      cargarResumen();
-      cargarMargenes();
+      await cargarCostos();
+      await cargarResumen();
+      
+      // Inicializar selector de márgenes
+      if (tipos.length) {
+        document.getElementById('m-tipo').value = tipos[0].id;
+        await cargarMargenesActuales();
+      }
     }
 
     function mostrarSeccion(id, btn) {
@@ -629,74 +524,93 @@
         const sinCosto = todos.filter(p => !p.costo_kg);
 
         document.getElementById('stats-grid').innerHTML = `
-      <div class="stat-card">
-        <div class="stat-num">${todos.length}</div>
-        <div class="stat-label">Total Productos</div>
-        <div class="stat-sub">${tipos.length} categorías</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" style="color:var(--success)">${conCosto.length}</div>
-        <div class="stat-label">Con Costo</div>
-        <div class="stat-sub">${Math.round(conCosto.length / todos.length * 100)}% del catálogo</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" style="color:var(--danger)">${sinCosto.length}</div>
-        <div class="stat-label">Sin Costo</div>
-        <div class="stat-sub">Pendientes</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num">${presentaciones.length}</div>
-        <div class="stat-label">Presentaciones</div>
-        <div class="stat-sub">Códigos BB</div>
-      </div>
-    `;
+          <div class="stat-card">
+            <div class="stat-num">${todos.length}</div>
+            <div class="stat-label">Total Productos</div>
+            <div class="stat-sub">${tipos.length} categorías</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--success)">${conCosto.length}</div>
+            <div class="stat-label">Con Costo</div>
+            <div class="stat-sub">${todos.length ? Math.round(conCosto.length / todos.length * 100) : 0}% del catálogo</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--danger)">${sinCosto.length}</div>
+            <div class="stat-label">Sin Costo</div>
+            <div class="stat-sub">Pendientes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num">${presentaciones.length}</div>
+            <div class="stat-label">Presentaciones</div>
+            <div class="stat-sub">Códigos BB</div>
+          </div>
+        `;
 
         const cont = document.getElementById('lista-sin-costo');
         if (!sinCosto.length) {
           cont.innerHTML = `<div class="alert alert-success">✅ Todos los productos tienen costo registrado.</div>`;
         } else {
           cont.innerHTML = sinCosto.slice(0, 10).map(p => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)">
-          <div>
-            <span style="font-weight:600;font-size:0.88rem">${p.nombre}</span>
-            <span class="tag tag-blue" style="margin-left:0.4rem">${p.tipos_producto?.nombre || ''}</span>
-          </div>
-          <a href="catalogo.html" style="font-size:0.75rem;color:var(--primary)">Editar →</a>
-        </div>`).join('')
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid var(--border)">
+              <div>
+                <span style="font-weight:600;font-size:0.88rem">${p.nombre}</span>
+                <span class="tag tag-blue" style="margin-left:0.4rem">${p.tipos_producto?.nombre || ''}</span>
+              </div>
+              <a href="catalogo.html" style="font-size:0.75rem;color:var(--primary);font-weight:bold;">Editar →</a>
+            </div>`).join('')
             + (sinCosto.length > 10 ? `<div style="text-align:center;padding:0.5rem;font-size:0.8rem;color:var(--text-muted)">+${sinCosto.length - 10} más...</div>` : '');
         }
       } catch (e) { console.error(e); }
     }
 
-    // ── CATEGORÍAS ─────────────────────────────────────────────────
+    // ── CATEGORÍAS (CORREGIDO ID DE TABLA) ─────────────────────────
     async function cargarCategorias() {
       try {
-        const lista = await getTipos();
+        tipos = await getTipos() || [];
 
-        // 1. Llenar selects (esto ya lo hace tu código)
-        const selects = ['prod-tipo', 'f-tipo', 'm-tipo', 'ins-tipo'];
-        selects.forEach(id => {
-          const el = document.getElementById(id);
-          if (el) {
-            el.innerHTML = '<option value="">Selecciona...</option>' +
-              lista.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-          }
-        });
-
-        // 2. Llenar la lista de categorías (SOLUCIÓN AL ERROR)
-        // Agregamos un IF para verificar que el contenedor exista antes de usar innerHTML
-        const cont = document.getElementById('lista-categorias-admin');
-        if (cont) {
-          cont.innerHTML = lista.map(c => `
-        <div class="list-item" onclick='editarCategoria(${JSON.stringify(c)})' style="cursor:pointer">
-          <div>
-            <div class="nombre">${c.nombre}</div>
-            <div class="sub">Tuyo: ${c.margen_tuyo || 0.12} | Cliente: ${c.margen_cliente || 0.22}</div>
-          </div>
-          <span style="color:var(--primary)">Editar ›</span>
-        </div>
-      `).join('');
+        // Llenar selector de categoría en márgenes
+        const selMargen = document.getElementById('m-tipo');
+        if (selMargen) {
+          selMargen.innerHTML = tipos.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
         }
+
+        // Llenar contenedor de la tabla en sec-categorias
+        const cont = document.getElementById('tabla-categorias');
+        if (!cont) return;
+
+        if (!tipos.length) {
+          cont.innerHTML = '<div class="empty"><p>No hay categorías registradas</p></div>';
+          return;
+        }
+
+        cont.innerHTML = `
+          <div style="overflow-x:auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>M. Tuyo</th>
+                  <th>M. Cliente</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tipos.map(c => `
+                  <tr>
+                    <td><strong style="color:var(--primary)">${c.id}</strong></td>
+                    <td><strong>${c.nombre}</strong></td>
+                    <td>${c.margen_tuyo ?? 0.12}</td>
+                    <td>${c.margen_cliente ?? 0.22}</td>
+                    <td style="text-align:right">
+                      <button class="btn btn-sm btn-outline" onclick='editarCategoria(${JSON.stringify(c)})'>✏️ Editar</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
       } catch (e) {
         console.error("Error al cargar categorías:", e);
       }
@@ -704,60 +618,49 @@
 
     function editarCategoria(cat) {
       abrirModalGen('Editar Categoría', `
-    <div class="field">
-      <label>Nombre de Categoría</label>
-      <input type="text" id="cat-nombre" value="${cat.nombre}">
-    </div>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px">
-      <div class="field">
-        <label>M. Propio (tuyo)</label>
-        <input type="number" step="0.01" id="cat-margen-tuyo" value="${cat.margen_tuyo || 0.12}">
-      </div>
-      <div class="field">
-        <label>M. Cliente</label>
-        <input type="number" step="0.01" id="cat-margen-cliente" value="${cat.margen_cliente || 0.22}">
-      </div>
-    </div>
-  `, async () => {
-        const data = {
-          nombre: document.getElementById('cat-nombre').value,
-          margen_tuyo: parseFloat(document.getElementById('cat-margen-tuyo').value),
-          margen_cliente: parseFloat(document.getElementById('cat-margen-cliente').value)
-        };
-        try {
-          await dbPatch('tipos_producto', cat.id, data);
-          registrarLog(`Categoría ${data.nombre} actualizada`);
-          cerrarModalGen();
-          await cargarCategorias();
-        } catch (e) { alert(e.message); }
-      });
-    }
+        <div class="field">
+          <label>Nombre de Categoría</label>
+          <input type="text" id="cat-nombre" value="${cat.nombre}">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px">
+          <div class="field">
+            <label>M. Propio (tuyo)</label>
+            <input type="number" step="0.01" id="cat-margen-tuyo" value="${cat.margen_tuyo ?? 0.12}">
+          </div>
+          <div class="field">
+            <label>M. Cliente</label>
+            <input type="number" step="0.01" id="cat-margen-cliente" value="${cat.margen_cliente ?? 0.22}">
+          </div>
+        </div>
+      `, async () => {
+        const nombre = document.getElementById('cat-nombre').value.trim();
+        const mt = parseFloat(document.getElementById('cat-margen-tuyo').value);
+        const mc = parseFloat(document.getElementById('cat-margen-cliente').value);
 
-    async function guardarCategoria(id) {
-      const nombre = document.getElementById(`cat-${id}`).value.trim();
-      if (!nombre) return;
-      try {
-        await fetch(`${SUPABASE_URL}/rest/v1/tipos_producto?id=eq.${id}`, {
-          method: 'PATCH', headers: { ...headers, 'Prefer': 'return=representation' }, body: JSON.stringify({ nombre })
-        });
-        tipos = await getTipos();
-        registrarLog(`Categoría ${id}: "${nombre}"`);
-        mostrarToast('✅ Categoría guardada');
-      } catch (e) { mostrarToast('❌ ' + e.message, true); }
+        if (!nombre) throw new Error("El nombre no puede estar vacío");
+
+        const data = { nombre, margen_tuyo: mt, margen_cliente: mc };
+        await dbPatch('tipos_producto', cat.id, data);
+        registrarLog(`Categoría ${nombre} actualizada`);
+        await cargarCategorias();
+        llenarSelectsBulk();
+        llenarSelectSimulador();
+      });
     }
 
     function nuevaCategoria() {
       abrirModalGen('Nueva Categoría', `
-    <div class="field"><label>ID (número único)</label><input type="number" id="mg-id" placeholder="255"></div>
-    <div class="field"><label>Nombre</label><input type="text" id="mg-nombre" placeholder="Ej: Snacks Premium"></div>
-  `, async () => {
+        <div class="field"><label>ID (Prefijo 3 dígitos, ej: 255)</label><input type="number" id="mg-id" placeholder="255"></div>
+        <div class="field"><label>Nombre</label><input type="text" id="mg-nombre" placeholder="Ej: Semillas"></div>
+      `, async () => {
         const id = parseInt(document.getElementById('mg-id').value);
         const nombre = document.getElementById('mg-nombre').value.trim();
         if (!id || !nombre) throw new Error('ID y nombre son obligatorios');
-        await dbPost('tipos_producto', { id, nombre });
-        tipos = await getTipos();
-        cargarCategorias();
+
+        await dbPost('tipos_producto', { id, nombre, margen_tuyo: 0.12, margen_cliente: 0.22 });
+        await cargarCategorias();
         llenarSelectsBulk();
+        llenarSelectSimulador();
         registrarLog(`Nueva categoría: ${id} - ${nombre}`);
       });
     }
@@ -794,29 +697,18 @@
 
     async function guardarPresentacion(codigo_bb) {
       try {
-        // 1. Extraer valores de los inputs usando el codigo_bb
         const nombre = document.getElementById(`pnom-${codigo_bb}`).value;
         const gramos = parseFloat(document.getElementById(`pgr-${codigo_bb}`).value) || null;
         const precio = parseFloat(document.getElementById(`ppr-${codigo_bb}`).value) || null;
 
         if (!nombre) return alert("El nombre es obligatorio");
 
-        const data = {
-          nombre: nombre,
-          gramos: gramos,
-          precio_ref: precio
-        };
-
-        // 2. HACER EL PATCH MANUAL (Para asegurar que use codigo_bb como filtro)
-        // Usamos las variables que ya tienes en supabase.js (SUPABASE_URL y headers)
+        const data = { nombre, gramos, precio_ref: precio };
         const url = `${SUPABASE_URL}/rest/v1/presentaciones?codigo_bb=eq.${codigo_bb}`;
 
         const res = await fetch(url, {
           method: 'PATCH',
-          headers: {
-            ...headers, // Usamos tus headers que ya tienen la API KEY
-            'Prefer': 'return=representation'
-          },
+          headers: { ...headers, 'Prefer': 'return=representation' },
           body: JSON.stringify(data)
         });
 
@@ -824,29 +716,29 @@
 
         mostrarToast('✅ Presentación guardada');
         registrarLog(`Actualizada BB-${codigo_bb}: ${nombre}`);
-
       } catch (e) {
-        console.error("Error al guardar presentación:", e);
         alert("Error al guardar: " + e.message);
       }
     }
 
     function nuevaPresentacion() {
       abrirModalGen('Nueva Presentación', `
-    <div class="field"><label>Código BB (00-99)</label><input type="text" id="mg-bb" placeholder="16" maxlength="2"></div>
-    <div class="field"><label>Nombre</label><input type="text" id="mg-nombre" placeholder="Ej: 750g"></div>
-    <div class="field"><label>Gramos (si aplica)</label><input type="number" id="mg-gr" placeholder="750"></div>
-    <div class="field"><label>Precio referencia $ (si aplica)</label><input type="number" id="mg-pr" placeholder="—"></div>
-  `, async () => {
+        <div class="field"><label>Código BB (00-99)</label><input type="text" id="mg-bb" placeholder="16" maxlength="2"></div>
+        <div class="field"><label>Nombre</label><input type="text" id="mg-nombre" placeholder="Ej: 750g"></div>
+        <div class="field"><label>Gramos (si aplica)</label><input type="number" id="mg-gr" placeholder="750"></div>
+        <div class="field"><label>Precio referencia $ (si aplica)</label><input type="number" id="mg-pr" placeholder="—"></div>
+      `, async () => {
         const bb = document.getElementById('mg-bb').value.padStart(2, '0');
         const nombre = document.getElementById('mg-nombre').value.trim();
         if (!bb || !nombre) throw new Error('Código BB y nombre son obligatorios');
+
         await dbPost('presentaciones', {
           codigo_bb: bb, nombre,
           gramos: parseFloat(document.getElementById('mg-gr').value) || null,
           precio_ref: parseFloat(document.getElementById('mg-pr').value) || null
         });
-        presentaciones = await getPresentaciones();
+
+        presentaciones = await getPresentaciones() || [];
         cargarPresentaciones();
         registrarLog(`Nueva presentación BB-${bb}`);
       });
@@ -856,7 +748,7 @@
     async function cargarCostos() {
       try {
         productosCostos = await dbGet('productos',
-          'select=id,codigo,nombre,costo_kg,costo_bolsa,costo_produccion,merma_pct,tipos_producto(nombre)&order=codigo.asc');
+          'select=id,codigo,nombre,tipo_id,costo_kg,costo_bolsa,costo_produccion,merma_pct,tipos_producto(nombre)&order=codigo.asc') || [];
         renderTablaCostos(productosCostos);
       } catch (e) {
         document.getElementById('tbody-costos').innerHTML =
@@ -873,17 +765,17 @@
 
     function renderTablaCostos(lista) {
       document.getElementById('tbody-costos').innerHTML = lista.map(p => `
-    <tr>
-      <td>
-        <div style="font-weight:600;font-size:0.85rem">${p.nombre}</div>
-        <div style="font-size:0.7rem;color:var(--text-muted)">${p.codigo}</div>
-      </td>
-      <td><input class="inline-input" type="number" step="0.01" value="${p.costo_kg || ''}" id="ckg-${p.id}" placeholder="—" style="width:68px"></td>
-      <td><input class="inline-input" type="number" step="0.01" value="${p.costo_bolsa || ''}" id="cbo-${p.id}" placeholder="—" style="width:58px"></td>
-      <td><input class="inline-input" type="number" step="0.01" value="${p.costo_produccion || ''}" id="cpr-${p.id}" placeholder="—" style="width:58px"></td>
-      <td><input class="inline-input" type="number" step="0.001" value="${p.merma_pct || ''}" id="cme-${p.id}" placeholder="0.02" style="width:55px"></td>
-      <td><button class="btn-icon btn-save" onclick="guardarCosto(${p.id})">💾</button></td>
-    </tr>`).join('');
+        <tr>
+          <td>
+            <div style="font-weight:600;font-size:0.85rem">${p.nombre}</div>
+            <div style="font-size:0.7rem;color:var(--text-muted)">${p.codigo}</div>
+          </td>
+          <td><input class="inline-input" type="number" step="0.01" value="${p.costo_kg || ''}" id="ckg-${p.id}" placeholder="—" style="width:68px"></td>
+          <td><input class="inline-input" type="number" step="0.01" value="${p.costo_bolsa || ''}" id="cbo-${p.id}" placeholder="—" style="width:58px"></td>
+          <td><input class="inline-input" type="number" step="0.01" value="${p.costo_produccion || ''}" id="cpr-${p.id}" placeholder="—" style="width:58px"></td>
+          <td><input class="inline-input" type="number" step="0.001" value="${p.merma_pct || ''}" id="cme-${p.id}" placeholder="0.02" style="width:55px"></td>
+          <td><button class="btn-icon btn-save" onclick="guardarCosto(${p.id})">💾</button></td>
+        </tr>`).join('');
     }
 
     async function guardarCosto(id) {
@@ -896,48 +788,13 @@
         };
         await dbPatch('productos', id, data);
         const p = productosCostos.find(x => x.id === id);
-        Object.assign(p, data);
-        registrarLog(`Costos: ${p?.nombre || id}`);
+        if (p) Object.assign(p, data);
+        registrarLog(`Costos actualizados: ${p?.nombre || id}`);
         mostrarToast('✅ Costos guardados');
       } catch (e) { mostrarToast('❌ ' + e.message, true); }
     }
 
     // ── MÁRGENES ──────────────────────────────────────────────────
-    async function cargarMargenes() {
-      // 1. Buscamos el select de categorías en el apartado de márgenes
-      const select = document.getElementById('m-tipo');
-
-      // Si el select no existe en el HTML o no tiene una categoría seleccionada, salimos silenciosamente
-      if (!select || !select.value) return;
-
-      const tipoId = select.value;
-
-      try {
-        // 2. Consultamos a Supabase los datos de esa categoría específica
-        const data = await dbGet('tipos_producto', `id=eq.${tipoId}`);
-        const cat = data[0];
-
-        if (cat) {
-          // 3. Buscamos los inputs donde queremos mostrar los márgenes
-          const inputTuyo = document.getElementById('m-tuyo');
-          const inputClie = document.getElementById('m-clie');
-
-          // Solo intentamos asignar el valor si el input realmente existe en la pantalla actual
-          if (inputTuyo) {
-            inputTuyo.value = cat.margen_tuyo !== null ? cat.margen_tuyo : 0.12;
-          }
-
-          if (inputClie) {
-            inputClie.value = cat.margen_cliente !== null ? cat.margen_cliente : 0.22;
-          }
-
-          console.log(`Márgenes cargados para ${cat.nombre}: ${cat.margen_tuyo} / ${cat.margen_cliente}`);
-        }
-      } catch (e) {
-        console.error("Error al cargar los márgenes de la categoría:", e);
-      }
-    }
-    // Cambia el nombre a cargarMargenesActuales para que coincida con el HTML
     async function cargarMargenesActuales() {
       const select = document.getElementById('m-tipo');
       if (!select || !select.value) {
@@ -946,25 +803,18 @@
       }
 
       const tipoId = select.value;
-      try {
-        const cat = tipos.find(t => t.id == tipoId);
-        if (cat) {
-          document.getElementById('m-tuyo').value = cat.margen_tuyo || 0.12;
-          document.getElementById('m-clie').value = cat.margen_cliente || 0.22;
-        }
-
-        // Cargar y mostrar la tabla de productos individuales
-        await cargarProductosMargenes(tipoId);
-      } catch (e) {
-        console.error("Error al mostrar márgenes:", e);
+      const cat = tipos.find(t => String(t.id) === String(tipoId));
+      if (cat) {
+        document.getElementById('m-tuyo').value = cat.margen_tuyo ?? 0.12;
+        document.getElementById('m-clie').value = cat.margen_cliente ?? 0.22;
       }
+
+      await cargarProductosMargenes(tipoId);
     }
 
-    // Función para el botón masivo
     async function actualizarMargenesMasivo() {
       const select = document.getElementById('m-tipo');
       const id = select.value;
-
       const mt = parseFloat(document.getElementById('m-tuyo').value);
       const mc = parseFloat(document.getElementById('m-clie').value);
 
@@ -972,71 +822,160 @@
 
       try {
         const data = { margen_tuyo: mt, margen_cliente: mc };
-
-        // Actualizar categoría
         await dbPatch('tipos_producto', id, data);
 
-        // Actualizar local
-        const idx = tipos.findIndex(t => t.id == id);
+        const idx = tipos.findIndex(t => String(t.id) === String(id));
         if (idx !== -1) {
           tipos[idx].margen_tuyo = mt;
           tipos[idx].margen_cliente = mc;
         }
 
-        mostrarToast('✅ Categoría actualizada');
-        registrarLog(`Categoría ${id} actualizada a ${mt}/${mc}`);
-
-        // Recargar la tabla inferior con los nuevos placeholders
+        mostrarToast('✅ Margen de categoría guardado');
+        registrarLog(`Categoría ${id} márgenes: ${mt}/${mc}`);
         await cargarProductosMargenes(id);
-
       } catch (e) {
-        alert("Error de base de datos: " + e.message);
+        alert("Error: " + e.message);
       }
     }
 
-    function mostrarError(msg) {
-      const el = document.getElementById('modal-error');
-      el.textContent = msg;
-      el.style.display = 'block';
+    async function cargarProductosMargenes(tipoId) {
+      const card = document.getElementById('card-margenes-individuales');
+      const tbody = document.getElementById('tbody-margenes-prods');
+
+      card.style.display = 'block';
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center"><div class="spinner"></div></td></tr>`;
+
+      try {
+        prodsCategoriaActual = await dbGet('productos', `select=id,codigo,nombre,margen_tuyo,margen_cliente&tipo_id=eq.${tipoId}&order=codigo.asc`) || [];
+
+        if (!prodsCategoriaActual.length) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1rem; color:var(--text-muted)">No hay productos en esta categoría.</td></tr>`;
+          return;
+        }
+
+        const cat = tipos.find(t => String(t.id) === String(tipoId));
+        const defTuyo = cat?.margen_tuyo ?? 0.12;
+        const defClie = cat?.margen_cliente ?? 0.22;
+
+        tbody.innerHTML = prodsCategoriaActual.map(p => `
+          <tr>
+            <td>
+              <div style="font-weight:600; font-size:0.85rem">${p.nombre}</div>
+              <div style="font-size:0.7rem; color:var(--text-muted)">${p.codigo}</div>
+            </td>
+            <td>
+              <input class="inline-input" type="number" step="0.01" 
+                     id="mp-tuyo-${p.id}" 
+                     value="${p.margen_tuyo !== null && p.margen_tuyo !== undefined ? p.margen_tuyo : ''}" 
+                     placeholder="${defTuyo}" 
+                     style="width:75px">
+            </td>
+            <td>
+              <input class="inline-input" type="number" step="0.01" 
+                     id="mp-clie-${p.id}" 
+                     value="${p.margen_cliente !== null && p.margen_cliente !== undefined ? p.margen_cliente : ''}" 
+                     placeholder="${defClie}" 
+                     style="width:75px">
+            </td>
+            <td style="text-align:center">
+              <button class="btn-icon btn-save" onclick="guardarMargenIndividual(${p.id})">💾</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="alert alert-error">${e.message}</div></td></tr>`;
+      }
     }
 
-    function guardarMargenes() {
-      const cfg = JSON.parse(localStorage.getItem('cedis_config') || '{}');
-      cfg.margen_tuyo = parseFloat(document.getElementById('cfg-margen-tuyo').value);
-      cfg.margen_cliente = parseFloat(document.getElementById('cfg-margen-cliente').value);
-      localStorage.setItem('cedis_config', JSON.stringify(cfg));
-      registrarLog(`Márgenes: tuyo=${cfg.margen_tuyo}, cliente=${cfg.margen_cliente}`);
-      const msg = document.getElementById('msg-margenes');
-      msg.innerHTML = '<div class="alert alert-success">✅ Márgenes guardados como default.</div>';
-      msg.style.display = 'block';
-      setTimeout(() => msg.style.display = 'none', 3000);
+    async function guardarMargenIndividual(id) {
+      try {
+        const valTuyo = document.getElementById(`mp-tuyo-${id}`).value;
+        const valClie = document.getElementById(`mp-clie-${id}`).value;
+
+        const data = {
+          margen_tuyo: valTuyo !== '' ? parseFloat(valTuyo) : null,
+          margen_cliente: valClie !== '' ? parseFloat(valClie) : null
+        };
+
+        await dbPatch('productos', id, data);
+        const prod = prodsCategoriaActual.find(x => x.id === id);
+        if (prod) Object.assign(prod, data);
+
+        mostrarToast('✅ Margen guardado');
+        registrarLog(`Margen individual: ${prod?.nombre || id}`);
+      } catch (e) {
+        mostrarToast('❌ ' + e.message, true);
+      }
     }
 
-    function guardarDefaults() {
-      const cfg = JSON.parse(localStorage.getItem('cedis_config') || '{}');
-      cfg.costo_bolsa = parseFloat(document.getElementById('cfg-bolsa').value);
-      cfg.costo_produccion = parseFloat(document.getElementById('cfg-produccion').value);
-      cfg.merma_pct = parseFloat(document.getElementById('cfg-merma').value);
-      localStorage.setItem('cedis_config', JSON.stringify(cfg));
-      registrarLog(`Defaults: bolsa=$${cfg.costo_bolsa}, prod=$${cfg.costo_produccion}`);
-      const msg = document.getElementById('msg-defaults');
-      msg.innerHTML = '<div class="alert alert-success">✅ Valores default guardados.</div>';
-      msg.style.display = 'block';
-      setTimeout(() => msg.style.display = 'none', 3000);
+    // ── SIMULADOR DE IMPACTO ──────────────────────────────────────
+    function llenarSelectSimulador() {
+      const sel = document.getElementById('sim-cat');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Selecciona categoría...</option>' +
+        tipos.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
     }
 
-    function simular() {
-      const precio = parseFloat(document.getElementById('sim-precio').value);
-      const mTuyo = parseFloat(document.getElementById('sim-mtuyo').value);
-      const mClient = parseFloat(document.getElementById('sim-mcliente').value);
-      if (!precio || !mTuyo || !mClient) return;
-      const pv = redondear(precio / (1 + mClient));
-      const cmt = redondear(pv / (1 + mTuyo));
-      const ut = redondear(pv - cmt);
-      document.getElementById('sim-r1').textContent = formatPeso(pv);
-      document.getElementById('sim-r2').textContent = formatPeso(cmt);
-      document.getElementById('sim-r3').textContent = formatPeso(ut);
-      document.getElementById('sim-r4').textContent = `${redondear(ut / pv * 100, 1)}%`;
+    function cargarSimuladorCategoria() {
+      const catId = document.getElementById('sim-cat').value;
+      if (!catId) return;
+
+      const cat = tipos.find(t => String(t.id) === String(catId));
+      if (cat) {
+        document.getElementById('sim-mtuyo').value = cat.margen_tuyo ?? 0.12;
+        document.getElementById('sim-mcliente').value = cat.margen_cliente ?? 0.22;
+
+        const productosCat = productosCostos.filter(p => String(p.tipo_id) === String(catId));
+        const selProd = document.getElementById('sim-prod');
+        selProd.innerHTML = '<option value="">Selecciona un producto...</option>' +
+          productosCat.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+
+        ejecutarSimulacion();
+      }
+    }
+
+    function ejecutarSimulacion() {
+      const precioTienda = parseFloat(document.getElementById('sim-precio').value);
+      const mtuyo = parseFloat(document.getElementById('sim-mtuyo').value);
+      const mclie = parseFloat(document.getElementById('sim-mcliente').value);
+      const idProd = document.getElementById('sim-prod').value;
+
+      if (!precioTienda || isNaN(mtuyo) || isNaN(mclie)) {
+        document.getElementById('sim-resultado').style.display = 'none';
+        return;
+      }
+
+      const precioCedis = redondear(precioTienda / (1 + mclie), 2);
+      const costoTotalMax = redondear(precioCedis / (1 + mtuyo), 2);
+      const utilidadDeseada = redondear(precioCedis - costoTotalMax, 2);
+
+      let gramos = "N/A";
+      let infoExtra = "Selecciona un producto para calcular los gramos disponibles.";
+
+      if (idProd) {
+        const p = productosCostos.find(c => String(c.id) === String(idProd));
+        if (p && p.costo_kg) {
+          const costoGramoReal = (parseFloat(p.costo_kg) / 1000) / (1 - (parseFloat(p.merma_pct) || 0.02));
+          const insumos = (parseFloat(p.costo_bolsa) || 0.29) + (parseFloat(p.costo_produccion) || 1.30);
+          const dineroParaMP = costoTotalMax - insumos;
+
+          if (dineroParaMP > 0) {
+            gramos = Math.floor(dineroParaMP / costoGramoReal) + "g";
+            infoExtra = `📦 Insumos fijos: ${formatPeso(insumos)} | Costo/g real: ${formatPeso(costoGramoReal)}`;
+          } else {
+            gramos = "0g";
+            infoExtra = "<span style='color:var(--danger)'>⚠️ El precio no cubre los insumos fijos.</span>";
+          }
+        } else {
+          infoExtra = "<span style='color:var(--danger)'>⚠️ Este producto no tiene costo por kg registrado.</span>";
+        }
+      }
+
+      document.getElementById('sim-r-gramos').textContent = gramos;
+      document.getElementById('sim-r-cedis').textContent = formatPeso(precioCedis);
+      document.getElementById('sim-r-utilidad').textContent = formatPeso(utilidadDeseada);
+      document.getElementById('sim-r-marginp').textContent = redondear((utilidadDeseada / precioCedis) * 100, 1) + "%";
+      document.getElementById('sim-detalles-prod').innerHTML = infoExtra;
       document.getElementById('sim-resultado').style.display = 'block';
     }
 
@@ -1044,7 +983,7 @@
     function llenarSelectsBulk() {
       ['bulk-cat', 'bulk-inf-cat'].forEach(id => {
         const sel = document.getElementById(id);
-        sel.innerHTML = tipos.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
+        if (sel) sel.innerHTML = tipos.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
       });
     }
 
@@ -1053,20 +992,26 @@
       const bolsa = parseFloat(document.getElementById('bulk-bolsa').value);
       const prod = parseFloat(document.getElementById('bulk-prod').value);
       const msg = document.getElementById('msg-bulk-costos');
-      if (!bolsa && !prod) { msg.textContent = '⚠️ Ingresa al menos un valor'; return; }
+
+      if (isNaN(bolsa) && isNaN(prod)) { msg.textContent = '⚠️ Ingresa al menos un valor'; return; }
       if (!confirm('¿Actualizar insumos de TODOS los productos de esta categoría?')) return;
+
       msg.textContent = '⏳ Aplicando...';
       try {
         const body = {};
-        if (bolsa) body.costo_bolsa = bolsa;
-        if (prod) body.costo_produccion = prod;
+        if (!isNaN(bolsa)) body.costo_bolsa = bolsa;
+        if (!isNaN(prod)) body.costo_produccion = prod;
+
         const res = await fetch(`${SUPABASE_URL}/rest/v1/productos?tipo_id=eq.${tipoId}`, {
-          method: 'PATCH', headers: { ...headers, 'Prefer': 'return=representation' }, body: JSON.stringify(body)
+          method: 'PATCH',
+          headers: { ...headers, 'Prefer': 'return=representation' },
+          body: JSON.stringify(body)
         });
+
         if (!res.ok) throw new Error(await res.text());
         const act = await res.json();
         msg.innerHTML = `<span style="color:var(--success)">✅ ${act.length} productos actualizados</span>`;
-        registrarLog(`Bulk insumos: ${act.length} productos en tipo ${tipoId}`);
+        registrarLog(`Insumos masivos: ${act.length} productos en categoría ${tipoId}`);
         await cargarCostos();
       } catch (e) { msg.innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`; }
     }
@@ -1075,16 +1020,18 @@
       const tipoId = parseInt(document.getElementById('bulk-inf-cat').value);
       const pct = parseFloat(document.getElementById('bulk-inf-pct').value);
       const msg = document.getElementById('msg-bulk-inf');
+
       if (!pct) { msg.textContent = '⚠️ Ingresa el porcentaje'; return; }
       if (!confirm(`¿Aplicar ajuste de ${pct > 0 ? '+' : ''}${pct}% al costo/kg de esta categoría?`)) return;
+
       msg.textContent = '⏳ Calculando...';
       try {
         const prods = await dbGet('productos', `select=id,costo_kg&tipo_id=eq.${tipoId}&costo_kg=not.is.null`);
         for (const p of prods) {
-          await dbPatch('productos', p.id, { costo_kg: redondear(p.costo_kg * (1 + pct / 100)) });
+          await dbPatch('productos', p.id, { costo_kg: redondear(p.costo_kg * (1 + pct / 100), 2) });
         }
-        msg.innerHTML = `<span style="color:var(--success)">✅ ${prods.length} productos ajustados (${pct > 0 ? '+' : ''}${pct}%)</span>`;
-        registrarLog(`Inflación ${pct}%: ${prods.length} productos en tipo ${tipoId}`);
+        msg.innerHTML = `<span style="color:var(--success)">✅ ${prods.length} productos ajustados</span>`;
+        registrarLog(`Inflación ${pct}%: ${prods.length} productos actualizados`);
         await cargarCostos();
       } catch (e) { msg.innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`; }
     }
@@ -1112,10 +1059,10 @@
         const blob = new Blob([enc + fil], { type: 'text/csv;charset=utf-8;' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `cedis_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `cedis_catalogo_${Date.now()}.csv`;
         a.click();
         msg.innerHTML = '<span style="color:var(--success)">✅ CSV descargado</span>';
-        registrarLog(`Exportado CSV (${prods.length} productos)`);
+        registrarLog(`Exportado catálogo CSV (${prods.length} productos)`);
       } catch (e) { msg.innerHTML = `<span style="color:var(--danger)">❌ ${e.message}</span>`; }
     }
 
@@ -1127,20 +1074,28 @@
       modalGenCallback = cb;
       document.getElementById('modal-gen').style.display = 'block';
     }
+
     function cerrarModalGen() {
       document.getElementById('modal-gen').style.display = 'none';
       modalGenCallback = null;
     }
+
     async function modalGenConfirmar() {
       if (!modalGenCallback) return;
+      const btn = document.getElementById('btn-modal-confirmar');
+      btn.disabled = true;
       document.getElementById('modal-gen-error').style.display = 'none';
+
       try {
         await modalGenCallback();
         cerrarModalGen();
-        mostrarToast('✅ Guardado');
+        mostrarToast('✅ Operación exitosa');
       } catch (e) {
         const el = document.getElementById('modal-gen-error');
-        el.textContent = e.message; el.style.display = 'block';
+        el.textContent = e.message;
+        el.style.display = 'block';
+      } finally {
+        btn.disabled = false;
       }
     }
 
@@ -1159,7 +1114,8 @@
     function mostrarToast(msg, esError = false) {
       let t = document.getElementById('_toast');
       if (!t) {
-        t = document.createElement('div'); t.id = '_toast';
+        t = document.createElement('div');
+        t.id = '_toast';
         t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:0.6rem 1.2rem;border-radius:20px;font-size:0.88rem;font-weight:600;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:opacity 0.3s';
         document.body.appendChild(t);
       }
@@ -1169,168 +1125,6 @@
       t.style.opacity = '1';
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => t.style.opacity = '0', 2500);
-    }
-
-    // Esta función llena el select del simulador al iniciar
-    function llenarSelectSimulador() {
-      const sel = document.getElementById('sim-cat');
-      if (!sel) return;
-      sel.innerHTML = '<option value="">Selecciona una categoría...</option>' +
-        tipos.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
-    }
-
-    // Al cambiar la categoría, cargamos sus márgenes en los inputs
-    function cargarSimuladorCategoria() {
-      const catId = document.getElementById('sim-cat').value;
-      if (!catId) return;
-
-      const cat = tipos.find(t => t.id == catId);
-      if (cat) {
-        document.getElementById('sim-mtuyo').value = cat.margen_tuyo || 0.12;
-        document.getElementById('sim-mcliente').value = cat.margen_cliente || 0.22;
-
-        // CORRECCIÓN: Usamos productosCostos que es tu variable global
-        // Filtramos productos que pertenecen a esta categoría
-        const productosCat = productosCostos.filter(p => {
-          // Intentamos filtrar por tipo_id o por los primeros dígitos del código
-          return p.tipo_id == catId || String(p.codigo).startsWith(String(catId).substring(0, 2));
-        });
-
-        const selProd = document.getElementById('sim-prod');
-        selProd.innerHTML = '<option value="">Selecciona un producto...</option>' +
-          productosCat.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
-
-        ejecutarSimulacion();
-      }
-    }
-
-    // Realiza los cálculos matemáticos profesionales
-    // REEMPLAZAR COMPLETAMENTE
-    function ejecutarSimulacion() {
-      const precioTienda = parseFloat(document.getElementById('sim-precio').value);
-      const mtuyo = parseFloat(document.getElementById('sim-mtuyo').value);
-      const mclie = parseFloat(document.getElementById('sim-mcliente').value);
-      const idProd = document.getElementById('sim-prod').value;
-
-      if (!precioTienda || isNaN(mtuyo) || isNaN(mclie)) return;
-
-      // 1. Cálculos de Precios
-      const precioCedis = redondear(precioTienda / (1 + mclie));
-      const costoTotalMax = redondear(precioCedis / (1 + mtuyo));
-      const utilidadDeseada = redondear(precioCedis - costoTotalMax);
-
-      // 2. Impacto Real
-      let gramos = "N/A";
-      let infoExtra = "Selecciona un producto para ver el peso permitido.";
-
-      if (idProd) {
-        // CORRECCIÓN: Buscamos en productosCostos por ID
-        const p = productosCostos.find(c => c.id == idProd);
-        if (p) {
-          // Aplicamos la fórmula profesional: Costo / (1 - Merma)
-          const costoGramoReal = (p.costo_kg / 1000) / (1 - (p.merma_pct || 0.02));
-          const insumos = (p.costo_bolsa || 0.29) + (p.costo_produccion || 1.30);
-          const dineroParaMP = costoTotalMax - insumos;
-
-          if (dineroParaMP > 0) {
-            gramos = Math.floor(dineroParaMP / costoGramoReal) + "g";
-            infoExtra = `📦 <b>Insumos:</b> ${formatPeso(insumos)} | <b>Costo g real:</b> ${formatPeso(costoGramoReal)}`;
-          } else {
-            gramos = "0g";
-            infoExtra = "<span style='color:var(--danger)'>⚠️ El precio no cubre ni los insumos fijos.</span>";
-          }
-        }
-      }
-
-      // 3. Inyectar en el HTML
-      document.getElementById('sim-r-gramos').textContent = gramos;
-      document.getElementById('sim-r-cedis').textContent = formatPeso(precioCedis);
-      document.getElementById('sim-r-utilidad').textContent = formatPeso(utilidadDeseada);
-      document.getElementById('sim-r-marginp').textContent = redondear((utilidadDeseada / precioCedis) * 100, 1) + "%";
-      document.getElementById('sim-detalles-prod').innerHTML = infoExtra;
-
-      document.getElementById('sim-resultado').style.display = 'block';
-    }
-
-    // FUNCIÓN NUEVA: Llenar el select inicial
-    function llenarSelectSimulador() {
-      const sel = document.getElementById('sim-cat');
-      if (!sel) return;
-      sel.innerHTML = '<option value="">Selecciona categoría...</option>' +
-        tipos.map(t => `<option value="${t.id}">${t.nombre}</option>`).join('');
-    }
-
-
-    async function cargarProductosMargenes(tipoId) {
-      const card = document.getElementById('card-margenes-individuales');
-      const tbody = document.getElementById('tbody-margenes-prods');
-
-      card.style.display = 'block';
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center"><div class="spinner"></div></td></tr>`;
-
-      try {
-        prodsCategoriaActual = await dbGet('productos', `select=id,codigo,nombre,margen_tuyo,margen_cliente&tipo_id=eq.${tipoId}&order=codigo.asc`);
-
-        if (!prodsCategoriaActual.length) {
-          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1rem; color:var(--text-muted)">No hay productos registrados en esta categoría.</td></tr>`;
-          return;
-        }
-
-        const cat = tipos.find(t => t.id == tipoId);
-        const defTuyo = cat?.margen_tuyo || 0.12;
-        const defClie = cat?.margen_cliente || 0.22;
-
-        tbody.innerHTML = prodsCategoriaActual.map(p => `
-          <tr>
-            <td>
-              <div style="font-weight:600; font-size:0.85rem">${p.nombre}</div>
-              <div style="font-size:0.7rem; color:var(--text-muted)">${p.codigo}</div>
-            </td>
-            <td>
-              <input class="inline-input" type="number" step="0.01" 
-                     id="mp-tuyo-${p.id}" 
-                     value="${p.margen_tuyo !== null && p.margen_tuyo !== undefined ? p.margen_tuyo : ''}" 
-                     placeholder="${defTuyo}" 
-                     style="width:75px">
-            </td>
-            <td>
-              <input class="inline-input" type="number" step="0.01" 
-                     id="mp-clie-${p.id}" 
-                     value="${p.margen_cliente !== null && p.margen_cliente !== undefined ? p.margen_cliente : ''}" 
-                     placeholder="${defClie}" 
-                     style="width:75px">
-            </td>
-            <td style="text-align:center">
-              <button class="btn-icon btn-save" onclick="guardarMargenIndividual(${p.id})">💾</button>
-            </td>
-          </tr>
-        `).join('');
-
-      } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="4"><div class="alert alert-error">${e.message}</div></td></tr>`;
-      }
-    }
-
-    async function guardarMargenIndividual(id) {
-      try {
-        const valTuyo = document.getElementById(`mp-tuyo-${id}`).value;
-        const valClie = document.getElementById(`mp-clie-${id}`).value;
-
-        const data = {
-          margen_tuyo: valTuyo !== '' ? parseFloat(valTuyo) : null,
-          margen_cliente: valClie !== '' ? parseFloat(valClie) : null
-        };
-
-        await dbPatch('productos', id, data);
-
-        const prod = prodsCategoriaActual.find(x => x.id === id);
-        if (prod) Object.assign(prod, data);
-
-        mostrarToast('✅ Margen de producto actualizado');
-        registrarLog(`Margen individual: ${prod?.nombre || id}`);
-      } catch (e) {
-        mostrarToast('❌ Error: ' + e.message, true);
-      }
     }
 
     init();

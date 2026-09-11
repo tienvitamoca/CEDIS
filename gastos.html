@@ -62,35 +62,16 @@
       color: white;
       border-color: var(--primary);
     }
-
-    .modal-backdrop {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 10000;
-      padding: 1rem;
-      overflow-y: auto;
-    }
-
-    .modal-dialog {
-      background: white;
-      border-radius: var(--radius);
-      max-width: 500px;
-      margin: 1.5rem auto;
-      padding: 1.25rem;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-    }
   </style>
 </head>
 
 <body>
   <nav class="navbar">
     <a href="index.html">←</a>
-    <h1>📉 Reporte de Gastos y Compras</h1>
+    <h1>📉 Reporte de Gastos</h1>
     <button onclick="window.location.href='compras.html'" style="background:var(--primary); color:white; border:none; border-radius:6px; padding:0.4rem 0.8rem; font-weight:bold; cursor:pointer;">
-  ➕ Registrar Compra / Gasto
-</button>
+      ➕ Registrar Compra / Gasto
+    </button>
   </nav>
 
   <div class="container has-bottom-nav">
@@ -141,6 +122,39 @@
       </div>
     </div>
 
+    <!-- BALANCE DE MANO DE OBRA (PAGADO VS RECUPERADO) -->
+    <div class="card" style="margin-bottom: 1rem; border-left: 4px solid #8b5cf6;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+        <div>
+          <div class="card-title" style="margin:0;">⚖️ Balance de Mano de Obra y Empaque</div>
+          <small style="color:var(--text-muted); font-size:0.75rem;">Comparación entre lo pagado al personal vs lo cobrado en bolsas vendidas</small>
+        </div>
+        <span id="badge-balance-mo" class="badge badge-green" style="font-size:0.8rem;">$0.00</span>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:0.75rem; text-align:center;">
+        <div style="background:var(--bg); padding:0.6rem; border-radius:8px;">
+          <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">BOLSAS VENDIDAS</div>
+          <div id="mo-bolsas-vendidas" style="font-size:1.15rem; font-weight:800; color:var(--text);">0</div>
+        </div>
+
+        <div style="background:var(--bg); padding:0.6rem; border-radius:8px;">
+          <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">MO RECUPERADA (VENTAS)</div>
+          <div id="mo-recuperada" style="font-size:1.15rem; font-weight:800; color:#16a34a;">$0.00</div>
+        </div>
+
+        <div style="background:var(--bg); padding:0.6rem; border-radius:8px;">
+          <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">MO PAGADA (EGRESOS)</div>
+          <div id="mo-pagada" style="font-size:1.15rem; font-weight:800; color:#ef4444;">$0.00</div>
+        </div>
+
+        <div style="background:var(--bg); padding:0.6rem; border-radius:8px;">
+          <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700;">DIFERENCIA NETA</div>
+          <div id="mo-diferencia" style="font-size:1.15rem; font-weight:800;">$0.00</div>
+        </div>
+      </div>
+    </div>
+
     <!-- GRÁFICA DE DISTRIBUCIÓN -->
     <div class="card" style="margin-bottom:1rem">
       <div class="card-title">Distribución de Gastos por Categoría</div>
@@ -173,56 +187,28 @@
 
   </div>
 
-
   <nav class="bottom-nav">
     <a href="index.html"><span class="icon">🏠</span> Inicio</a>
     <a href="inventario.html"><span class="icon">📦</span> Stock</a>
-    <a href="CEDIS.html"><span class="icon">🧮</span> CEDIS</a>
-    <a href="ventas.html"><span class="icon">📊</span> Ventas</a>
-    <a href="catalogo.html"><span class="icon">📋</span> Catálogo</a>
+    <a href="compras.html"><span class="icon">📥</span> Compras</a>
+    <a href="produccion.html"><span class="icon">⚙️</span> Producción</a>
+    <a href="gastos.html" class="active"><span class="icon">📉</span> Gastos</a>
   </nav>
 
   <script src="supabase.js"></script>
   <script>
     let todosLosGastos = [];
     let gastosFiltrados = [];
-    let proveedores = [];
-    let catalogoProductos = [];
     let graficoGastos = null;
     let periodoActual = '7d';
 
     async function init() {
-      await Promise.all([cargarProveedores(), cargarCatalogo()]);
       await cargarHistoricoGastos();
-    }
-
-    async function cargarProveedores() {
-      try {
-        proveedores = await dbGet('proveedores', 'order=nombre.asc');
-        const sel = document.getElementById('form-proveedor');
-        proveedores.forEach(p => {
-          sel.innerHTML += `<option value="${p.id}">${p.nombre}</option>`;
-        });
-      } catch (e) {
-        console.warn("Tabla proveedores no iniciada aún.");
-      }
-    }
-
-    async function cargarCatalogo() {
-      try {
-        catalogoProductos = await dbGet('productos', 'select=id,nombre,costo_kg&order=nombre.asc');
-        const sel = document.getElementById('form-producto-id');
-        catalogoProductos.forEach(p => {
-          sel.innerHTML += `<option value="${p.id}" data-costo="${p.costo_kg || 0}">${p.nombre}</option>`;
-        });
-      } catch (e) {
-        console.error("Error al cargar productos:", e);
-      }
     }
 
     async function cargarHistoricoGastos() {
       try {
-        todosLosGastos = await dbGet('compras_gastos', 'select=*,proveedores(nombre),detalle_compras_mp(*,productos(nombre))&order=id.desc');
+        todosLosGastos = await dbGet('compras_gastos', 'select=*,proveedores(nombre),detalle_compras_mp(*,productos(nombre))&order=fecha.desc') || [];
         aplicarFiltroPeriodo(periodoActual);
       } catch (e) {
         document.getElementById('bitacora-gastos-dias').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
@@ -295,10 +281,11 @@
       procesarAnaliticaCompleta();
     }
 
-    function procesarAnaliticaCompleta() {
+    async function procesarAnaliticaCompleta() {
       actualizarKpis();
       dibujarGraficoCategorias();
       renderizarBitacora();
+      await calcularBalanceManoDeObra();
     }
 
     function actualizarKpis() {
@@ -322,6 +309,83 @@
       document.getElementById('kpi-operativos').textContent = formatPeso(totalOp);
     }
 
+    async function calcularBalanceManoDeObra() {
+      try {
+        let fechaInicio = null;
+        let fechaFin = null;
+
+        if (periodoActual === 'custom') {
+          const fi = document.getElementById('fecha-inicio').value;
+          const ff = document.getElementById('fecha-fin').value;
+          if (fi && ff) {
+            fechaInicio = new Date(`${fi}T00:00:00`).toISOString();
+            fechaFin = new Date(`${ff}T23:59:59`).toISOString();
+          }
+        } else {
+          const ahora = new Date();
+          if (periodoActual === 'hoy') {
+            fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).toISOString();
+          } else if (periodoActual === '7d') {
+            fechaInicio = new Date(ahora.getTime() - (7 * 24 * 60 * 60 * 1000)).toISOString();
+          } else if (periodoActual === 'mes') {
+            fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
+          } else if (periodoActual === 'mes-anterior') {
+            fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1).toISOString();
+            fechaFin = new Date(ahora.getFullYear(), ahora.getMonth(), 0, 23, 59, 59).toISOString();
+          }
+        }
+
+        let query = 'select=total_piezas,estado,fecha,detalle_ventas(cantidad_piezas,productos(costo_produccion))&estado=eq.COMPLETADA';
+        if (fechaInicio) query += `&fecha=gte.${fechaInicio}`;
+        if (fechaFin) query += `&fecha=lte.${fechaFin}`;
+
+        const ventas = await dbGet('ventas', query) || [];
+
+        let totalBolsasVendidas = 0;
+        let totalMoRecuperada = 0;
+
+        ventas.forEach(v => {
+          (v.detalle_ventas || []).forEach(d => {
+            const pzas = parseInt(d.cantidad_piezas) || 1;
+            const cProd = parseFloat(d.productos?.costo_produccion) || 1.30;
+            totalBolsasVendidas += pzas;
+            totalMoRecuperada += (pzas * cProd);
+          });
+        });
+
+        let totalMoPagada = 0;
+        gastosFiltrados.forEach(g => {
+          if (g.estado !== 'CANCELADO' && (g.categoria === 'Mano de Obra' || g.concepto?.toLowerCase().includes('mano de obra') || g.concepto?.toLowerCase().includes('empaque'))) {
+            totalMoPagada += parseFloat(g.total) || 0;
+          }
+        });
+
+        const diferencia = redondear(totalMoRecuperada - totalMoPagada, 2);
+
+        document.getElementById('mo-bolsas-vendidas').textContent = totalBolsasVendidas.toLocaleString('es-MX');
+        document.getElementById('mo-recuperada').textContent = formatPeso(totalMoRecuperada);
+        document.getElementById('mo-pagada').textContent = formatPeso(totalMoPagada);
+
+        const elDif = document.getElementById('mo-diferencia');
+        const badge = document.getElementById('badge-balance-mo');
+
+        if (diferencia >= 0) {
+          elDif.style.color = '#16a34a';
+          elDif.textContent = `+${formatPeso(diferencia)}`;
+          badge.className = 'badge badge-green';
+          badge.textContent = `Superávit: +${formatPeso(diferencia)}`;
+        } else {
+          elDif.style.color = '#dc2626';
+          elDif.textContent = `-${formatPeso(Math.abs(diferencia))}`;
+          badge.className = 'badge badge-red';
+          badge.textContent = `Déficit: -${formatPeso(Math.abs(diferencia))}`;
+        }
+
+      } catch (err) {
+        console.error("Error al calcular balance de mano de obra:", err);
+      }
+    }
+
     function dibujarGraficoCategorias() {
       const mapa = {};
       gastosFiltrados.filter(g => g.estado !== 'CANCELADO').forEach(g => {
@@ -341,7 +405,7 @@
           labels: labels.length ? labels : ['Sin Gastos'],
           datasets: [{
             data: data.length ? data : [1],
-            backgroundColor: ['#f97316', '#8b5cf6', '#06b6d4', '#10b981', '#64748b']
+            backgroundColor: ['#f97316', '#8b5cf6', '#06b6d4', '#10b981', '#64748b', '#ef4444']
           }]
         },
         options: {
@@ -427,7 +491,6 @@
         const item = todosLosGastos.find(g => g.id === id);
         if (!item) return;
 
-        // Si fue compra de materia prima, descontar los gramos ingresados
         if (item.tipo === 'MATERIA_PRIMA' && item.detalle_compras_mp?.length) {
           for (const d of item.detalle_compras_mp) {
             const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${d.producto_id}`);
