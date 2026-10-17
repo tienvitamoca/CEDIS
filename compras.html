@@ -211,7 +211,7 @@
 
   </div>
 
-  <!-- MODAL PARA REGISTRAR ENTRADA EN GRAMOS -->
+  <!-- MODAL PARA REGISTRAR ENTRADA EN GRAMOS CON CÁLCULO BIDIRECCIONAL -->
   <div id="modal-recibir-mp" class="modal-backdrop">
     <div class="modal-dialog">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem">
@@ -237,21 +237,26 @@
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
         <div class="field">
           <label>Cantidad en GRAMOS (g)</label>
-          <input type="number" id="mp-gramos" step="10" placeholder="Ej: 5000" oninput="calcularDesdeGramos()">
+          <input type="number" id="mp-gramos" step="10" placeholder="Ej: 1000" oninput="calcularDesdeGramos()">
           <small id="mp-equivalencia-kg" style="color:var(--text-muted); font-size:0.7rem; font-weight:bold; display:block; margin-top:2px;">= 0.00 kg</small>
         </div>
         <div class="field">
           <label>Costo por Kilo ($/kg)</label>
-          <input type="number" id="mp-costo-kg" step="0.5" placeholder="0.00" oninput="calcularDesdeGramos()">
+          <input type="number" id="mp-costo-kg" step="0.01" placeholder="0.00" oninput="calcularDesdeGramos()">
         </div>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:0.75rem 1rem; border-radius:8px; margin:0.75rem 0;">
-        <div>
-          <span style="font-weight:700; font-size:0.85rem; display:block;">Total a Pagar:</span>
+      <div style="background:var(--bg); padding:0.75rem 1rem; border-radius:8px; margin:0.75rem 0; border:1.5px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+          <label style="font-weight:700; font-size:0.85rem; margin:0;">Total a Pagar ($):</label>
           <small style="color:var(--text-muted); font-size:0.7rem;">(Gramos × Costo/kg ÷ 1000)</small>
         </div>
-        <span id="mp-total-lbl" style="font-size:1.35rem; font-weight:800; color:#16a34a;">$0.00</span>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span style="font-size:1.3rem; font-weight:800; color:#16a34a;">$</span>
+          <input type="number" id="mp-total-input" step="0.01" placeholder="0.00" 
+                 style="font-size:1.25rem; font-weight:800; color:#16a34a; width:100%; border:1.5px solid var(--border); border-radius:6px; padding:0.4rem 0.6rem; background:white;" 
+                 oninput="calcularDesdeTotal()">
+        </div>
       </div>
 
       <div class="field">
@@ -406,7 +411,7 @@
       renderizarGridProductos(encontrados);
     }
 
-    // ─── MODAL RECEPCIÓN EN GRAMOS ────────────────────────────────
+    // ─── MODAL RECEPCIÓN EN GRAMOS CON CÁLCULO BIDIRECCIONAL ───────
     function abrirModalRecibirMp(prod) {
       productoAProcesar = prod;
       document.getElementById('mp-prod-nombre').textContent = prod.nombre;
@@ -417,7 +422,7 @@
       document.getElementById('mp-costo-kg').value = prod.costo_kg || '';
       document.getElementById('mp-gramos').value = '';
       document.getElementById('mp-equivalencia-kg').textContent = '= 0.00 kg';
-      document.getElementById('mp-total-lbl').textContent = '$0.00';
+      document.getElementById('mp-total-input').value = '';
       document.getElementById('mp-folio').value = '';
 
       document.getElementById('modal-recibir-mp').style.display = 'block';
@@ -428,6 +433,7 @@
       productoAProcesar = null;
     }
 
+    // Al modificar Gramos o Costo por Kilo -> se calcula el Total
     function calcularDesdeGramos() {
       const gramos = parseFloat(document.getElementById('mp-gramos').value) || 0;
       const cKg = parseFloat(document.getElementById('mp-costo-kg').value) || 0;
@@ -435,8 +441,26 @@
       const kilos = gramos / 1000;
       document.getElementById('mp-equivalencia-kg').textContent = `= ${kilos.toFixed(3)} kg`;
 
-      const total = redondear((gramos / 1000) * cKg, 2);
-      document.getElementById('mp-total-lbl').textContent = formatPeso(total);
+      if (gramos > 0 && cKg >= 0) {
+        const total = redondear((gramos / 1000) * cKg, 2);
+        document.getElementById('mp-total-input').value = total;
+      } else {
+        document.getElementById('mp-total-input').value = '';
+      }
+    }
+
+    // Al modificar el Total a Pagar -> se recalcula el Costo por Kilo
+    function calcularDesdeTotal() {
+      const gramos = parseFloat(document.getElementById('mp-gramos').value) || 0;
+      const total = parseFloat(document.getElementById('mp-total-input').value) || 0;
+
+      const kilos = gramos / 1000;
+      document.getElementById('mp-equivalencia-kg').textContent = `= ${kilos.toFixed(3)} kg`;
+
+      if (kilos > 0 && total >= 0) {
+        const nuevoCostoKg = redondear(total / kilos, 2);
+        document.getElementById('mp-costo-kg').value = nuevoCostoKg;
+      }
     }
 
     async function confirmarRecepcionMp() {
@@ -446,9 +470,9 @@
       const cKg = parseFloat(document.getElementById('mp-costo-kg').value) || 0;
       const provId = document.getElementById('mp-proveedor').value || null;
       const folio = document.getElementById('mp-folio').value.trim() || null;
-      const total = redondear((gramos / 1000) * cKg, 2);
+      const total = parseFloat(document.getElementById('mp-total-input').value) || redondear((gramos / 1000) * cKg, 2);
 
-      if (gramos <= 0 || cKg <= 0) return alert("Ingresa gramos y costo por kilo válidos.");
+      if (gramos <= 0 || cKg <= 0 || total <= 0) return alert("Ingresa gramos, costo por kilo y total válidos.");
 
       const btn = document.getElementById('btn-guardar-mp');
       btn.disabled = true;
@@ -480,7 +504,7 @@
           subtotal: total
         });
 
-        // 3. Sumar gramos al producto y actualizar costo_kg
+        // 3. Sumar gramos al stock y actualizar el costo_kg en el catálogo
         const prodsDb = await dbGet('productos', `select=stock_gramos&id=eq.${productoAProcesar.id}`);
         if (prodsDb && prodsDb.length) {
           const stockActual = parseFloat(prodsDb[0].stock_gramos) || 0;
@@ -617,7 +641,7 @@
         });
         await cargarProveedores();
       } catch (e) {
-        alert("Error al eliminar proveedor: " + (e.message || JSON.stringify(e)));
+        alert("Error al eliminar proveedor: " + e.message);
       }
     }
 
