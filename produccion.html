@@ -63,6 +63,40 @@
       padding: 0.75rem;
       margin-bottom: 0.75rem;
     }
+
+    .filtro-chip {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .filtro-chip.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .lote-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+
+    .lote-item.pagado {
+      opacity: 0.75;
+      background: #f8fafc;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      border-radius: 6px;
+    }
   </style>
 </head>
 
@@ -151,16 +185,43 @@
       </button>
     </div>
 
-    <!-- LISTA DE LOTES PENDIENTES DE PAGO -->
+    <!-- CONTROL Y FILTRADO DE LOTES -->
     <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem">
-        <div class="card-title" style="margin:0">Lotes Pendientes de Pago</div>
-        <button id="btn-liquidar-todo" class="btn btn-primary" style="background:#16a34a; font-size:0.78rem; padding:0.35rem 0.7rem;" onclick="liquidarManoDeObra()">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+        <div class="card-title" style="margin:0">Bitácora de Lotes y Pagos</div>
+        
+        <!-- BOTÓN INTELIGENTE DE LIQUIDACIÓN -->
+        <button id="btn-accion-liquidar" class="btn btn-primary" style="background:#16a34a; font-size:0.78rem; padding:0.4rem 0.8rem; font-weight:700;" onclick="ejecutarLiquidacionSeleccionada()">
           💵 Liquidar Todo
         </button>
       </div>
 
-      <div id="lista-lotes-pendientes">
+      <!-- FILTROS DE ESTADO (CHIPS) -->
+      <div style="display:flex; gap:0.4rem; margin-bottom:0.75rem; flex-wrap:wrap;">
+        <button class="filtro-chip active" id="chip-pendientes" onclick="cambiarFiltroEstado('PENDIENTE', this)">⏳ Solo Pendientes</button>
+        <button class="filtro-chip" id="chip-pagados" onclick="cambiarFiltroEstado('PAGADO', this)">✅ Solo Liquidados</button>
+        <button class="filtro-chip" id="chip-todos" onclick="cambiarFiltroEstado('TODOS', this)">📋 Ver Todos</button>
+      </div>
+
+      <!-- FILTRO POR TRABAJADOR Y PRODUCTO -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-bottom:0.75rem;">
+        <select id="filtro-trabajador" style="padding:0.45rem; border-radius:8px; border:1px solid var(--border); font-size:0.8rem;" onchange="renderizarLotes()">
+          <option value="TODOS">Todos los trabajadores</option>
+        </select>
+        <input type="text" id="filtro-producto" placeholder="Filtrar por producto..." style="padding:0.45rem; border-radius:8px; border:1px solid var(--border); font-size:0.8rem;" oninput="renderizarLotes()">
+      </div>
+
+      <!-- SELECCIONADOR MASIVO -->
+      <div id="barra-seleccion-masiva" style="display:flex; justify-content:space-between; align-items:center; background:var(--bg); padding:0.4rem 0.6rem; border-radius:6px; margin-bottom:0.5rem; font-size:0.75rem;">
+        <label style="cursor:pointer; display:flex; align-items:center; gap:0.4rem; font-weight:600;">
+          <input type="checkbox" id="chk-marcar-todos" onchange="toggleSeleccionarTodos(this.checked)">
+          Marcar todos los visibles
+        </label>
+        <span id="txt-conteo-seleccionados" style="color:var(--text-muted); font-weight:700;">0 seleccionados</span>
+      </div>
+
+      <!-- LISTA DE LOTES -->
+      <div id="lista-lotes-contenedor">
         <div class="spinner"></div>
       </div>
     </div>
@@ -215,9 +276,11 @@
   <script>
     let empleados = [];
     let productos = [];
+    let todosLosLotes = [];
+    let lotesFiltradosVisibles = [];
+    let lotesSeleccionadosIds = new Set();
     let productoSeleccionadoId = null;
-    let lotesPendientes = [];
-    let lotesHoy = [];
+    let filtroEstadoActual = 'PENDIENTE';
 
     async function init() {
       await Promise.all([cargarProductos(), cargarEmpleados()]);
@@ -287,10 +350,18 @@
     async function cargarEmpleados() {
       try {
         empleados = await dbGet('empleados', 'order=nombre.asc') || [];
+        
+        // Select de registro
         const sel = document.getElementById('prod-empleado');
         sel.innerHTML = '<option value="">-- Seleccionar Trabajador --</option>';
+        
+        // Select de filtrado
+        const selFiltro = document.getElementById('filtro-trabajador');
+        selFiltro.innerHTML = '<option value="TODOS">Todos los trabajadores</option>';
+
         empleados.forEach(e => {
           sel.innerHTML += `<option value="${e.id}" data-tarifa="${e.pago_por_bolsa}">${e.nombre}</option>`;
+          selFiltro.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
         });
         renderizarListaEmpleados();
       } catch (e) { console.warn(e); }
@@ -310,7 +381,7 @@
       document.getElementById('prod-total-lbl').textContent = formatPeso(total);
     }
 
-    // ─── 3. GUARDAR Y GESTIONAR LOTES DE EMPAQUE ─────────────────
+    // ─── 3. GUARDAR LOTE DE EMPAQUE ──────────────────────────────
     async function guardarLoteProduccion() {
       const empId = document.getElementById('prod-empleado').value;
       const bolsas = parseInt(document.getElementById('prod-bolsas').value) || 0;
@@ -347,27 +418,34 @@
       }
     }
 
+    // ─── 4. CARGAR Y FILTRAR LOTES ───────────────────────────────
     async function cargarLotes() {
       try {
-        const todos = await dbGet('produccion_lotes', 'select=*,empleados(nombre),productos(nombre)&order=id.desc');
-        
-        lotesPendientes = todos.filter(l => l.estado_pago === 'PENDIENTE');
-
-        const hoyStr = new Date().toDateString();
-        lotesHoy = todos.filter(l => new Date(l.fecha).toDateString() === hoyStr);
-
-        actualizarResumen();
-        renderizarLotesPendientes();
+        todosLosLotes = await dbGet('produccion_lotes', 'select=*,empleados(nombre),productos(nombre)&order=id.desc') || [];
+        lotesSeleccionadosIds.clear();
+        actualizarKpisGenerales();
+        renderizarLotes();
       } catch (e) {
-        document.getElementById('lista-lotes-pendientes').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+        document.getElementById('lista-lotes-contenedor').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
       }
     }
 
-    function actualizarResumen() {
+    function cambiarFiltroEstado(estado, btn) {
+      document.querySelectorAll('.filtro-chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      filtroEstadoActual = estado;
+      lotesSeleccionadosIds.clear();
+      renderizarLotes();
+    }
+
+    function actualizarKpisGenerales() {
+      const pendientes = todosLosLotes.filter(l => l.estado_pago === 'PENDIENTE');
+      const hoyStr = new Date().toDateString();
+      const lotesHoy = todosLosLotes.filter(l => new Date(l.fecha).toDateString() === hoyStr);
+
       let bolsasPend = 0;
       let deudaTotal = 0;
-
-      lotesPendientes.forEach(l => {
+      pendientes.forEach(l => {
         bolsasPend += parseInt(l.bolsas_producidas) || 0;
         deudaTotal += parseFloat(l.total_mano_obra) || 0;
       });
@@ -380,37 +458,214 @@
       document.getElementById('kpi-bolsas-pendientes').textContent = bolsasPend.toLocaleString('es-MX');
       document.getElementById('kpi-mano-obra-deuda').textContent = formatPeso(deudaTotal);
       document.getElementById('kpi-bolsas-hoy').textContent = bolsasHoyTotal.toLocaleString('es-MX');
-
-      document.getElementById('btn-liquidar-todo').style.display = lotesPendientes.length ? 'block' : 'none';
     }
 
-    function renderizarLotesPendientes() {
-      const cont = document.getElementById('lista-lotes-pendientes');
-      if (!lotesPendientes.length) {
-        cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1rem">No hay mano de obra pendiente de pago.</p>';
+    function renderizarLotes() {
+      const cont = document.getElementById('lista-lotes-contenedor');
+      const empFiltro = document.getElementById('filtro-trabajador').value;
+      const prodFiltro = (document.getElementById('filtro-producto').value || '').trim().toLowerCase();
+
+      // Filtrar según estado, trabajador y texto de producto
+      lotesFiltradosVisibles = todosLosLotes.filter(l => {
+        const matchEstado = (filtroEstadoActual === 'TODOS') || (l.estado_pago === filtroEstadoActual);
+        const matchEmp = (empFiltro === 'TODOS') || (String(l.empleado_id) === String(empFiltro));
+        const matchProd = !prodFiltro || (l.productos?.nombre && l.productos.nombre.toLowerCase().includes(prodFiltro));
+        return matchEstado && matchEmp && matchProd;
+      });
+
+      actualizarBotonLiquidacion();
+
+      if (!lotesFiltradosVisibles.length) {
+        cont.innerHTML = '<p style="text-align:center; color:var(--text-muted); font-size:0.85rem; padding:1.5rem">No hay lotes con los filtros seleccionados.</p>';
         return;
       }
 
-      cont.innerHTML = lotesPendientes.map(l => `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0; border-bottom:1px solid var(--border); font-size:0.85rem;">
-          <div>
-            <strong>${l.empleados?.nombre || 'Operador'}</strong> — ${l.productos?.nombre || 'Producto'}
-            <div style="font-size:0.72rem; color:var(--text-muted)">
-              ${new Date(l.fecha).toLocaleDateString('es-MX')} · ${l.bolsas_producidas} bolsas x $${parseFloat(l.pago_unitario).toFixed(2)}
+      cont.innerHTML = lotesFiltradosVisibles.map(l => {
+        const esPagado = l.estado_pago === 'PAGADO';
+        const isChecked = lotesSeleccionadosIds.has(l.id);
+
+        return `
+          <div class="lote-item ${esPagado ? 'pagado' : ''}">
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+              ${!esPagado ? `
+                <input type="checkbox" onchange="toggleSeleccionLote(${l.id}, this.checked)" ${isChecked ? 'checked' : ''} style="cursor:pointer; width:16px; height:16px;">
+              ` : `
+                <span title="Liquidado" style="font-size:0.85rem;">✅</span>
+              `}
+              <div>
+                <strong>${l.empleados?.nombre || 'Operador'}</strong> — ${l.productos?.nombre || 'Producto'}
+                <div style="font-size:0.72rem; color:var(--text-muted)">
+                  ${new Date(l.fecha).toLocaleDateString('es-MX')} · ${l.bolsas_producidas} bolsas x $${parseFloat(l.pago_unitario).toFixed(2)}
+                  ${esPagado ? '<span class="badge badge-green" style="font-size:0.62rem; margin-left:4px;">LIQUIDADO</span>' : '<span class="badge badge-blue" style="font-size:0.62rem; margin-left:4px;">PENDIENTE</span>'}
+                </div>
+              </div>
+            </div>
+
+            <div style="text-align:right; display:flex; align-items:center; gap:0.4rem;">
+              <strong style="color:${esPagado ? '#16a34a' : '#ef4444'}; margin-right:4px;">${formatPeso(l.total_mano_obra)}</strong>
+
+              ${!esPagado ? `
+                <button onclick="liquidarLoteIndividual(${l.id})" class="btn btn-primary" style="background:#16a34a; font-size:0.68rem; padding:0.25rem 0.5rem; border-radius:4px;" title="Pagar este lote">
+                  💵 Pagar
+                </button>
+                <button onclick="cancelarLotePendiente(${l.id})" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:4px; padding:0.25rem 0.45rem; font-size:0.7rem; cursor:pointer;" title="Eliminar / Descartar lote">
+                  ✕
+                </button>
+              ` : `
+                <button onclick="revertirLoteAPendiente(${l.id})" style="background:var(--bg); border:1px solid var(--border); border-radius:4px; padding:0.25rem 0.45rem; font-size:0.68rem; cursor:pointer;" title="Revertir a Pendiente">
+                  ↩️
+                </button>
+              `}
             </div>
           </div>
-          <div style="text-align:right; display:flex; align-items:center; gap:0.5rem;">
-            <strong style="color:#ef4444">${formatPeso(l.total_mano_obra)}</strong>
-            <button onclick="cancelarLotePendiente(${l.id})" style="background:#fee2e2; color:#b91c1c; border:none; border-radius:4px; padding:0.3rem 0.5rem; font-size:0.7rem; cursor:pointer;" title="Eliminar / Cancelar lote">
-              ✕
-            </button>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+    }
+
+    // ─── 5. GESTIÓN DE SELECCIÓN Y LIQUIDACIÓN FLEXIBLE ──────────
+    function toggleSeleccionLote(id, checked) {
+      if (checked) {
+        lotesSeleccionadosIds.add(id);
+      } else {
+        lotesSeleccionadosIds.delete(id);
+      }
+      actualizarBotonLiquidacion();
+    }
+
+    function toggleSeleccionarTodos(checked) {
+      lotesSeleccionadosIds.clear();
+      if (checked) {
+        lotesFiltradosVisibles.filter(l => l.estado_pago === 'PENDIENTE').forEach(l => {
+          lotesSeleccionadosIds.add(l.id);
+        });
+      }
+      renderizarLotes();
+    }
+
+    function actualizarBotonLiquidacion() {
+      const btn = document.getElementById('btn-accion-liquidar');
+      const empFiltro = document.getElementById('filtro-trabajador').value;
+      const pendientesVisibles = lotesFiltradosVisibles.filter(l => l.estado_pago === 'PENDIENTE');
+
+      document.getElementById('txt-conteo-seleccionados').textContent = `${lotesSeleccionadosIds.size} seleccionados`;
+
+      if (lotesSeleccionadosIds.size > 0) {
+        let totalSeleccionado = 0;
+        todosLosLotes.forEach(l => {
+          if (lotesSeleccionadosIds.has(l.id)) totalSeleccionado += parseFloat(l.total_mano_obra) || 0;
+        });
+        btn.style.display = 'block';
+        btn.textContent = `💵 Liquidar Seleccionados (${formatPeso(totalSeleccionado)})`;
+        return;
+      }
+
+      if (pendientesVisibles.length > 0) {
+        let total = 0;
+        pendientesVisibles.forEach(l => total += parseFloat(l.total_mano_obra) || 0);
+
+        btn.style.display = 'block';
+        if (empFiltro !== 'TODOS') {
+          const empNombre = empleados.find(e => String(e.id) === String(empFiltro))?.nombre || 'Trabajador';
+          btn.textContent = `💵 Liquidar a ${empNombre} (${formatPeso(total)})`;
+        } else {
+          btn.textContent = `💵 Liquidar Visibles (${formatPeso(total)})`;
+        }
+      } else {
+        btn.style.display = 'none';
+      }
+    }
+
+    async function ejecutarLiquidacionSeleccionada() {
+      let lotesAPagar = [];
+
+      if (lotesSeleccionadosIds.size > 0) {
+        lotesAPagar = todosLosLotes.filter(l => lotesSeleccionadosIds.has(l.id) && l.estado_pago === 'PENDIENTE');
+      } else {
+        lotesAPagar = lotesFiltradosVisibles.filter(l => l.estado_pago === 'PENDIENTE');
+      }
+
+      if (!lotesAPagar.length) return alert("No hay lotes pendientes seleccionados para liquidar.");
+
+      let totalPagar = 0;
+      let totalBolsas = 0;
+      lotesAPagar.forEach(l => {
+        totalPagar += parseFloat(l.total_mano_obra) || 0;
+        totalBolsas += parseInt(l.bolsas_producidas) || 0;
+      });
+
+      const empFiltro = document.getElementById('filtro-trabajador').value;
+      let conceptoGasto = `Pago destajo empaque (${totalBolsas} bolsas)`;
+      if (empFiltro !== 'TODOS') {
+        const empNombre = empleados.find(e => String(e.id) === String(empFiltro))?.nombre || '';
+        if (empNombre) conceptoGasto = `Pago destajo (${empNombre} - ${totalBolsas} bolsas)`;
+      }
+
+      if (!confirm(`¿Confirmas liquidar ${formatPeso(totalPagar)} por ${totalBolsas} bolsas empacadas en ${lotesAPagar.length} lote(s)? Esto se enviará al reporte de Gastos.`)) return;
+
+      try {
+        // 1. Guardar en compras_gastos
+        await dbPost('compras_gastos', {
+          tipo: 'OPERATIVO',
+          categoria: 'Mano de Obra',
+          concepto: conceptoGasto,
+          total: totalPagar,
+          estado: 'COMPLETADO'
+        });
+
+        // 2. Marcar lotes como PAGADO
+        for (const l of lotesAPagar) {
+          await dbPatch('produccion_lotes', l.id, { estado_pago: 'PAGADO' });
+        }
+
+        alert("✅ Mano de obra liquidada y registrada exitosamente en Gastos.");
+        lotesSeleccionadosIds.clear();
+        await cargarLotes();
+
+      } catch (e) {
+        alert("Error al liquidar: " + e.message);
+      }
+    }
+
+    async function liquidarLoteIndividual(loteId) {
+      const lote = todosLosLotes.find(l => l.id === loteId);
+      if (!lote) return;
+
+      const total = parseFloat(lote.total_mano_obra) || 0;
+      const bolsas = lote.bolsas_producidas;
+      const trabajador = lote.empleados?.nombre || 'Trabajador';
+
+      if (!confirm(`¿Liquidar ${formatPeso(total)} a ${trabajador} por ${bolsas} bolsas de ${lote.productos?.nombre}?`)) return;
+
+      try {
+        await dbPost('compras_gastos', {
+          tipo: 'OPERATIVO',
+          categoria: 'Mano de Obra',
+          concepto: `Pago destajo ${trabajador} (${bolsas} bolsas)`,
+          total: total,
+          estado: 'COMPLETADO'
+        });
+
+        await dbPatch('produccion_lotes', loteId, { estado_pago: 'PAGADO' });
+        mostrarToast("✅ Lote liquidado y enviado a Gastos");
+        await cargarLotes();
+      } catch (e) {
+        alert("Error al liquidar lote: " + e.message);
+      }
+    }
+
+    async function revertirLoteAPendiente(loteId) {
+      if (!confirm("¿Revertir este lote liquidado a estado PENDIENTE? (Nota: Si deseas anular el egreso contable, hazlo desde gastos.html)")) return;
+
+      try {
+        await dbPatch('produccion_lotes', loteId, { estado_pago: 'PENDIENTE' });
+        await cargarLotes();
+      } catch (e) {
+        alert("Error al revertir: " + e.message);
+      }
     }
 
     async function cancelarLotePendiente(loteId) {
-      if (!confirm("¿Cancelar y eliminar este lote de producción?")) return;
+      if (!confirm("¿Cancelar y eliminar permanentemente este lote de producción?")) return;
 
       try {
         await fetch(`${SUPABASE_URL}/rest/v1/produccion_lotes?id=eq.${loteId}`, {
@@ -422,38 +677,7 @@
       }
     }
 
-    async function liquidarManoDeObra() {
-      let totalPagar = 0;
-      let totalBolsas = 0;
-      lotesPendientes.forEach(l => {
-        totalPagar += parseFloat(l.total_mano_obra) || 0;
-        totalBolsas += parseInt(l.bolsas_producidas) || 0;
-      });
-
-      if (!confirm(`¿Liquidar ${formatPeso(totalPagar)} por ${totalBolsas} bolsas empacadas? Esto creará un egreso de "Mano de Obra" en tus gastos.`)) return;
-
-      try {
-        await dbPost('compras_gastos', {
-          tipo: 'OPERATIVO',
-          categoria: 'Mano de Obra',
-          concepto: `Pago destajo empaque (${totalBolsas} bolsas)`,
-          total: totalPagar,
-          estado: 'COMPLETADO'
-        });
-
-        for (const l of lotesPendientes) {
-          await dbPatch('produccion_lotes', l.id, { estado_pago: 'PAGADO' });
-        }
-
-        alert("✅ Mano de obra liquidada y registrada en el módulo de Gastos.");
-        await cargarLotes();
-
-      } catch (e) {
-        alert("Error al liquidar: " + e.message);
-      }
-    }
-
-    // ─── 4. GESTIÓN Y EDICIÓN DE EMPLEADOS ────────────────────────
+    // ─── 6. GESTIÓN Y EDICIÓN DE EMPLEADOS ────────────────────────
     function abrirModalEmpleados() {
       document.getElementById('modal-empleados').style.display = 'block';
       limpiarFormEmpleado();
@@ -543,4 +767,4 @@
   </script>
 </body>
 
-</html> 
+</html>
