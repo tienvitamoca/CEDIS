@@ -325,11 +325,14 @@
 
             const cantidadInput = document.getElementById('in-cantidad');
             const cantidad = parseInt(cantidadInput.value) || 1;
-            const precioVenta = parseFloat(document.getElementById('r-precio-venta').textContent.replace('$', ''));
+            const precioVenta = parseFloat(document.getElementById('r-precio-venta').textContent.replace('$', '')) || 0;
             const presText = document.getElementById('r-presentacion-nombre').textContent || "Estándar";
             const gramosPorBolsa = parseFloat(document.getElementById('in-gramos').value) || 0;
 
-            // Extraer la utilidad unitaria exacta mostrada en pantalla
+            // Tomar el precio sugerido exacto que calculó el sistema en pantalla
+            const textoSugerido = document.getElementById('r-precio-tienda').textContent.replace('$', '');
+            const precioSugeridoCalculado = parseFloat(textoSugerido) || parseFloat(document.getElementById('in-precio').value) || 0;
+
             const utilidadMostrada = parseFloat(document.getElementById('r-utilidad').textContent.replace('$', '')) || 0;
 
             const item = {
@@ -338,10 +341,10 @@
                 cantidad: cantidad,
                 gramosUnitarios: gramosPorBolsa,
                 gramosTotales: gramosPorBolsa * cantidad,
-                costo: parseFloat(productoActual.costo_kg),
-                precioObjetivo: parseFloat(document.getElementById('in-precio').value) || 0,
+                costo: parseFloat(productoActual.costo_kg) || 0,
+                precioObjetivo: precioSugeridoCalculado, // <-- Siempre viaja el precio sugerido
                 presentacion: presText,
-                utilidadUnitaria: utilidadMostrada // <-- Guardada aquí
+                utilidadUnitaria: utilidadMostrada
             };
 
             carrito.push(item);
@@ -496,11 +499,14 @@
                 doc.text(tituloProducto, 10, y);
                 y += 4;
 
-                doc.setFontSize(7);
+                // Renglón de costo y sugerido
+                doc.setFontSize(7.5);
                 doc.setFont("helvetica", "normal");
-                doc.text(`Costo: $${item.precio.toFixed(2)} -> Sugerido: $${item.precioObjetivo.toFixed(2)}`, 10, y);
+                const sug = item.precioObjetivo ? item.precioObjetivo.toFixed(2) : item.precio.toFixed(2);
+                doc.text(`Costo: $${item.precio.toFixed(2)}  ->  Sugerido: $${sug}`, 10, y);
                 y += 4;
 
+                doc.setFontSize(8);
                 doc.text(`${item.cantidad} pzas x $${item.precio.toFixed(2)}`, 10, y);
                 doc.text(`$${subtotal.toFixed(2)}`, 70, y, { align: "right" });
                 y += 6;
@@ -535,7 +541,7 @@
                 doc.save(nombreArchivo);
             }
         }
-
+        
         async function abrirHistorialVentas() {
             const modal = document.getElementById('modal-historial');
             const cont = document.getElementById('lista-historial-ventas');
