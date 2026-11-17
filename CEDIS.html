@@ -329,7 +329,6 @@
             const presText = document.getElementById('r-presentacion-nombre').textContent || "Estándar";
             const gramosPorBolsa = parseFloat(document.getElementById('in-gramos').value) || 0;
 
-            // Tomar el precio sugerido exacto que calculó el sistema en pantalla
             const textoSugerido = document.getElementById('r-precio-tienda').textContent.replace('$', '');
             const precioSugeridoCalculado = parseFloat(textoSugerido) || parseFloat(document.getElementById('in-precio').value) || 0;
 
@@ -342,7 +341,7 @@
                 gramosUnitarios: gramosPorBolsa,
                 gramosTotales: gramosPorBolsa * cantidad,
                 costo: parseFloat(productoActual.costo_kg) || 0,
-                precioObjetivo: precioSugeridoCalculado, // <-- Siempre viaja el precio sugerido
+                precioObjetivo: precioSugeridoCalculado,
                 presentacion: presText,
                 utilidadUnitaria: utilidadMostrada
             };
@@ -499,7 +498,6 @@
                 doc.text(tituloProducto, 10, y);
                 y += 4;
 
-                // Renglón de costo y sugerido
                 doc.setFontSize(7.5);
                 doc.setFont("helvetica", "normal");
                 const sug = item.precioObjetivo ? item.precioObjetivo.toFixed(2) : item.precio.toFixed(2);
@@ -549,7 +547,7 @@
             cont.innerHTML = '<div class="spinner"></div>';
 
             try {
-                const ventas = await dbGet('ventas', 'select=*,detalle_ventas(*,productos(nombre))&order=id.desc&limit=50');
+                const ventas = await dbGet('ventas', 'select=*,detalle_ventas(*,productos(nombre,margen_cliente,tipos_producto(margen_cliente)))&order=id.desc&limit=50');
 
                 if (!ventas.length) {
                     cont.innerHTML = '<p style="text-align:center; color:var(--text-muted)">No hay ventas registradas.</p>';
@@ -740,16 +738,32 @@
 
             let y = 40;
             (ventaSeleccionada.detalle_ventas || []).forEach(item => {
-                const titulo = `${item.productos?.nombre || 'Prod'} (${item.presentacion || ''})`;
+                const presentacionTexto = item.presentacion ? ` (${item.presentacion})` : '';
+                const titulo = `${item.productos?.nombre || 'Prod'}${presentacionTexto}`;
 
                 doc.setFontSize(9);
                 doc.setFont("helvetica", "bold");
                 doc.text(titulo, 10, y);
                 y += 4;
 
-                doc.setFontSize(7);
+                const pUnit = parseFloat(item.precio_unitario) || 0;
+                let pSug = pUnit;
+
+                const matchPrecio = (item.presentacion || '').match(/\$\s*(\d+(\.\d+)?)/);
+                if (matchPrecio) {
+                    pSug = parseFloat(matchPrecio[1]);
+                } else {
+                    const mc = item.productos?.margen_cliente ?? item.productos?.tipos_producto?.margen_cliente ?? 0.22;
+                    pSug = Math.round(pUnit * (1 + parseFloat(mc)));
+                }
+
+                doc.setFontSize(7.5);
                 doc.setFont("helvetica", "normal");
-                doc.text(`${item.cantidad_piezas} pzas x $${parseFloat(item.precio_unitario).toFixed(2)}`, 10, y);
+                doc.text(`Costo: $${pUnit.toFixed(2)}  ->  Sugerido: $${pSug.toFixed(2)}`, 10, y);
+                y += 4;
+
+                doc.setFontSize(8);
+                doc.text(`${item.cantidad_piezas} pzas x $${pUnit.toFixed(2)}`, 10, y);
                 doc.text(`$${parseFloat(item.subtotal).toFixed(2)}`, 70, y, { align: "right" });
                 y += 6;
 
@@ -772,7 +786,8 @@
 
             const pdfBlob = doc.output('blob');
             const clienteLimpio = (ventaSeleccionada.cliente || "Cliente").trim().replace(/\s+/g, '_');
-            const nombreArchivo = `${clienteLimpio}_Ticket_${ventaSeleccionada.id}.pdf`; const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
+            const nombreArchivo = `${clienteLimpio}_Ticket_${ventaSeleccionada.id}.pdf`; 
+            const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
 
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
